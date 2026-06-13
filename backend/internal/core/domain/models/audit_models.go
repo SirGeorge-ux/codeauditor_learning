@@ -5,6 +5,7 @@ type AuditRequest struct {
 	Code        string `json:"code"`
 	Language    string `json:"language"`
 	ChallengeID string `json:"challengeId"`
+	UserID      string `json:"-"` // set by server from JWT, not sent by client
 }
 
 // AuditEvent represents a single event streamed during audit execution.

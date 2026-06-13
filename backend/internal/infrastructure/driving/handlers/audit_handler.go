@@ -8,6 +8,7 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 )
 
 // AuditHandler handles the audit SSE endpoint.
@@ -42,6 +43,9 @@ func (h *AuditHandler) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	// Extract user ID from JWT context (set by auth middleware)
+	req.UserID = authmiddleware.GetUserID(r.Context())
 
 	// Create SSE writer (satisfies SSEStreamer port)
 	sseWriter := NewSSEWriter(w, r)

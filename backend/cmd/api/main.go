@@ -114,6 +114,11 @@ func main() {
 		log.Println("Ollama not configured — AI analysis disabled")
 	}
 
+	// Initialize user progress service
+	progressService := services.NewUserProgressService(db)
+	auditService.WithProgress(progressService)
+	log.Println("User progress tracking enabled")
+
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
 

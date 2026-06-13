@@ -11,6 +11,24 @@ import { Challenge } from '../../../domain/models/challenge';
   imports: [CommonModule],
   template: `
     <div class="p-6">
+      <!-- Progress Stats Bar -->
+      @if (userSignal()) {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div class="bg-[#161B22] border border-[#21262D] rounded-sm p-4 text-center">
+            <div class="text-3xl font-bold text-[#39D353]">{{ userSignal()?.racha_dias ?? 0 }}</div>
+            <div class="text-xs text-[#8B949E] mt-1">Día racha</div>
+          </div>
+          <div class="bg-[#161B22] border border-[#21262D] rounded-sm p-4 text-center">
+            <div class="text-3xl font-bold text-[#58A6FF]">{{ userSignal()?.puntos_maestria ?? 0 }}</div>
+            <div class="text-xs text-[#8B949E] mt-1">Puntos Maestría</div>
+          </div>
+          <div class="bg-[#161B22] border border-[#21262D] rounded-sm p-4 text-center">
+            <div class="text-xl font-bold text-[#C9D1D9]">{{ userSignal()?.rango_actual ?? 'Junior' }}</div>
+            <div class="text-xs text-[#8B949E] mt-1">Rango</div>
+          </div>
+        </div>
+      }
+
       <h1 class="text-2xl font-bold text-[#C9D1D9] mb-2">Dashboard</h1>
       <p class="text-[#8B949E] mb-8">Welcome to CodeAuditor</p>
 

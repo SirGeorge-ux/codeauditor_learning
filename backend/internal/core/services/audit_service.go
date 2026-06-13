@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 type AuditService struct {
 	sandbox      ports.SandboxExecutor
 	ollamaClient *ollamadriven.Client
+	progress     *UserProgressService
 }
 
 // NewAuditService creates a new AuditService.
@@ -27,6 +29,12 @@ func NewAuditService(sandbox ports.SandboxExecutor) *AuditService {
 // WithOllama attaches an Ollama client for AI-powered code analysis.
 func (s *AuditService) WithOllama(client *ollamadriven.Client) *AuditService {
 	s.ollamaClient = client
+	return s
+}
+
+// WithProgress attaches a UserProgressService for tracking user stats.
+func (s *AuditService) WithProgress(p *UserProgressService) *AuditService {
+	s.progress = p
 	return s
 }
 
@@ -66,6 +74,14 @@ func (s *AuditService) RunAudit(ctx context.Context, req models.AuditRequest, st
 	// Ollama analysis (optional — only if client is configured)
 	if s.ollamaClient != nil {
 		s.runOllamaAnalysis(ctx, req, output.String(), streamer, clientID)
+	}
+
+	// Record user progress (optional — only if service is configured)
+	if s.progress != nil && req.UserID != "" {
+		if err := s.progress.RecordAuditAttempt(ctx, req.UserID); err != nil {
+			// Log but don't fail the audit — progress tracking is non-critical
+			log.Printf("Failed to record progress for user %s: %v", req.UserID, err)
+		}
 	}
 
 	result := models.AuditResult{ExitCode: 0}
