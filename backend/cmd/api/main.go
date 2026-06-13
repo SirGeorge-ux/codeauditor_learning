@@ -130,8 +130,9 @@ func main() {
 		r.Get("/auth/me", authHandler.Me)
 	})
 
-	// API v1 routes
+	// API v1 routes (protected)
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(authmiddleware.AuthMiddleware(authAdapter))
 		// Audit SSE endpoint — no global timeout; runs its own context timeout
 		r.Post("/audit", auditHandler.HandleSSE)
 	})
