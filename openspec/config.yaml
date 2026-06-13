@@ -33,32 +33,40 @@ testing:
   strict_tdd: false
   capabilities: |
     ## Testing Capabilities
-    
-    **Strict TDD Mode**: disabled
-    **Detected**: 2026-06-10
-    
-    ### Test Runner
-    
-    - Command: `ng test` / `go test`
-    - Framework: To be initialized
-    
-    ### Test Layers
-    
-    | Layer       | Available | Tool        |
-    | ----------- | --------- | ----------- |
-    | Unit        | ❌        | To be initialized |
-    | Integration | ❌        | To be initialized |
-    | E2E         | ❌        | To be initialized |
-    
-    ### Coverage
-    
-    - Available: ❌
-    - Command: —
-    
+
+    **Strict TDD Mode**: disabled (explicit in config)
+    **Detected**: 2026-06-14 (init)
+
+    ### Test Runners
+
+    | Stack    | Command          | Framework | Config                                  |
+    | -------- | ---------------- | --------- | --------------------------------------- |
+    | Backend  | `go test ./...`  | Go stdlib | Go 1.23, standard `*testing.T`          |
+    | Frontend | `ng test`        | Vitest    | Angular 21 `@angular/build:unit-test`, vitest 4.0.8, jsdom 28, tsconfig.spec.json with vitest/globals |
+
+    ### Test Coverage
+
+    | Stack    | Available | Command                      |
+    | -------- | --------- | ---------------------------- |
+    | Backend  | ✅        | `go test -coverprofile=coverage.out ./...` |
+    | Frontend | ✅        | `ng test --code-coverage` (via Vitest)    |
+
     ### Quality Tools
-    
-    | Tool         | Available | Command        |
-    | ------------ | --------- | -------------- |
-    | Linter       | ❌        | To be initialized |
-    | Type checker | ❌        | To be initialized |
-    | Formatter    | ❌        | To be initialized |
+
+    | Stack    | Tool              | Available | Command                                |
+    | -------- | ----------------- | --------- | -------------------------------------- |
+    | Backend  | Linter            | ❌        | No golangci-lint config found          |
+    | Backend  | Type checker      | ✅        | `go vet ./...`                         |
+    | Backend  | Formatter         | ✅        | `go fmt ./...`                         |
+    | Frontend | Linter            | ❌        | No ESLint config found                 |
+    | Frontend | Type checker      | ✅        | TypeScript 5.9 (via `ng build` / `tsc`) |
+    | Frontend | Formatter         | ✅        | Prettier 3.8.1                         |
+
+    ### Existing Tests
+
+    | File | Type | Location |
+    | ---- | ---- | -------- |
+    | supabase_auth_test.go | Unit (Go) | backend/internal/infrastructure/driven/supabase/ |
+    | localsandbox_test.go | Unit (Go) | backend/internal/infrastructure/driven/sandbox/ |
+    | app.spec.ts | Component (Angular) | frontend/codeauditor/src/app/ |
+    | auth.service.spec.ts | Service (Angular) | frontend/codeauditor/src/app/infrastructure/services/ |
