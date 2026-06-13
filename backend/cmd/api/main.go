@@ -17,6 +17,7 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
+	ollama "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
@@ -101,6 +102,18 @@ func main() {
 
 	// Initialize audit service
 	auditService := services.NewAuditService(sandboxExecutor)
+
+	// Initialize Ollama client (optional — skip if env var not set)
+	ollamaBaseURL := os.Getenv("OLLAMA_BASE_URL")
+	ollamaModel := os.Getenv("OLLAMA_MODEL")
+	if ollamaBaseURL != "" {
+		ollamaClient := ollama.NewClient(ollamaBaseURL, ollamaModel)
+		auditService.WithOllama(ollamaClient)
+		log.Printf("Ollama client initialized (model: %s)", ollamaClient.Model())
+	} else {
+		log.Println("Ollama not configured — AI analysis disabled")
+	}
+
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
 

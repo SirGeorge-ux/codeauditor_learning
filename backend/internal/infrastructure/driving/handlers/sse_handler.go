@@ -51,9 +51,26 @@ func (s *SSEWriter) StreamEvent(ctx context.Context, clientID string, eventType 
 	return err
 }
 
-// BroadcastLLMTokens is a no-op for SSEWriter (not used in audit flow).
+// BroadcastLLMTokens streams a single LLM token delta to the SSE client.
 func (s *SSEWriter) BroadcastLLMTokens(ctx context.Context, clientID string, tokenDelta string) error {
-	return nil
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	default:
+	}
+
+	event := models.AuditEvent{
+		Type:      "llm_token",
+		Data:      tokenDelta,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	eventData, _ := json.Marshal(event)
+	_, err := fmt.Fprintf(s.w, "data: %s\n\n", eventData)
+	if s.flusher != nil {
+		s.flusher.Flush()
+	}
+	return err
 }
 
 // RegisterClient is a no-op for SSEWriter (not used in audit flow).

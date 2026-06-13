@@ -137,6 +137,19 @@ export class DojoPageComponent implements OnInit {
           } catch {
             this.terminalPanel?.write('\x1b[31mError: ' + event.data + '\x1b[0m\n\r');
           }
+        } else if (event.type === 'llm_token') {
+          this.terminalPanel?.write('\x1b[35m' + event.data + '\x1b[0m');
+        } else if (event.type === 'llm_analysis') {
+          this.terminalPanel?.write('\n\r\x1b[35m━━━ AI Analysis ━━━\x1b[0m\n\r');
+          this.terminalPanel?.write('\x1b[35m' + event.data + '\x1b[0m\n\r');
+          this.terminalPanel?.write('\x1b[35m━━━━━━━━━━━━━━━━━━\x1b[0m\n\r');
+        } else if (event.type === 'llm_error') {
+          try {
+            const payload = JSON.parse(event.data);
+            this.terminalPanel?.write('\x1b[33mAI: ' + (payload.message ?? 'LLM unavailable') + '\x1b[0m\n\r');
+          } catch {
+            this.terminalPanel?.write('\x1b[33mAI: ' + event.data + '\x1b[0m\n\r');
+          }
         }
       },
       error: (err) => {
