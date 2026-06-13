@@ -38,6 +38,8 @@ e2e: ## Run Playwright E2E tests
 
 test: test-backend test-frontend ## Run all tests
 
+ci: lint test build ## Full CI pipeline (lint + test + build)
+
 lint: lint-backend lint-frontend ## Lint all code
 
 build: build-backend build-frontend ## Build all
