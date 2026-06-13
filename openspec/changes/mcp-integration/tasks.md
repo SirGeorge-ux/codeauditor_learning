@@ -34,12 +34,12 @@ Chain strategy: pending
 
 ## Phase 2: Frontend GogsService
 
-- [ ] 2.1 Create `frontend/codeauditor/src/app/infrastructure/services/gogs.service.ts` — `@Injectable` with `listRepos(): Observable<GogsRepo[]>` and `fetchFile(owner, repo, branch, path): Observable<GogsFileResponse>`, typed interfaces (REQ-RB-006)
-- [ ] 2.2 Create `frontend/codeauditor/src/app/infrastructure/services/gogs.service.spec.ts` — Vitest `HttpClientTestingController`: verify HTTP method, URL, body for both methods
-- [ ] 2.3 Modify `frontend/codeauditor/src/app/infrastructure/services/challenge.service.ts` — add `addTempChallenge(challenge: Challenge): string` storing in local `Map<string, Challenge>`; update `getChallenge(id)` to check temp map first
+- [x] 2.1 Create `frontend/codeauditor/src/app/infrastructure/services/gogs.service.ts` — `@Injectable` with `listRepos(): Observable<GogsRepo[]>` and `fetchFile(owner, repo, branch, path): Observable<GogsFileResponse>`, typed interfaces (REQ-RB-006)
+- [x] 2.2 Create `frontend/codeauditor/src/app/infrastructure/services/gogs.service.spec.ts` — Vitest `HttpClientTestingController`: verify HTTP method, URL, body for both methods
+- [x] 2.3 Modify `frontend/codeauditor/src/app/infrastructure/services/challenge.service.ts` — add `addTempChallenge(challenge: Challenge): string` storing in local `Map<string, Challenge>`; update `getChallenge(id)` to check temp map first
 
 ## Phase 3: McpPage + Temp Challenge Flow
 
-- [ ] 3.1 Rewrite `frontend/codeauditor/src/app/infrastructure/components/mcp/mcp-page.component.ts` — inject `GogsService`/`Router`/`ChallengeService`; `repos$` signal; repo card list; file path input with branch; loading/error states; retry button (REQ-RB-001/004/005)
-- [ ] 3.2 Wire temp challenge creation — on "Auditar" click: build `Challenge` with `tempId`, `difficulty=mid`, `category=imported`, language from extension map, `codeSmell=pending-analysis`; store via `addTempChallenge()`; navigate to `/dojo/:tempId` (REQ-RB-002/003)
-- [ ] 3.3 Create `frontend/codeauditor/src/app/infrastructure/components/mcp/mcp-page.component.spec.ts` — Vitest `TestBed` with mock `GogsService`: repo list renders, file input, navigation triggers, loading/error states
+- [x] 3.1 Rewrite `frontend/codeauditor/src/app/infrastructure/components/mcp/mcp-page.component.ts` — inject `GogsService`/`Router`/`ChallengeService`; `repos` signal; repo card list; file path input with branch; loading/error states; retry button (REQ-RB-001/004/005)
+- [x] 3.2 Wire temp challenge creation — on "Auditar" click: build `Challenge` with `tempId`, `difficulty=mid`, `category=imported`, language from backend response, `codeSmell=pending-analysis`; store via `addTempChallenge()`; navigate to `/dojo/:tempId` (REQ-RB-002/003)
+- [x] 3.3 Create `frontend/codeauditor/src/app/infrastructure/components/mcp/mcp-page.component.spec.ts` — Vitest `TestBed` with mock `GogsService`: repo list renders, file input, navigation triggers, loading/error states
