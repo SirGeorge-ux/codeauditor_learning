@@ -31,6 +31,9 @@ build-frontend: ## Build Angular app
 dev-frontend: ## Run Angular dev server
 	cd frontend/codeauditor && pnpm start
 
+e2e: ## Run Playwright E2E tests
+	cd frontend/codeauditor && pnpm e2e
+
 # --- Full stack ---
 
 test: test-backend test-frontend ## Run all tests
