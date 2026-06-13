@@ -16,6 +16,7 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
@@ -106,6 +107,18 @@ func main() {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, authAdapter, db)
 
+	// Initialize Gogs client (optional — skip if env vars not set)
+	var gogsHandler *handlers.GogsHandler
+	gogsBaseURL := os.Getenv("GOGS_BASE_URL")
+	gogsToken := os.Getenv("GOGS_TOKEN")
+	if gogsBaseURL != "" && gogsToken != "" {
+		gogsClient := gogs.NewGogsClient(gogsBaseURL, gogsToken)
+		gogsHandler = handlers.NewGogsHandler(gogsClient)
+		log.Println("Gogs client initialized")
+	} else {
+		log.Println("Gogs client not configured (GOGS_BASE_URL and GOGS_TOKEN not set)")
+	}
+
 	r := chi.NewRouter()
 
 	// Global middleware (no global timeout — SSE endpoint handles its own timeout)
@@ -135,6 +148,11 @@ func main() {
 		r.Use(authmiddleware.AuthMiddleware(authAdapter))
 		// Audit SSE endpoint — no global timeout; runs its own context timeout
 		r.Post("/audit", auditHandler.HandleSSE)
+		// Gogs proxy endpoints
+		if gogsHandler != nil {
+			r.Get("/gogs/repos", gogsHandler.ListRepos)
+			r.Post("/gogs/file", gogsHandler.GetFile)
+		}
 	})
 
 	addr := ":" + port
