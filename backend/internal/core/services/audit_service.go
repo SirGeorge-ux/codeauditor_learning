@@ -19,6 +19,7 @@ type AuditService struct {
 	sandbox      ports.SandboxExecutor
 	ollamaClient *ollamadriven.Client
 	progress     *UserProgressService
+	history      *AuditHistoryService
 }
 
 // NewAuditService creates a new AuditService.
@@ -35,6 +36,12 @@ func (s *AuditService) WithOllama(client *ollamadriven.Client) *AuditService {
 // WithProgress attaches a UserProgressService for tracking user stats.
 func (s *AuditService) WithProgress(p *UserProgressService) *AuditService {
 	s.progress = p
+	return s
+}
+
+// WithHistory attaches an AuditHistoryService for saving session history.
+func (s *AuditService) WithHistory(h *AuditHistoryService) *AuditService {
+	s.history = h
 	return s
 }
 
@@ -79,8 +86,15 @@ func (s *AuditService) RunAudit(ctx context.Context, req models.AuditRequest, st
 	// Record user progress (optional — only if service is configured)
 	if s.progress != nil && req.UserID != "" {
 		if err := s.progress.RecordAuditAttempt(ctx, req.UserID); err != nil {
-			// Log but don't fail the audit — progress tracking is non-critical
 			log.Printf("Failed to record progress for user %s: %v", req.UserID, err)
+		}
+	}
+
+	// Save to audit history (optional)
+	if s.history != nil && req.UserID != "" {
+		findingsCount := strings.Count(output.String(), "\n")
+		if err := s.history.SaveSession(ctx, req.UserID, req, findingsCount); err != nil {
+			log.Printf("Failed to save audit session for user %s: %v", req.UserID, err)
 		}
 	}
 

@@ -119,6 +119,12 @@ func main() {
 	auditService.WithProgress(progressService)
 	log.Println("User progress tracking enabled")
 
+	// Initialize audit history service
+	historyService := services.NewAuditHistoryService(db)
+	auditService.WithHistory(historyService)
+	vaultHandler := handlers.NewVaultHandler(historyService)
+	log.Println("Audit history tracking enabled")
+
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
 
@@ -171,6 +177,9 @@ func main() {
 			r.Get("/gogs/repos", gogsHandler.ListRepos)
 			r.Post("/gogs/file", gogsHandler.GetFile)
 		}
+		// Vault / history endpoints
+		r.Get("/audit/history", vaultHandler.GetHistory)
+		r.Get("/audit/stats", vaultHandler.GetStats)
 	})
 
 	addr := ":" + port
