@@ -1,0 +1,26 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - nilerr
+    - prealloc
+    - unconvert
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/anomalyco/codeauditor
+  misspell:
+    locale: US
+
+issues:
+  exclude-dirs:
+    - vendor
+  max-issues-per-linter: 0
+  max-same-issues: 0

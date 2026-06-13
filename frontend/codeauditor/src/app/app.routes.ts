@@ -25,7 +25,7 @@ export const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
-    // canActivate: [authGuard], // ← reactivar cuando el proyecto esté completo
+    canActivate: [authGuard],
     children: [
       { path: 'dashboard', component: DashboardPageComponent },
       { path: 'dojo', component: DojoPageComponent },
