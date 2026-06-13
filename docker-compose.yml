@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: supabase/postgres:15.6.1.147
+    container_name: codeauditor-postgres
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codeauditor}
+      POSTGRES_DB: ${POSTGRES_DB:-codeauditor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  kong:
+    image: kong:3.4
+    container_name: codeauditor-kong
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_PORT: 5432
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: ${KONG_PG_PASSWORD:-kong}
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    depends_on:
+      - postgres
+
+  studio:
+    image: supabase/studio:20240401-9e6a7c4
+    container_name: codeauditor-studio
+    environment:
+      STUDIO_PG_META_URL: http://postgres:5432
+      SUPABASE_URL: http://localhost:8000
+      SUPABASE_KEY: stub-key-for-local-dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: codeauditor-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  postgres_data:
+  ollama_data:

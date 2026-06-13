@@ -1,0 +1,4 @@
+// Package ports defines the interfaces (contracts) that the application
+// layer uses to interact with external systems. These are the driving
+// (primary) and driven (secondary) ports defined in Hexagonal Architecture.
+package ports

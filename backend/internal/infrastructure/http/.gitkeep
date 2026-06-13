@@ -1,0 +1,3 @@
+// Package http contains driving (primary) adapters — HTTP handlers
+// that receive incoming requests and translate them into application use cases.
+package http

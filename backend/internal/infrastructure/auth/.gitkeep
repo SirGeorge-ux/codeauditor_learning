@@ -1,0 +1,3 @@
+// Package auth contains driven (secondary) adapters for authentication.
+// Examples: Supabase JWT validation, custom JWT service, API key validation.
+package auth

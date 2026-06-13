@@ -1,0 +1,4 @@
+// Package domain contains the core business logic of CodeAuditor.
+// It is the innermost layer of the Hexagonal Architecture and must not
+// depend on any external infrastructure or application layer.
+package domain

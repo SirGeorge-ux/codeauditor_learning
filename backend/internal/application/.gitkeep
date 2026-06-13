@@ -1,0 +1,4 @@
+// Package application contains the use cases (application services) of CodeAuditor.
+// It orchestrates domain logic and ports to fulfil business requests.
+// It must not contain HTTP, database, or other infrastructure concerns.
+package application

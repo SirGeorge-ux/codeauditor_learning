@@ -1,0 +1,64 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Frontend Angular 21, Backend Go (Golang)
+  Architecture: Hexagonal Architecture (dual — Go backend + Angular frontend, each with domain/application/infrastructure layers). Frontend hexagonal uses pure TS for domain/application, Angular for infrastructure. Backend hexagonal uses pure Go for domain/application, framework adapters for infrastructure.
+  Testing: To be initialized (Angular CLI/Karma/Jest + go test)
+  Style: Standard Go + Angular style guides
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  capabilities: |
+    ## Testing Capabilities
+    
+    **Strict TDD Mode**: disabled
+    **Detected**: 2026-06-10
+    
+    ### Test Runner
+    
+    - Command: `ng test` / `go test`
+    - Framework: To be initialized
+    
+    ### Test Layers
+    
+    | Layer       | Available | Tool        |
+    | ----------- | --------- | ----------- |
+    | Unit        | ❌        | To be initialized |
+    | Integration | ❌        | To be initialized |
+    | E2E         | ❌        | To be initialized |
+    
+    ### Coverage
+    
+    - Available: ❌
+    - Command: —
+    
+    ### Quality Tools
+    
+    | Tool         | Available | Command        |
+    | ------------ | --------- | -------------- |
+    | Linter       | ❌        | To be initialized |
+    | Type checker | ❌        | To be initialized |
+    | Formatter    | ❌        | To be initialized |

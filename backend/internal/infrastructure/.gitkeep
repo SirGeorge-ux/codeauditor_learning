@@ -1,0 +1,4 @@
+// Package infrastructure contains the adapters that implement the ports.
+// It is the outermost layer and includes HTTP handlers, database clients,
+// LLM integrations, and other external system connectors.
+package infrastructure

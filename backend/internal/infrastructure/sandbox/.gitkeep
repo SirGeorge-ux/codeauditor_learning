@@ -1,0 +1,3 @@
+// Package sandbox contains driven (secondary) adapters for code execution.
+// Examples: Docker-based sandbox, remote execution service, local subprocess runner.
+package sandbox
