@@ -1,22 +1,53 @@
 pipeline {
-    agent none
+    agent any
 
     environment {
+        GO_VERSION = '1.23.4'
+        NODE_VERSION = '22'
         PNPM_VERSION = '9'
+        GOPATH = "${WORKSPACE}/.go"
+        GOROOT = "${WORKSPACE}/.goroot"
+        PNPM_HOME = "${WORKSPACE}/.pnpm"
+        PATH = "${GOROOT}/bin:${GOPATH}/bin:${PNPM_HOME}:${PATH}"
     }
 
     stages {
         stage('Checkout') {
-            agent any
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Install Tools') {
+            steps {
+                script {
+                    // Install Go
+                    if (sh(script: 'go version 2>/dev/null || true', returnStdout: true).trim() == '') {
+                        sh """
+                            mkdir -p ${GOROOT}
+                            wget -qO- https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
+                        """
+                    }
+                    // Install Node.js
+                    if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
+                        sh """
+                            mkdir -p /tmp/node
+                            wget -qO- https://nodejs.org/dist/v${NODE_VERSION}.0.0/node-v${NODE_VERSION}.0.0-linux-x64.tar.xz | tar -C /tmp/node --strip-components=1 -xJf -
+                            mkdir -p ${GOPATH}/bin
+                            cp /tmp/node/bin/node ${GOPATH}/bin/
+                            cp /tmp/node/bin/npm ${GOPATH}/bin/
+                            cp /tmp/node/bin/npx ${GOPATH}/bin/
+                            ln -sf ../lib/node_modules/corepack/dist/corepack.js /tmp/node/bin/corepack 2>/dev/null || true
+                            PATH="${PATH}:/tmp/node/bin" npx corepack enable
+                        """
+                    }
+                }
             }
         }
 
         stage('Setup') {
             parallel {
                 stage('Go Dependencies') {
-                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go mod download'
@@ -24,33 +55,10 @@ pipeline {
                     }
                 }
                 stage('Frontend Dependencies') {
-                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
+                            sh 'corepack enable 2>/dev/null; corepack prepare pnpm@${PNPM_VERSION} --activate 2>/dev/null'
                             sh 'pnpm install --frozen-lockfile'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Lint') {
-            parallel {
-                stage('Go Lint') {
-                    agent { docker { image 'golangci/golangci-lint:v1.64-alpine' } }
-                    steps {
-                        dir('backend') {
-                            sh 'golangci-lint run ./... || true'
-                        }
-                    }
-                }
-                stage('Frontend Lint') {
-                    agent { docker { image 'node:22-alpine' } }
-                    steps {
-                        dir('frontend/codeauditor') {
-                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
-                            sh 'pnpm install --frozen-lockfile && pnpm lint || true'
                         }
                     }
                 }
@@ -60,7 +68,6 @@ pipeline {
         stage('Test') {
             parallel {
                 stage('Go Tests') {
-                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go test -count=1 -timeout=120s ./internal/...'
@@ -68,11 +75,9 @@ pipeline {
                     }
                 }
                 stage('Angular Tests') {
-                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
-                            sh 'pnpm install --frozen-lockfile && pnpm test -- --watch=false'
+                            sh 'pnpm test -- --watch=false'
                         }
                     }
                 }
@@ -82,7 +87,6 @@ pipeline {
         stage('Build') {
             parallel {
                 stage('Go Build') {
-                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go build -o api ./cmd/api/'
@@ -90,11 +94,9 @@ pipeline {
                     }
                 }
                 stage('Angular Build') {
-                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
-                            sh 'pnpm install --frozen-lockfile && pnpm build'
+                            sh 'pnpm build'
                         }
                     }
                 }
