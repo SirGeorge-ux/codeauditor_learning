@@ -1,8 +1,9 @@
 // Supabase adapter — implements domain ports using Supabase client.
 // This is infrastructure, not domain, so it can import Angular and RxJS.
-import { createClient, SupabaseClient, User } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { AuditRepository } from "../domain/ports/audit-repository.port";
 import { AuthPort } from "../domain/ports/auth.port";
+import { User } from "../domain/models/user";
 import { AuditSession } from "../domain/models/audit-session";
 import { Finding } from "../domain/models/finding";
 
@@ -86,7 +87,7 @@ export class SupabaseAuthAdapter implements AuthPort {
 
   onAuthStateChange(callback: (user: User | null) => void) {
     const { data } = this.client.auth.onAuthStateChange((_event, session) => {
-      callback(session?.user ?? null);
+      callback(session?.user ? { id: session.user.id, email: session.user.email ?? '', createdAt: new Date(session.user.created_at) } : null);
     });
     return () => data.subscription.unsubscribe();
   }
