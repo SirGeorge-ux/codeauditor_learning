@@ -21,10 +21,11 @@ pipeline {
         stage('Install Tools') {
             steps {
                 script {
+                    sh 'mkdir -p ${GOPATH}/bin'
                     // Install Go if not present
                     if (sh(script: 'go version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
-                            mkdir -p ${GOROOT}
+                            mkdir -p ${GOROOT} ${GOPATH}/bin
                             curl -sL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
                         """
                     }
@@ -34,6 +35,7 @@ pipeline {
                             apt-get update -qq && apt-get install -y -qq xz-utils 2>/dev/null || true
                             curl -sL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz
                             tar -C /tmp -xJf /tmp/node.tar.xz
+                            mkdir -p ${GOPATH}/bin
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npm ${GOPATH}/bin/
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npx ${GOPATH}/bin/
