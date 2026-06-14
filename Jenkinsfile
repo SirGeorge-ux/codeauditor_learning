@@ -1,13 +1,13 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
-        GO_VERSION = '1.23'
         PNPM_VERSION = '9'
     }
 
     stages {
         stage('Checkout') {
+            agent any
             steps {
                 checkout scm
             }
@@ -16,6 +16,7 @@ pipeline {
         stage('Setup') {
             parallel {
                 stage('Go Dependencies') {
+                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go mod download'
@@ -23,6 +24,7 @@ pipeline {
                     }
                 }
                 stage('Frontend Dependencies') {
+                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
                             sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
@@ -36,6 +38,7 @@ pipeline {
         stage('Lint') {
             parallel {
                 stage('Go Lint') {
+                    agent { docker { image 'golangci/golangci-lint:v1.64-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'golangci-lint run ./... || true'
@@ -43,9 +46,11 @@ pipeline {
                     }
                 }
                 stage('Frontend Lint') {
+                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'pnpm lint || true'
+                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
+                            sh 'pnpm install --frozen-lockfile && pnpm lint || true'
                         }
                     }
                 }
@@ -55,6 +60,7 @@ pipeline {
         stage('Test') {
             parallel {
                 stage('Go Tests') {
+                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go test -count=1 -timeout=120s ./internal/...'
@@ -62,9 +68,11 @@ pipeline {
                     }
                 }
                 stage('Angular Tests') {
+                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'pnpm test -- --watch=false'
+                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
+                            sh 'pnpm install --frozen-lockfile && pnpm test -- --watch=false'
                         }
                     }
                 }
@@ -74,6 +82,7 @@ pipeline {
         stage('Build') {
             parallel {
                 stage('Go Build') {
+                    agent { docker { image 'golang:1.23-alpine' } }
                     steps {
                         dir('backend') {
                             sh 'go build -o api ./cmd/api/'
@@ -81,9 +90,11 @@ pipeline {
                     }
                 }
                 stage('Angular Build') {
+                    agent { docker { image 'node:22-alpine' } }
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'pnpm build'
+                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
+                            sh 'pnpm install --frozen-lockfile && pnpm build'
                         }
                     }
                 }
@@ -92,9 +103,6 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
-        }
         success {
             echo 'CI passed — all tests and builds successful.'
         }
