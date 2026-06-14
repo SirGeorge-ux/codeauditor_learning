@@ -1,13 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        GO_VERSION = '1.23.4'
-        GOROOT = "${WORKSPACE}/.goroot"
-        GOPATH = "${WORKSPACE}/.go"
-        PATH = "${GOROOT}/bin:${GOPATH}/bin:${PATH}"
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -17,26 +10,11 @@ pipeline {
 
         stage('Install Tools') {
             steps {
-                script {
-                    // Install Go via tarball (fast, self-contained)
-                    if (sh(script: 'go version 2>/dev/null || true', returnStdout: true).trim() == '') {
-                        sh """
-                            mkdir -p ${GOROOT} ${GOPATH}/bin
-                            curl -sL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
-                        """
-                    }
-
-                    // Install Node.js 22 via NodeSource (reliable PATH setup + corepack)
-                    if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
-                        sh """
-                            curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-                            apt-get install -y nodejs
-                        """
-                    }
-
-                    // Enable corepack + install pnpm
-                    sh 'corepack enable && corepack prepare pnpm@9 --activate'
-                }
+                sh """
+                    apt-get update -qq
+                    apt-get install -y -qq golang-go nodejs npm
+                    npm install -g pnpm@9
+                """
             }
         }
 
@@ -100,10 +78,10 @@ pipeline {
 
     post {
         success {
-            echo 'CI passed — all tests and builds successful.'
+            echo 'CI passed'
         }
         failure {
-            echo 'CI failed — check stage logs for details.'
+            echo 'CI failed'
         }
     }
 }
