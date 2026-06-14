@@ -51,5 +51,5 @@ func (h *AuditHandler) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	sseWriter := NewSSEWriter(w, r)
 
 	clientID := fmt.Sprintf("audit-%d", time.Now().UnixNano())
-	h.auditService.RunAudit(r.Context(), req, sseWriter, clientID)
+	_ = h.auditService.RunAudit(r.Context(), req, sseWriter, clientID)
 }

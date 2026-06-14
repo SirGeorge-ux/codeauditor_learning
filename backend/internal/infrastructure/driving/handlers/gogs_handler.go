@@ -53,7 +53,7 @@ func (h *GogsHandler) ListRepos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(repos)
+	_ = json.NewEncoder(w).Encode(repos)
 }
 
 // GetFile handles POST /api/v1/gogs/file.
@@ -62,7 +62,7 @@ func (h *GogsHandler) GetFile(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(errorResponse{
+		_ = json.NewEncoder(w).Encode(errorResponse{
 			Error: "invalid request body",
 			Code:  "BAD_REQUEST",
 		})
@@ -73,7 +73,7 @@ func (h *GogsHandler) GetFile(w http.ResponseWriter, r *http.Request) {
 	if missing := validateGetFileRequest(&req); missing != "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(errorResponse{
+		_ = json.NewEncoder(w).Encode(errorResponse{
 			Error: "missing required field: " + missing,
 			Code:  "BAD_REQUEST",
 		})
@@ -98,7 +98,7 @@ func (h *GogsHandler) GetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // writeGogsError maps a GogsError to an appropriate HTTP response.
@@ -107,7 +107,7 @@ func writeGogsError(w http.ResponseWriter, err error) {
 	if !ok {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errorResponse{
+		_ = json.NewEncoder(w).Encode(errorResponse{
 			Error: "internal server error",
 			Code:  "INTERNAL_ERROR",
 		})
@@ -116,7 +116,7 @@ func writeGogsError(w http.ResponseWriter, err error) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(gogsErr.Status)
-	json.NewEncoder(w).Encode(errorResponse{
+	_ = json.NewEncoder(w).Encode(errorResponse{
 		Error: gogsErr.Message,
 		Code:  gogsErr.Code,
 	})

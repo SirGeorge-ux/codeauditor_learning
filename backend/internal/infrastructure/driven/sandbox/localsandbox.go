@@ -104,15 +104,15 @@ func (s *LocalSandbox) Execute(ctx context.Context, language, code string, timeo
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		io.Copy(&stdoutData, stdout)
+		_, _ = io.Copy(&stdoutData, stdout)
 	}()
 	go func() {
 		defer wg.Done()
-		io.Copy(&stderrData, stderr)
+		_, _ = io.Copy(&stderrData, stderr)
 	}()
 
 	// Wait for command to finish.
-	cmd.Wait()
+	_ = cmd.Wait()
 	wg.Wait()
 	stdout.Close()
 	stderr.Close()

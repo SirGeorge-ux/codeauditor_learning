@@ -118,10 +118,10 @@ func (s *DockerSandbox) Execute(ctx context.Context, language, code string, time
 	}
 
 	return &dockerCmdReader{
-		Reader:  io.MultiReader(stdout, stderr),
-		cmd:     cmd,
-		cancel:  cancel,
-		tmpDir:  tmpDir,
+		Reader: io.MultiReader(stdout, stderr),
+		cmd:    cmd,
+		cancel: cancel,
+		tmpDir: tmpDir,
 	}, nil
 }
 

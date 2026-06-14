@@ -28,21 +28,21 @@ func NewSupabaseClient(baseURL, apiKey string) *SupabaseClient {
 
 // AuthResponse represents the response from Supabase auth endpoints.
 type AuthResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	ExpiresAt    int64  `json:"expires_at"`
+	AccessToken  string   `json:"access_token"`
+	RefreshToken string   `json:"refresh_token"`
+	TokenType    string   `json:"token_type"`
+	ExpiresIn    int      `json:"expires_in"`
+	ExpiresAt    int64    `json:"expires_at"`
 	User         UserData `json:"user"`
 }
 
 // UserData represents the user data from Supabase.
 type UserData struct {
-	ID                string `json:"id"`
-	Email             string `json:"email"`
-	CreatedAt         string `json:"created_at"`
-	EmailConfirmedAt   string `json:"email_confirmed_at,omitempty"`
-	LastSignInAt      string `json:"last_sign_in_at,omitempty"`
+	ID               string `json:"id"`
+	Email            string `json:"email"`
+	CreatedAt        string `json:"created_at"`
+	EmailConfirmedAt string `json:"email_confirmed_at,omitempty"`
+	LastSignInAt     string `json:"last_sign_in_at,omitempty"`
 }
 
 // SignUp registers a new user with email and password.

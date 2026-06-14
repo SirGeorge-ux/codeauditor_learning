@@ -96,7 +96,7 @@ func UserIDParam(validator ports.AuthValidator) func(http.Handler) http.Handler 
 			}
 
 			ctx := context.WithValue(r.Context(), UserIDContextKey{}, userID)
-			chi.URLParam(r, "user_id") // unused but keeps pattern consistent
+			_ = chi.URLParam(r, "user_id") // unused but keeps pattern consistent
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

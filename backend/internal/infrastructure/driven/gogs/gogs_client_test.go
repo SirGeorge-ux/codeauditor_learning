@@ -45,7 +45,7 @@ func TestListRepos_Success(t *testing.T) {
 			t.Errorf("expected Authorization 'token test-token', got %q", r.Header.Get("Authorization"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -68,7 +68,7 @@ func TestListRepos_Success(t *testing.T) {
 func TestListRepos_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -85,7 +85,7 @@ func TestListRepos_EmptyResponse(t *testing.T) {
 func TestListRepos_AuthFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "Unauthorized"}`))
+		_, _ = w.Write([]byte(`{"message": "Unauthorized"}`))
 	}))
 	defer server.Close()
 
@@ -110,7 +110,7 @@ func TestListRepos_AuthFailure(t *testing.T) {
 func TestListRepos_RateLimited(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(`{"message": "rate limit exceeded"}`))
+		_, _ = w.Write([]byte(`{"message": "rate limit exceeded"}`))
 	}))
 	defer server.Close()
 
@@ -173,7 +173,7 @@ func TestGetFileContents_Success(t *testing.T) {
 			t.Errorf("expected ref=main, got ref=%s", r.URL.Query().Get("ref"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -193,7 +193,7 @@ func TestGetFileContents_Success(t *testing.T) {
 func TestGetFileContents_NotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"message": "file not found"}`))
+		_, _ = w.Write([]byte(`{"message": "file not found"}`))
 	}))
 	defer server.Close()
 
@@ -227,7 +227,7 @@ func TestGetFileContents_Exceeds1MB(t *testing.T) {
 	body, _ := json.Marshal(fc)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -261,7 +261,7 @@ func TestGetFileContents_ExactlyAt1MB(t *testing.T) {
 	body, _ := json.Marshal(fc)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -297,7 +297,7 @@ func TestGetFileContents_Timeout(t *testing.T) {
 func TestGetFileContents_AuthFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "token is invalid"}`))
+		_, _ = w.Write([]byte(`{"message": "token is invalid"}`))
 	}))
 	defer server.Close()
 
@@ -321,7 +321,7 @@ func TestGetFileContents_EmptyPath(t *testing.T) {
 	// This tests that Gogs returns 404 for empty paths
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"message": "not found"}`))
+		_, _ = w.Write([]byte(`{"message": "not found"}`))
 	}))
 	defer server.Close()
 
@@ -371,7 +371,7 @@ func TestGogsError_Format(t *testing.T) {
 func TestListRepos_5xxError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"message": "internal server error"}`))
+		_, _ = w.Write([]byte(`{"message": "internal server error"}`))
 	}))
 	defer server.Close()
 
@@ -394,7 +394,7 @@ func TestListRepos_5xxError(t *testing.T) {
 func TestListRepos_MalformedJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`not-json`))
+		_, _ = w.Write([]byte(`not-json`))
 	}))
 	defer server.Close()
 
@@ -428,7 +428,7 @@ func TestGetFileContents_PathWithSlashes(t *testing.T) {
 		}
 		body, _ := json.Marshal(fc)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, _ = w.Write(body)
 	}))
 	defer server.Close()
 
@@ -449,7 +449,7 @@ func TestNewGogsClient_EnsureNoDoubleSlash(t *testing.T) {
 	var capturedURL string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedURL = r.URL.String()
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -470,7 +470,7 @@ func TestNewGogsClient_EnsureNoDoubleSlash(t *testing.T) {
 func TestListRepos_ContextCancelled(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -482,7 +482,7 @@ func TestListRepos_ContextCancelled(t *testing.T) {
 
 	_, err := client.ListRepos(ctx)
 	if err == nil {
-		t.Fatal("expected error for cancelled context")
+		t.Fatal("expected error for canceled context")
 	}
 }
 
@@ -502,7 +502,7 @@ func TestGetFileContents_VarStatusCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(fmt.Sprintf(`{"message": "error %d"}`, tt.statusCode)))
+				_, _ = w.Write([]byte(fmt.Sprintf(`{"message": "error %d"}`, tt.statusCode)))
 			}))
 			defer server.Close()
 

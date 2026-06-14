@@ -41,7 +41,7 @@ func TestGenerate_Success(t *testing.T) {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"response":"Analysis complete","done":true}`))
+		_, _ = w.Write([]byte(`{"response":"Analysis complete","done":true}`))
 	}))
 	defer srv.Close()
 
@@ -58,7 +58,7 @@ func TestGenerate_Success(t *testing.T) {
 func TestGenerate_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Ollama is down"))
+		_, _ = w.Write([]byte("Ollama is down"))
 	}))
 	defer srv.Close()
 
@@ -83,9 +83,9 @@ func TestGenerate_Unreachable(t *testing.T) {
 func TestStreamGenerate_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Write([]byte(`{"response":"Token1","done":false}` + "\n"))
-		w.Write([]byte(`{"response":" Token2","done":false}` + "\n"))
-		w.Write([]byte(`{"response":"","done":true}` + "\n"))
+		_, _ = w.Write([]byte(`{"response":"Token1","done":false}` + "\n"))
+		_, _ = w.Write([]byte(`{"response":" Token2","done":false}` + "\n"))
+		_, _ = w.Write([]byte(`{"response":"","done":true}` + "\n"))
 	}))
 	defer srv.Close()
 
@@ -109,7 +109,7 @@ func TestStreamGenerate_Success(t *testing.T) {
 func TestStreamGenerate_EmptyTokens(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Write([]byte(`{"response":"","done":true}` + "\n"))
+		_, _ = w.Write([]byte(`{"response":"","done":true}` + "\n"))
 	}))
 	defer srv.Close()
 

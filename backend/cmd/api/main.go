@@ -15,13 +15,13 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
 	ollama "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 // main is the entry point for the CodeAuditor API server.
@@ -153,7 +153,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok","time":"` + time.Now().Format(time.RFC3339) + `"}`))
+		_, _ = w.Write([]byte(`{"status":"ok","time":"` + time.Now().Format(time.RFC3339) + `"}`))
 	})
 
 	// Auth routes (public)

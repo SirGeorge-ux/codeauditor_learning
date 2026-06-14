@@ -124,7 +124,7 @@ func (s *AuditService) runOllamaAnalysis(ctx context.Context, req models.AuditRe
 	if err != nil {
 		payload := map[string]string{"message": fmt.Sprintf("LLM analysis failed: %v", err)}
 		data, _ := json.Marshal(payload)
-		streamer.StreamEvent(ctx, clientID, "llm_error", models.AuditEvent{
+		_ = streamer.StreamEvent(ctx, clientID, "llm_error", models.AuditEvent{
 			Type:      "llm_error",
 			Data:      string(data),
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
@@ -133,7 +133,7 @@ func (s *AuditService) runOllamaAnalysis(ctx context.Context, req models.AuditRe
 	}
 
 	if analysis.Len() > 0 {
-		streamer.StreamEvent(ctx, clientID, "llm_analysis", models.AuditEvent{
+		_ = streamer.StreamEvent(ctx, clientID, "llm_analysis", models.AuditEvent{
 			Type:      "llm_analysis",
 			Data:      analysis.String(),
 			Timestamp: time.Now().UTC().Format(time.RFC3339),

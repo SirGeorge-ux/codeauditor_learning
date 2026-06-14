@@ -43,7 +43,7 @@ func TestGogsHandler_ListRepos_Success(t *testing.T) {
 
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(repoBody)
+		_, _ = w.Write(repoBody)
 	}))
 	defer gogsServer.Close()
 
@@ -75,7 +75,7 @@ func TestGogsHandler_ListRepos_Success(t *testing.T) {
 func TestGogsHandler_ListRepos_EmptyList(t *testing.T) {
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer gogsServer.Close()
 
@@ -137,7 +137,7 @@ func TestGogsHandler_GetFile_Success(t *testing.T) {
 
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(fcBody)
+		_, _ = w.Write(fcBody)
 	}))
 	defer gogsServer.Close()
 
@@ -261,7 +261,7 @@ func TestGogsHandler_GetFile_InvalidBody(t *testing.T) {
 func TestGogsHandler_GetFile_NotFound(t *testing.T) {
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"message": "file not found"}`))
+		_, _ = w.Write([]byte(`{"message": "file not found"}`))
 	}))
 	defer gogsServer.Close()
 
@@ -307,7 +307,7 @@ func TestGogsHandler_GetFile_TooLarge(t *testing.T) {
 
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(fcBody)
+		_, _ = w.Write(fcBody)
 	}))
 	defer gogsServer.Close()
 
@@ -347,7 +347,7 @@ func TestGogsHandler_AuthMiddleware_RejectsWithoutToken(t *testing.T) {
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Should never be called — auth middleware rejects first
 		t.Error("Gogs server should not be called when auth fails")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer gogsServer.Close()
 
@@ -380,7 +380,7 @@ func TestGogsHandler_AuthMiddleware_AllowsWithToken(t *testing.T) {
 
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(repoBody)
+		_, _ = w.Write(repoBody)
 	}))
 	defer gogsServer.Close()
 
@@ -461,7 +461,7 @@ func TestGogsHandler_TokenNotInResponse(t *testing.T) {
 
 	gogsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(repoBody)
+		_, _ = w.Write(repoBody)
 	}))
 	defer gogsServer.Close()
 

@@ -37,7 +37,7 @@ func (h *VaultHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
+	_ = json.NewEncoder(w).Encode(sessions)
 }
 
 // GetStats handles GET /api/v1/audit/stats — returns aggregated audit stats.
@@ -55,7 +55,7 @@ func (h *VaultHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{
+	_ = json.NewEncoder(w).Encode(map[string]int{
 		"total_audits":   totalAudits,
 		"total_findings": totalFindings,
 	})

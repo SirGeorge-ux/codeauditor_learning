@@ -17,13 +17,13 @@ type UserData struct {
 
 // UserProfile represents the user profile from public.usuarios.
 type UserProfile struct {
-	ID              string    `json:"id"`
-	Email           string    `json:"email"`
-	DisplayName     string    `json:"display_name,omitempty"`
-	RachaDias       int       `json:"racha_dias"`
-	PuntosMaestria  int       `json:"puntos_maestria"`
-	RangoActual     string    `json:"rango_actual"`
-	UltimoIntento   *time.Time `json:"ultimo_intento_valido,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID             string     `json:"id"`
+	Email          string     `json:"email"`
+	DisplayName    string     `json:"display_name,omitempty"`
+	RachaDias      int        `json:"racha_dias"`
+	PuntosMaestria int        `json:"puntos_maestria"`
+	RangoActual    string     `json:"rango_actual"`
+	UltimoIntento  *time.Time `json:"ultimo_intento_valido,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
