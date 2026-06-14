@@ -39,9 +39,8 @@ pipeline {
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npm ${GOPATH}/bin/
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npx ${GOPATH}/bin/
-                            # Install corepack
-                            ln -sf /tmp/node-v${NODE_VERSION}-linux-x64/lib/node_modules/corepack/dist/corepack.js /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack
-                            PATH="${PATH}:/tmp/node-v${NODE_VERSION}-linux-x64/bin" corepack enable
+                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack ${GOPATH}/bin/
+                            corepack enable
                         """
                     }
                 }
@@ -60,7 +59,7 @@ pipeline {
                 stage('Frontend Dependencies') {
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'corepack enable 2>/dev/null; corepack prepare pnpm@${PNPM_VERSION} --activate 2>/dev/null'
+                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
                             sh 'pnpm install --frozen-lockfile'
                         }
                     }
