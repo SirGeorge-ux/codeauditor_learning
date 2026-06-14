@@ -31,6 +31,7 @@ pipeline {
                     // Install Node.js if not present
                     if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
+                            apt-get update -qq && apt-get install -y -qq xz-utils 2>/dev/null || true
                             curl -sL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz
                             tar -C /tmp -xJf /tmp/node.tar.xz
                             cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
