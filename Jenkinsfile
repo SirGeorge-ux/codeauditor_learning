@@ -14,6 +14,7 @@ pipeline {
                     apt-get update -qq
                     apt-get install -y -qq golang-go nodejs npm
                     npm install -g pnpm@9
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$(go env GOPATH)/bin v1.64.8
                 """
             }
         }
@@ -31,6 +32,25 @@ pipeline {
                     steps {
                         dir('frontend/codeauditor') {
                             sh 'pnpm install --frozen-lockfile'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Lint') {
+            parallel {
+                stage('Go Lint') {
+                    steps {
+                        dir('backend') {
+                            sh 'golangci-lint run ./...'
+                        }
+                    }
+                }
+                stage('Frontend Lint') {
+                    steps {
+                        dir('frontend/codeauditor') {
+                            sh 'pnpm lint'
                         }
                     }
                 }
