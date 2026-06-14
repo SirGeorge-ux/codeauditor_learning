@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GO_VERSION = '1.23.4'
-        NODE_VERSION = '22'
+        NODE_VERSION = '22.11.0'
         PNPM_VERSION = '9'
         GOPATH = "${WORKSPACE}/.go"
         GOROOT = "${WORKSPACE}/.goroot"
@@ -21,24 +21,24 @@ pipeline {
         stage('Install Tools') {
             steps {
                 script {
-                    // Install Go
+                    // Install Go if not present
                     if (sh(script: 'go version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
                             mkdir -p ${GOROOT}
-                            wget -qO- https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
+                            curl -sL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
                         """
                     }
-                    // Install Node.js
+                    // Install Node.js if not present
                     if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
-                            mkdir -p /tmp/node
-                            wget -qO- https://nodejs.org/dist/v${NODE_VERSION}.0.0/node-v${NODE_VERSION}.0.0-linux-x64.tar.xz | tar -C /tmp/node --strip-components=1 -xJf -
-                            mkdir -p ${GOPATH}/bin
-                            cp /tmp/node/bin/node ${GOPATH}/bin/
-                            cp /tmp/node/bin/npm ${GOPATH}/bin/
-                            cp /tmp/node/bin/npx ${GOPATH}/bin/
-                            ln -sf ../lib/node_modules/corepack/dist/corepack.js /tmp/node/bin/corepack 2>/dev/null || true
-                            PATH="${PATH}:/tmp/node/bin" npx corepack enable
+                            curl -sL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz
+                            tar -C /tmp -xJf /tmp/node.tar.xz
+                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
+                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npm ${GOPATH}/bin/
+                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npx ${GOPATH}/bin/
+                            # Install corepack
+                            ln -sf /tmp/node-v${NODE_VERSION}-linux-x64/lib/node_modules/corepack/dist/corepack.js /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack
+                            PATH="${PATH}:/tmp/node-v${NODE_VERSION}-linux-x64/bin" corepack enable
                         """
                     }
                 }
