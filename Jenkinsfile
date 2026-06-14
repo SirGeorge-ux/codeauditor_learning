@@ -14,7 +14,7 @@ pipeline {
                     apt-get update -qq
                     apt-get install -y -qq golang-go nodejs npm
                     npm install -g pnpm@9
-                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$(go env GOPATH)/bin v1.64.8
+                    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v1.64.8
                 """
             }
         }
