@@ -3,12 +3,9 @@ pipeline {
 
     environment {
         GO_VERSION = '1.23.4'
-        NODE_VERSION = '22.11.0'
-        PNPM_VERSION = '9'
-        GOPATH = "${WORKSPACE}/.go"
         GOROOT = "${WORKSPACE}/.goroot"
-        PNPM_HOME = "${WORKSPACE}/.pnpm"
-        PATH = "${GOROOT}/bin:${GOPATH}/bin:${PNPM_HOME}:${PATH}"
+        GOPATH = "${WORKSPACE}/.go"
+        PATH = "${GOROOT}/bin:${GOPATH}/bin:${PATH}"
     }
 
     stages {
@@ -21,55 +18,24 @@ pipeline {
         stage('Install Tools') {
             steps {
                 script {
-                    sh 'mkdir -p ${GOPATH}/bin'
-
-                    // Install Go if not present
+                    // Install Go via tarball (fast, self-contained)
                     if (sh(script: 'go version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
-                            mkdir -p ${GOROOT}
+                            mkdir -p ${GOROOT} ${GOPATH}/bin
                             curl -sL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C ${GOROOT} --strip-components=1 -xzf -
                         """
                     }
 
-                    // Install Node.js if not present
+                    // Install Node.js 22 via NodeSource (reliable PATH setup + corepack)
                     if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
                         sh """
-                            apt-get update -qq && apt-get install -y -qq xz-utils 2>/dev/null || true
-                            curl -sL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz
-                            tar -C /tmp -xJf /tmp/node.tar.xz
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npm ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npx ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack ${GOPATH}/bin/
+                            curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+                            apt-get install -y nodejs
                         """
                     }
 
-                    // Always ensure corepack is available (may have been missed in prior partial installs)
-                    sh """
-                        if ! command -v corepack >/dev/null 2>&1; then
-                            if [ -f /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack ]; then
-                                cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack ${GOPATH}/bin/
-                            fi
-                        fi
-                        corepack enable 2>/dev/null || true
-                    """
-                }
-            }
-        }
-                    // Install Node.js if not present
-                    if (sh(script: 'node --version 2>/dev/null || true', returnStdout: true).trim() == '') {
-                        sh """
-                            apt-get update -qq && apt-get install -y -qq xz-utils 2>/dev/null || true
-                            curl -sL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz -o /tmp/node.tar.xz
-                            tar -C /tmp -xJf /tmp/node.tar.xz
-                            mkdir -p ${GOPATH}/bin
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/node ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npm ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/npx ${GOPATH}/bin/
-                            cp /tmp/node-v${NODE_VERSION}-linux-x64/bin/corepack ${GOPATH}/bin/
-                            corepack enable
-                        """
-                    }
+                    // Enable corepack + install pnpm
+                    sh 'corepack enable && corepack prepare pnpm@9 --activate'
                 }
             }
         }
@@ -86,7 +52,6 @@ pipeline {
                 stage('Frontend Dependencies') {
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate'
                             sh 'pnpm install --frozen-lockfile'
                         }
                     }
