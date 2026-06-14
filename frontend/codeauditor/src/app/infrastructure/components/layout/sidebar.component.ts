@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LucideLayoutDashboard, LucideBinary, LucideServer, LucideShield } from '@lucide/angular';
@@ -76,10 +76,11 @@ export class SidebarComponent {
     { icon: 'vault', label: 'Vault', route: '/vault' },
   ];
 
-  constructor(private router: Router) {
-    this.activeRoute.set(this.router.url);
-    this.router.events.subscribe(() => {
-      this.activeRoute.set(this.router.url);
+  constructor() {
+    const router = inject(Router);
+    this.activeRoute.set(router.url);
+    router.events.subscribe(() => {
+      this.activeRoute.set(router.url);
     });
   }
 }

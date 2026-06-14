@@ -126,7 +126,7 @@ export class RegisterComponent {
         this.password = '';
         this.confirmPassword = '';
       }
-    } catch (err) {
+    } catch {
       this.errorMessage.set('An unexpected error occurred');
     } finally {
       this.isLoading.set(false);

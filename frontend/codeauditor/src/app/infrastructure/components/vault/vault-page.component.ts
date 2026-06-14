@@ -110,7 +110,7 @@ export class VaultPageComponent implements OnInit {
         this.sessions.set(sessions);
         this.loading.set(false);
       },
-      error: (err) => {
+      error: (_err) => {
         this.error.set('No se pudo cargar el historial');
         this.loading.set(false);
       },

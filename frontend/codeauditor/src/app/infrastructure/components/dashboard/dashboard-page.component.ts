@@ -1,9 +1,8 @@
-import { Component, inject, OnInit, computed } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ChallengeService } from '../../services/challenge.service';
-import { Challenge } from '../../../domain/models/challenge';
 
 @Component({
   selector: 'app-dashboard-page',

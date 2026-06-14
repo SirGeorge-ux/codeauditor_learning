@@ -1,10 +1,11 @@
-import { Directive, ElementRef, HostListener, Input, output, signal } from '@angular/core';
+import { Directive, ElementRef, HostListener, Input, output, signal, inject } from '@angular/core';
 
 @Directive({
   selector: '[appResize]',
   standalone: true,
 })
 export class ResizeDirective {
+  private el = inject(ElementRef<HTMLElement>);
   private startX = 0;
   private isResizing = false;
 
@@ -16,8 +17,7 @@ export class ResizeDirective {
 
   private currentWidth = signal(400);
 
-  constructor(private el: ElementRef<HTMLElement>) {
-    // Set initial width
+  constructor() {
     this.currentWidth.set(this.initialWidth);
     this.updateWidth(this.initialWidth);
   }

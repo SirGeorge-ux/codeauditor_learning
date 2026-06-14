@@ -43,14 +43,14 @@ pipeline {
                 stage('Go Lint') {
                     steps {
                         dir('backend') {
-                            sh 'golangci-lint run ./... || true'
+                            sh 'golangci-lint run ./...'
                         }
                     }
                 }
                 stage('Frontend Lint') {
                     steps {
                         dir('frontend/codeauditor') {
-                            sh 'pnpm lint || true'
+                            sh 'pnpm lint'
                         }
                     }
                 }

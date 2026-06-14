@@ -89,7 +89,7 @@ export class LoginComponent {
       } else {
         this.router.navigate(['/dashboard']);
       }
-    } catch (err) {
+    } catch {
       this.errorMessage.set('An unexpected error occurred');
     } finally {
       this.isLoading.set(false);

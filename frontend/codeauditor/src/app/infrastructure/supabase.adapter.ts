@@ -1,6 +1,6 @@
 // Supabase adapter — implements domain ports using Supabase client.
 // This is infrastructure, not domain, so it can import Angular and RxJS.
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient, User } from "@supabase/supabase-js";
 import { AuditRepository } from "../domain/ports/audit-repository.port";
 import { AuthPort } from "../domain/ports/auth.port";
 import { AuditSession } from "../domain/models/audit-session";
@@ -29,7 +29,7 @@ export class SupabaseAuditRepository implements AuditRepository {
     } as AuditSession;
   }
 
-  async getSession(id: string): Promise<AuditSession | null> {
+  async getSession(_id: string): Promise<AuditSession | null> {
     return null; // Stub
   }
 
@@ -37,7 +37,7 @@ export class SupabaseAuditRepository implements AuditRepository {
     return []; // Stub
   }
 
-  async updateSessionStatus(id: string, status: AuditSession["status"]): Promise<void> {
+  async updateSessionStatus(_id: string, _status: AuditSession["status"]): Promise<void> {
     // Stub
   }
 
@@ -45,7 +45,7 @@ export class SupabaseAuditRepository implements AuditRepository {
     return { ...finding, id: "stub", detectedAt: new Date() } as Finding;
   }
 
-  async getFindingsForSession(sessionId: string): Promise<Finding[]> {
+  async getFindingsForSession(_sessionId: string): Promise<Finding[]> {
     return []; // Stub
   }
 }
@@ -84,7 +84,7 @@ export class SupabaseAuthAdapter implements AuthPort {
     await this.client.auth.signOut();
   }
 
-  onAuthStateChange(callback: (user: any) => void) {
+  onAuthStateChange(callback: (user: User | null) => void) {
     const { data } = this.client.auth.onAuthStateChange((_event, session) => {
       callback(session?.user ?? null);
     });

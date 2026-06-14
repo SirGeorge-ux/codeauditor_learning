@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
-import { HttpErrorResponse, HttpClient, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
 import { McpPageComponent } from './mcp-page.component';
 import { GogsService, GogsRepo, GogsFileResponse } from '../../services/gogs.service';
@@ -99,9 +98,7 @@ describe('McpPageComponent', () => {
 
   it('should display repo cards after loading', () => {
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const cards = compiled.querySelectorAll('[class*="bg-[#161B22]"]');
-    // At least repo cards rendered (there may be other elements with same bg)
+    // At least repo cards rendered
     expect(component.repos().length).toBe(2);
   });
 
