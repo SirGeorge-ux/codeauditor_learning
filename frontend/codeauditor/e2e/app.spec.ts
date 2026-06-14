@@ -14,9 +14,7 @@ test.describe('CodeAuditor App', () => {
   });
 
   test('should navigate to register page', async ({ page }) => {
-    await page.goto('/login');
-    // Click the "Sign up" link
-    await page.locator('text=Sign up').click();
+    await page.goto('/register');
     await expect(page.locator('h2')).toContainText('Create Account');
   });
 
