@@ -7,7 +7,6 @@ test.describe('CodeAuditor App', () => {
   });
 
   test('should navigate to login page', async ({ page }) => {
-    await page.goto('/');
     await page.goto('/login');
     await expect(page.locator('h2')).toContainText('Sign In');
     await expect(page.locator('input#email')).toBeVisible();
@@ -16,24 +15,26 @@ test.describe('CodeAuditor App', () => {
 
   test('should navigate to register page from login', async ({ page }) => {
     await page.goto('/login');
-    await page.click('a[routerLink="/register"]');
+    await page.click('a[routerlink="/register"]');
+    await page.waitForURL('**/register');
     await expect(page.locator('h2')).toContainText('Create Account');
   });
 
-  test('should show dashboard with challenge cards after navigating', async ({ page }) => {
+  test('should redirect unauthenticated users to login', async ({ page }) => {
     await page.goto('/dashboard');
-    // Dashboard may redirect to login if auth guard is active
-    // Either way, the app should render without crashing
-    await expect(page.locator('h1')).toBeVisible();
+    await page.waitForURL('**/login');
+    await expect(page.locator('h2')).toContainText('Sign In');
   });
 
-  test('should render MCP page', async ({ page }) => {
+  test('should redirect MCP page to login when unauthenticated', async ({ page }) => {
     await page.goto('/mcp');
-    await expect(page.locator('h1')).toContainText('Repositorios');
+    await page.waitForURL('**/login');
+    await expect(page.locator('h2')).toContainText('Sign In');
   });
 
-  test('should render Vault page', async ({ page }) => {
+  test('should redirect Vault page to login when unauthenticated', async ({ page }) => {
     await page.goto('/vault');
-    await expect(page.locator('h1')).toContainText('Vault');
+    await page.waitForURL('**/login');
+    await expect(page.locator('h2')).toContainText('Sign In');
   });
 });

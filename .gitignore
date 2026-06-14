@@ -20,6 +20,10 @@ dist/
 .idea/
 .history/
 
+# E2E
+frontend/codeauditor/test-results/
+frontend/codeauditor/playwright-report/
+
 # OS
 .DS_Store
 Thumbs.db
