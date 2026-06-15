@@ -1,0 +1,28 @@
+services:
+  academy-mic-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: academy-mic-api
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      APP_PROJECT_KEY: academy_mic
+      APP_SCHEMA: academy_mic
+      SANDBOX_MODE: auto
+      GOGS_BASE_URL: https://gogs.madeincode.online/api/v1
+    expose:
+      - "8080"
+    networks:
+      - coolify
+      - mic-supabase-access
+
+networks:
+  coolify:
+    external: true
+  mic-supabase-access:
+    external: true
