@@ -19,10 +19,13 @@ services:
       - "8080"
     networks:
       - coolify
+      - net-external
       - mic-supabase-access
 
 networks:
   coolify:
+    external: true
+  net-external:
     external: true
   mic-supabase-access:
     external: true
