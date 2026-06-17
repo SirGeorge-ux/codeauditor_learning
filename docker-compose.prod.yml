@@ -1,4 +1,15 @@
 services:
+  academy-mic-frontend:
+    build:
+      context: ./frontend/codeauditor
+      dockerfile: Dockerfile
+    container_name: academy-mic-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - net-external
+
   academy-mic-api:
     build:
       context: ./backend
