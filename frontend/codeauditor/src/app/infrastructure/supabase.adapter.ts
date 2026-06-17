@@ -1,11 +1,11 @@
 // Supabase adapter — implements domain ports using Supabase client.
 // This is infrastructure, not domain, so it can import Angular and RxJS.
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { AuditRepository } from "../domain/ports/audit-repository.port";
-import { AuthPort } from "../domain/ports/auth.port";
-import { User } from "../domain/models/user";
-import { AuditSession } from "../domain/models/audit-session";
-import { Finding } from "../domain/models/finding";
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { AuditRepository } from '../domain/ports/audit-repository.port';
+import { AuthPort } from '../domain/ports/auth.port';
+import { User } from '../domain/models/user';
+import { AuditSession } from '../domain/models/audit-session';
+import { Finding } from '../domain/models/finding';
 
 /**
  * SupabaseAuditRepository — implements AuditRepository using Supabase.
@@ -19,12 +19,12 @@ export class SupabaseAuditRepository implements AuditRepository {
   }
 
   async createSession(
-    session: Omit<AuditSession, "id" | "createdAt" | "updatedAt">
+    session: Omit<AuditSession, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<AuditSession> {
     // Stub — real implementation will insert into Supabase
     return {
       ...session,
-      id: "stub-id-" + Date.now(),
+      id: 'stub-id-' + Date.now(),
       createdAt: new Date(),
       updatedAt: new Date(),
     } as AuditSession;
@@ -38,12 +38,12 @@ export class SupabaseAuditRepository implements AuditRepository {
     return []; // Stub
   }
 
-  async updateSessionStatus(_id: string, _status: AuditSession["status"]): Promise<void> {
+  async updateSessionStatus(_id: string, _status: AuditSession['status']): Promise<void> {
     // Stub
   }
 
-  async addFinding(finding: Omit<Finding, "id" | "detectedAt">): Promise<Finding> {
-    return { ...finding, id: "stub", detectedAt: new Date() } as Finding;
+  async addFinding(finding: Omit<Finding, 'id' | 'detectedAt'>): Promise<Finding> {
+    return { ...finding, id: 'stub', detectedAt: new Date() } as Finding;
   }
 
   async getFindingsForSession(_sessionId: string): Promise<Finding[]> {
@@ -66,17 +66,17 @@ export class SupabaseAuthAdapter implements AuthPort {
     if (!data.user) return null;
     return {
       id: data.user.id,
-      email: data.user.email ?? "",
+      email: data.user.email ?? '',
       createdAt: new Date(data.user.created_at),
     };
   }
 
   async signIn(email: string, password: string) {
     const { data } = await this.client.auth.signInWithPassword({ email, password });
-    if (!data.user) throw new Error("Sign-in failed");
+    if (!data.user) throw new Error('Sign-in failed');
     return {
       id: data.user.id,
-      email: data.user.email ?? "",
+      email: data.user.email ?? '',
       createdAt: new Date(data.user.created_at),
     };
   }
@@ -87,7 +87,15 @@ export class SupabaseAuthAdapter implements AuthPort {
 
   onAuthStateChange(callback: (user: User | null) => void) {
     const { data } = this.client.auth.onAuthStateChange((_event, session) => {
-      callback(session?.user ? { id: session.user.id, email: session.user.email ?? '', createdAt: new Date(session.user.created_at) } : null);
+      callback(
+        session?.user
+          ? {
+              id: session.user.id,
+              email: session.user.email ?? '',
+              createdAt: new Date(session.user.created_at),
+            }
+          : null,
+      );
     });
     return () => data.subscription.unsubscribe();
   }

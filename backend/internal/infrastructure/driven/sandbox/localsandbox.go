@@ -65,7 +65,7 @@ func (s *LocalSandbox) Execute(ctx context.Context, language, code string, timeo
 			return nil, fmt.Errorf("failed to create temp dir: %w", err)
 		}
 		mainFile := filepath.Join(tmpDir, "main.go")
-		if err := os.WriteFile(mainFile, []byte(code), 0644); err != nil {
+		if err := os.WriteFile(mainFile, []byte(code), 0o644); err != nil {
 			os.RemoveAll(tmpDir)
 			return nil, fmt.Errorf("failed to write temp file: %w", err)
 		}

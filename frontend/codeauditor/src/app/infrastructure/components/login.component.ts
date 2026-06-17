@@ -13,7 +13,7 @@ import { AuthService } from '../services/auth.service';
       <div class="w-full max-w-md">
         <div class="bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
           <h2 class="text-3xl font-bold text-white mb-8 text-center">Sign In</h2>
-          
+
           @if (errorMessage()) {
             <div class="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6">
               <p class="text-red-400 text-sm">{{ errorMessage() }}</p>
@@ -35,7 +35,9 @@ import { AuthService } from '../services/auth.service';
             </div>
 
             <div>
-              <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label for="password" class="block text-sm font-medium text-gray-300 mb-2"
+                >Password</label
+              >
               <input
                 type="password"
                 id="password"
@@ -67,7 +69,7 @@ import { AuthService } from '../services/auth.service';
         </div>
       </div>
     </div>
-  `
+  `,
 })
 export class LoginComponent {
   private authService = inject(AuthService);

@@ -120,7 +120,6 @@ func (s *AuditService) runOllamaAnalysis(ctx context.Context, req models.AuditRe
 		analysis.WriteString(token)
 		return streamer.BroadcastLLMTokens(ctx, clientID, token)
 	})
-
 	if err != nil {
 		payload := map[string]string{"message": fmt.Sprintf("LLM analysis failed: %v", err)}
 		data, _ := json.Marshal(payload)

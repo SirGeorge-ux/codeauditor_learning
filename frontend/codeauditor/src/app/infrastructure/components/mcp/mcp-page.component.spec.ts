@@ -113,7 +113,14 @@ describe('McpPageComponent', () => {
 
   it('should show error state with retry when listRepos fails', () => {
     gogsServiceMock.listRepos.mockReturnValue(
-      throwError(() => new HttpErrorResponse({ error: { error: 'Gogs service is unavailable' }, status: 503, statusText: 'Service Unavailable' }))
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            error: { error: 'Gogs service is unavailable' },
+            status: 503,
+            statusText: 'Service Unavailable',
+          }),
+      ),
     );
     fixture.detectChanges();
     expect(component.error()).toBeTruthy();
@@ -145,7 +152,12 @@ describe('McpPageComponent', () => {
     component.filePath = 'src/main.go';
     component.fetchAndAudit();
 
-    expect(gogsServiceMock.fetchFile).toHaveBeenCalledWith('org', 'test-repo', 'main', 'src/main.go');
+    expect(gogsServiceMock.fetchFile).toHaveBeenCalledWith(
+      'org',
+      'test-repo',
+      'main',
+      'src/main.go',
+    );
     expect(challengeServiceMock.addTempChallenge).toHaveBeenCalledOnce();
 
     const challengeArg = challengeServiceMock.addTempChallenge.mock.calls[0][0] as Challenge;
@@ -162,7 +174,14 @@ describe('McpPageComponent', () => {
 
   it('should show file error when fetchFile fails', () => {
     gogsServiceMock.fetchFile.mockReturnValue(
-      throwError(() => new HttpErrorResponse({ error: { error: 'File not found' }, status: 404, statusText: 'Not Found' }))
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            error: { error: 'File not found' },
+            status: 404,
+            statusText: 'Not Found',
+          }),
+      ),
     );
     fixture.detectChanges();
     component.selectRepo(mockRepos[0]);
@@ -191,7 +210,7 @@ describe('McpPageComponent', () => {
   it('should retry loading repos when retry button is clicked', () => {
     // First call fails
     gogsServiceMock.listRepos.mockReturnValueOnce(
-      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
+      throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' })),
     );
     gogsServiceMock.listRepos.mockReturnValueOnce(of(mockRepos));
 

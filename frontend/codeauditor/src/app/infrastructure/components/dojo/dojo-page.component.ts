@@ -36,7 +36,8 @@ import { ChallengeService } from '../../services/challenge.service';
         [class.bg-blue-800]="isAuditing()"
         [class.text-white]="true"
         [class.opacity-50]="!challengeService.selectedChallengeSignal()"
-        [class.cursor-not-allowed]="!challengeService.selectedChallengeSignal()">
+        [class.cursor-not-allowed]="!challengeService.selectedChallengeSignal()"
+      >
         @if (isAuditing()) {
           Auditando...
         } @else {
@@ -63,7 +64,9 @@ import { ChallengeService } from '../../services/challenge.service';
           [maxWidth]="500"
           [initialWidth]="300"
         >
-          <app-context-panel [challenge]="challengeService.selectedChallengeSignal()"></app-context-panel>
+          <app-context-panel
+            [challenge]="challengeService.selectedChallengeSignal()"
+          ></app-context-panel>
         </div>
 
         <!-- Right: Code + Terminal split -->
@@ -110,11 +113,7 @@ export class DojoPageComponent implements OnInit {
     this.terminalPanel?.clear();
     this.terminalPanel?.write('\x1b[36mStarting audit...\x1b[0m\n\r');
 
-    this.auditService.runAudit(
-      challenge.code,
-      challenge.language,
-      challenge.id
-    ).subscribe({
+    this.auditService.runAudit(challenge.code, challenge.language, challenge.id).subscribe({
       next: (event) => {
         if (event.type === 'stdout') {
           try {
@@ -133,7 +132,9 @@ export class DojoPageComponent implements OnInit {
         } else if (event.type === 'error') {
           try {
             const payload = JSON.parse(event.data);
-            this.terminalPanel?.write('\x1b[31mError: ' + (payload.message ?? event.data) + '\x1b[0m\n\r');
+            this.terminalPanel?.write(
+              '\x1b[31mError: ' + (payload.message ?? event.data) + '\x1b[0m\n\r',
+            );
           } catch {
             this.terminalPanel?.write('\x1b[31mError: ' + event.data + '\x1b[0m\n\r');
           }
@@ -146,7 +147,9 @@ export class DojoPageComponent implements OnInit {
         } else if (event.type === 'llm_error') {
           try {
             const payload = JSON.parse(event.data);
-            this.terminalPanel?.write('\x1b[33mAI: ' + (payload.message ?? 'LLM unavailable') + '\x1b[0m\n\r');
+            this.terminalPanel?.write(
+              '\x1b[33mAI: ' + (payload.message ?? 'LLM unavailable') + '\x1b[0m\n\r',
+            );
           } catch {
             this.terminalPanel?.write('\x1b[33mAI: ' + event.data + '\x1b[0m\n\r');
           }

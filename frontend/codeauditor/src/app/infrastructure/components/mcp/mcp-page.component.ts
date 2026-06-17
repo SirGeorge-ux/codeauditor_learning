@@ -16,7 +16,9 @@ import { ChallengeService } from '../../services/challenge.service';
   template: `
     <div class="p-6">
       <h1 class="text-2xl font-bold text-[#C9D1D9] mb-2">Repositorios</h1>
-      <p class="text-[#8B949E] mb-6">Seleccion&aacute; un repositorio para auditar su c&oacute;digo</p>
+      <p class="text-[#8B949E] mb-6">
+        Seleccion&aacute; un repositorio para auditar su c&oacute;digo
+      </p>
 
       @if (loading()) {
         <div class="flex items-center justify-center py-12">
@@ -34,7 +36,9 @@ import { ChallengeService } from '../../services/challenge.service';
         </div>
       } @else if (repos().length === 0) {
         <div class="flex items-center justify-center py-12">
-          <div class="text-[#8B949E]">No repositories found. Connect a Gogs account to get started.</div>
+          <div class="text-[#8B949E]">
+            No repositories found. Connect a Gogs account to get started.
+          </div>
         </div>
       } @else if (selectedRepo()) {
         <!-- File browser view -->
@@ -49,7 +53,9 @@ import { ChallengeService } from '../../services/challenge.service';
 
         <div class="bg-[#161B22] border border-[#21262D] rounded-sm p-4 mb-4">
           <h2 class="text-lg font-semibold text-[#C9D1D9] mb-1">{{ selectedRepo()!.full_name }}</h2>
-          <p class="text-sm text-[#8B949E] mb-3">{{ selectedRepo()!.description || 'Sin descripci&oacute;n' }}</p>
+          <p class="text-sm text-[#8B949E] mb-3">
+            {{ selectedRepo()!.description || 'Sin descripci&oacute;n' }}
+          </p>
           <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
             {{ selectedRepo()!.default_branch }}
           </span>
@@ -85,7 +91,10 @@ import { ChallengeService } from '../../services/challenge.service';
           @if (fileError()) {
             <div class="mt-3">
               <p class="text-[#F85149] text-sm">{{ fileError() }}</p>
-              @if (fileError() !== 'This file exceeds the maximum size of 1 MB. Please select a smaller file.') {
+              @if (
+                fileError() !==
+                'This file exceeds the maximum size of 1 MB. Please select a smaller file.'
+              ) {
                 <button
                   (click)="fetchAndAudit()"
                   class="mt-2 text-sm text-[#8B949E] hover:text-[#C9D1D9] underline"
@@ -109,7 +118,9 @@ import { ChallengeService } from '../../services/challenge.service';
                 <p class="text-xs text-[#8B949E] mb-3">{{ repo.description }}</p>
               }
               <div class="flex items-center gap-2">
-                <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
+                <span
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]"
+                >
                   {{ repo.default_branch }}
                 </span>
               </div>
@@ -173,29 +184,31 @@ export class McpPageComponent implements OnInit {
 
     const owner = repo.full_name.split('/')[0];
 
-    this.gogsService.fetchFile(owner, repo.name, repo.default_branch, this.filePath.trim()).subscribe({
-      next: (response) => {
-        this.fetchingFile.set(false);
-        const decodedCode = atob(response.content);
-        const tempId = this.challengeService.addTempChallenge({
-          id: '',
-          title: response.path.split('/').pop() || response.path,
-          description: `Imported from ${response.owner}/${response.repo}:${response.branch}`,
-          difficulty: 'mid',
-          category: 'imported',
-          language: response.language,
-          repoUrl: response.path,
-          code: decodedCode,
-          codeSmell: 'pending-analysis',
-          status: 'available',
-          createdAt: new Date(),
-        });
-        this.router.navigate(['/dojo', tempId]);
-      },
-      error: (err) => {
-        this.fetchingFile.set(false);
-        this.fileError.set(err.error?.error || err.message || 'Failed to fetch file');
-      },
-    });
+    this.gogsService
+      .fetchFile(owner, repo.name, repo.default_branch, this.filePath.trim())
+      .subscribe({
+        next: (response) => {
+          this.fetchingFile.set(false);
+          const decodedCode = atob(response.content);
+          const tempId = this.challengeService.addTempChallenge({
+            id: '',
+            title: response.path.split('/').pop() || response.path,
+            description: `Imported from ${response.owner}/${response.repo}:${response.branch}`,
+            difficulty: 'mid',
+            category: 'imported',
+            language: response.language,
+            repoUrl: response.path,
+            code: decodedCode,
+            codeSmell: 'pending-analysis',
+            status: 'available',
+            createdAt: new Date(),
+          });
+          this.router.navigate(['/dojo', tempId]);
+        },
+        error: (err) => {
+          this.fetchingFile.set(false);
+          this.fileError.set(err.error?.error || err.message || 'Failed to fetch file');
+        },
+      });
   }
 }

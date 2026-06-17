@@ -29,7 +29,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
         @if (user) {
           <div class="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
             <h2 class="text-xl font-semibold text-white mb-6">User Profile</h2>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-4">
                 <div>
@@ -45,7 +45,9 @@ import { AuthService, UserProfile } from '../services/auth.service';
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-400 mb-1">Rank</label>
-                  <span class="inline-block px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-full">
+                  <span
+                    class="inline-block px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-full"
+                  >
                     {{ user.rango_actual }}
                   </span>
                 </div>
@@ -62,7 +64,7 @@ import { AuthService, UserProfile } from '../services/auth.service';
 
             <div class="mt-6 pt-6 border-t border-gray-700">
               <p class="text-sm text-gray-400">
-                Member since {{ user.created_at | date:'medium' }}
+                Member since {{ user.created_at | date: 'medium' }}
               </p>
             </div>
           </div>
@@ -73,12 +75,12 @@ import { AuthService, UserProfile } from '../services/auth.service';
         }
       </main>
     </div>
-  `
+  `,
 })
 export class DashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
-  
+
   user: UserProfile | null = null;
 
   constructor() {

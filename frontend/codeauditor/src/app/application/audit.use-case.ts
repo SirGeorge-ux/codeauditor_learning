@@ -1,5 +1,5 @@
-import { AuditRepository } from "../domain/ports/audit-repository.port";
-import { LLMPort } from "../domain/ports/llm.port";
+import { AuditRepository } from '../domain/ports/audit-repository.port';
+import { LLMPort } from '../domain/ports/llm.port';
 
 /**
  * AuditUseCase — orchestrates the full audit workflow.
@@ -15,7 +15,7 @@ import { LLMPort } from "../domain/ports/llm.port";
 export class AuditUseCase {
   constructor(
     private readonly auditRepo: AuditRepository,
-    private readonly llm: LLMPort
+    private readonly llm: LLMPort,
   ) {}
 
   async startAudit(repositoryUrl: string, branch: string): Promise<string> {
@@ -23,7 +23,7 @@ export class AuditUseCase {
     const session = await this.auditRepo.createSession({
       repositoryUrl,
       branch,
-      status: "pending",
+      status: 'pending',
       findingsCount: 0,
     });
     return session.id;

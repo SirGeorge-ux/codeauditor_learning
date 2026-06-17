@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       PORT: "8080"
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASS}@supabase-db:5432/postgres?sslmode=disable
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}

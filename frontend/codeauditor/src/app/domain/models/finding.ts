@@ -1,7 +1,7 @@
 // Finding — represents a security or code quality issue found during audit.
 //
 // Severity levels follow CVSS-style categories.
-export type FindingSeverity = "critical" | "high" | "medium" | "low" | "info";
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 
 export interface Finding {
   id: string;

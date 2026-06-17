@@ -46,7 +46,6 @@ func (a *SupabaseAuthAdapter) ValidateToken(ctx context.Context, token string) e
 		}
 		return []byte(a.jwtSecret), nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("invalid token: %w", err)
 	}
@@ -75,7 +74,6 @@ func (a *SupabaseAuthAdapter) UserIDFromToken(token string) (string, error) {
 		}
 		return []byte(a.jwtSecret), nil
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token: %w", err)
 	}

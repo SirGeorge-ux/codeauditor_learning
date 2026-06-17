@@ -49,7 +49,8 @@ func (s *UserProgressService) RecordAuditAttempt(ctx context.Context, userID str
 		ultimoIntento  sql.NullTime
 	)
 
-	err := s.db.QueryRowContext(ctx,
+	err := s.db.QueryRowContext(
+		ctx,
 		`SELECT racha_dias, puntos_maestria, ultimo_intento_valido
 		 FROM public.usuarios WHERE id = $1`, userID,
 	).Scan(&rachaDias, &puntosMaestria, &ultimoIntento)
@@ -91,7 +92,8 @@ func (s *UserProgressService) RecordAuditAttempt(ctx context.Context, userID str
 	// Rank calculation
 	newRango := calculateRank(newPuntos)
 
-	_, err = s.db.ExecContext(ctx,
+	_, err = s.db.ExecContext(
+		ctx,
 		`UPDATE public.usuarios
 		 SET racha_dias = $1, puntos_maestria = $2, rango_actual = $3,
 		     ultimo_intento_valido = $4, updated_at = NOW()

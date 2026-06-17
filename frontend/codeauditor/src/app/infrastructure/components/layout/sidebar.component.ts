@@ -12,7 +12,14 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideLayoutDashboard, LucideBinary, LucideServer, LucideShield],
+  imports: [
+    CommonModule,
+    RouterModule,
+    LucideLayoutDashboard,
+    LucideBinary,
+    LucideServer,
+    LucideShield,
+  ],
   template: `
     <aside
       class="h-screen bg-[#0D1117] border-r border-[#21262D] flex flex-col transition-all duration-200"

@@ -1,4 +1,4 @@
-import { User } from "../models/user";
+import { User } from '../models/user';
 
 /**
  * AuthPort — interface for authentication and user identity.

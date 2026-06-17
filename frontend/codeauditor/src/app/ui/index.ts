@@ -3,4 +3,4 @@
 // and emit events via @Output(). They delegate all logic to services.
 //
 // This layer DEPENDS on domain/application/infrastructure — never the reverse.
-export * from "./home.component";
+export * from './home.component';

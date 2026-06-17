@@ -42,7 +42,8 @@ func (s *AuditHistoryService) SaveSession(ctx context.Context, userID string, re
 		snippet = snippet[:2000]
 	}
 
-	_, err := s.db.ExecContext(ctx,
+	_, err := s.db.ExecContext(
+		ctx,
 		`INSERT INTO public.audit_sessions (user_id, challenge_title, language, code_snippet, findings_count)
 		 VALUES ($1, $2, $3, $4, $5)`,
 		userID, title, req.Language, snippet, findingsCount,
@@ -56,7 +57,8 @@ func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, lim
 		limit = 20
 	}
 
-	rows, err := s.db.QueryContext(ctx,
+	rows, err := s.db.QueryContext(
+		ctx,
 		`SELECT id, user_id, challenge_title, language, code_snippet, findings_count, created_at
 		 FROM public.audit_sessions
 		 WHERE user_id = $1
@@ -82,7 +84,8 @@ func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, lim
 
 // GetStats returns aggregated stats for a user.
 func (s *AuditHistoryService) GetStats(ctx context.Context, userID string) (totalAudits int, totalFindings int, err error) {
-	err = s.db.QueryRowContext(ctx,
+	err = s.db.QueryRowContext(
+		ctx,
 		`SELECT COUNT(*), COALESCE(SUM(findings_count), 0)
 		 FROM public.audit_sessions WHERE user_id = $1`, userID,
 	).Scan(&totalAudits, &totalFindings)

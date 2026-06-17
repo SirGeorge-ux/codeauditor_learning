@@ -12,7 +12,10 @@ import { Challenge } from '../../../domain/models/challenge';
         <div class="space-y-4">
           <!-- Challenge Description -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Challenge Description
             </h3>
             <p class="text-sm text-dojo-text" style="font-family: Inter, sans-serif;">
@@ -22,21 +25,27 @@ import { Challenge } from '../../../domain/models/challenge';
 
           <!-- Repository Origin -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Repository Origin
             </h3>
-            <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">
-              —
-            </p>
+            <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">—</p>
           </div>
 
           <!-- Code Smell Info -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Code Smell
             </h3>
             <div class="space-y-1">
-              <span class="inline-block px-2 py-0.5 bg-dojo-surface rounded-sm text-xs text-dojo-text border border-dojo-border">
+              <span
+                class="inline-block px-2 py-0.5 bg-dojo-surface rounded-sm text-xs text-dojo-text border border-dojo-border"
+              >
                 None
               </span>
               <p class="text-xs text-dojo-text opacity-70" style="font-family: Inter, sans-serif;">
@@ -49,14 +58,20 @@ import { Challenge } from '../../../domain/models/challenge';
         <div class="space-y-4">
           <!-- Challenge Title -->
           <div>
-            <h3 class="text-lg font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-lg font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               {{ challenge.title }}
             </h3>
           </div>
 
           <!-- Challenge Description -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Challenge Description
             </h3>
             <p class="text-sm text-dojo-text" style="font-family: Inter, sans-serif;">
@@ -66,7 +81,10 @@ import { Challenge } from '../../../domain/models/challenge';
 
           <!-- Repository Origin -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Repository Origin
             </h3>
             <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">
@@ -76,18 +94,29 @@ import { Challenge } from '../../../domain/models/challenge';
 
           <!-- Code Smell Info -->
           <div>
-            <h3 class="text-sm font-semibold text-dojo-text mb-2" style="font-family: Inter, sans-serif;">
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
               Code Smell
             </h3>
             <div class="space-y-2">
-              <span class="inline-block px-2 py-0.5 bg-[#F85149]/10 rounded-sm text-xs text-[#F85149] border border-[#F85149]/30">
+              <span
+                class="inline-block px-2 py-0.5 bg-[#F85149]/10 rounded-sm text-xs text-[#F85149] border border-[#F85149]/30"
+              >
                 {{ challenge.codeSmell }}
               </span>
               <div class="flex items-center gap-2">
-                <span class="inline-block px-2 py-0.5 rounded-sm text-xs font-medium {{ difficultyColor(challenge.difficulty) }}">
+                <span
+                  class="inline-block px-2 py-0.5 rounded-sm text-xs font-medium {{
+                    difficultyColor(challenge.difficulty)
+                  }}"
+                >
                   {{ challenge.difficulty }}
                 </span>
-                <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
+                <span
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]"
+                >
                   {{ challenge.category }}
                 </span>
               </div>

@@ -22,8 +22,8 @@ export interface GogsFileResponse {
   repo: string;
   branch: string;
   path: string;
-  content: string;   // base64-encoded
-  encoding: string;  // "base64"
+  content: string; // base64-encoded
+  encoding: string; // "base64"
   language: string;
   size: number;
 }
@@ -37,7 +37,12 @@ export class GogsService {
     return this.http.get<GogsRepo[]>(`${this.apiUrl}/api/v1/gogs/repos`);
   }
 
-  fetchFile(owner: string, repo: string, branch: string, path: string): Observable<GogsFileResponse> {
+  fetchFile(
+    owner: string,
+    repo: string,
+    branch: string,
+    path: string,
+  ): Observable<GogsFileResponse> {
     return this.http.post<GogsFileResponse>(`${this.apiUrl}/api/v1/gogs/file`, {
       owner,
       repo,

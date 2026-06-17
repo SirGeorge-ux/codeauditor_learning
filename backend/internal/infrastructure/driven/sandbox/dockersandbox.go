@@ -62,7 +62,7 @@ func (s *DockerSandbox) Execute(ctx context.Context, language, code string, time
 	}
 
 	codeFile := filepath.Join(tmpDir, filename)
-	if err := os.WriteFile(codeFile, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(codeFile, []byte(code), 0o644); err != nil {
 		os.RemoveAll(tmpDir)
 		return nil, fmt.Errorf("write code file: %w", err)
 	}

@@ -39,7 +39,9 @@ import { Challenge } from '../../../domain/models/challenge';
       @if (error()) {
         <div class="bg-red-500/20 border border-red-500 rounded-sm p-4 mb-4">
           <p class="text-red-400 text-sm">{{ error() }}</p>
-          <button (click)="load()" class="mt-2 text-xs text-red-300 hover:text-red-200 underline">Reintentar</button>
+          <button (click)="load()" class="mt-2 text-xs text-red-300 hover:text-red-200 underline">
+            Reintentar
+          </button>
         </div>
       }
 
@@ -63,18 +65,29 @@ import { Challenge } from '../../../domain/models/challenge';
               (click)="reAudit(session)"
             >
               <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-semibold text-[#C9D1D9]">{{ session.challenge_title || 'Custom Audit' }}</h3>
-                <span class="text-xs text-[#8B949E]">{{ session.created_at | date:'dd/MM/yy HH:mm' }}</span>
+                <h3 class="text-sm font-semibold text-[#C9D1D9]">
+                  {{ session.challenge_title || 'Custom Audit' }}
+                </h3>
+                <span class="text-xs text-[#8B949E]">{{
+                  session.created_at | date: 'dd/MM/yy HH:mm'
+                }}</span>
               </div>
               <div class="flex items-center gap-2 mb-2">
-                <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
+                <span
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]"
+                >
                   {{ session.language }}
                 </span>
-                <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#F85149]">
+                <span
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#F85149]"
+                >
                   {{ session.findings_count }} hallazgos
                 </span>
               </div>
-              <pre class="text-xs text-[#8B949E] bg-[#0D1117] rounded-sm p-2 overflow-hidden max-h-16">{{ session.code_snippet }}</pre>
+              <pre
+                class="text-xs text-[#8B949E] bg-[#0D1117] rounded-sm p-2 overflow-hidden max-h-16"
+                >{{ session.code_snippet }}</pre
+              >
             </div>
           }
         </div>

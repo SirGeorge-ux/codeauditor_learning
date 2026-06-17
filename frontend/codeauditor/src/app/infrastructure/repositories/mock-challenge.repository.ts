@@ -2,20 +2,20 @@
 //
 // Each challenge contains real TypeScript code demonstrating the code smell,
 // not placeholder text. Challenges are designed for the audit dojo experience.
-import { Challenge } from "../../domain/models/challenge";
-import { ChallengeRepository } from "../../domain/ports/challenge-repository.port";
+import { Challenge } from '../../domain/models/challenge';
+import { ChallengeRepository } from '../../domain/ports/challenge-repository.port';
 
 const CHALLENGES: Challenge[] = [
   {
-    id: "ch-sqli",
-    difficulty: "junior",
-    category: "security",
-    language: "typescript",
-    title: "SQL Injection en Login",
-    codeSmell: "SQL Injection",
+    id: 'ch-sqli',
+    difficulty: 'junior',
+    category: 'security',
+    language: 'typescript',
+    title: 'SQL Injection en Login',
+    codeSmell: 'SQL Injection',
     description:
-      "Este endpoint de login es vulnerable a SQL Injection. La entrada del usuario se concatena directamente en la consulta SQL sin sanitizar. Un atacante puede manipular el parámetro username para ejecutar comandos SQL arbitrarios.",
-    repoUrl: "https://github.com/example/vulnerable-api",
+      'Este endpoint de login es vulnerable a SQL Injection. La entrada del usuario se concatena directamente en la consulta SQL sin sanitizar. Un atacante puede manipular el parámetro username para ejecutar comandos SQL arbitrarios.',
+    repoUrl: 'https://github.com/example/vulnerable-api',
     code: `import { db } from './database';
 
 export async function login(username: string, password: string) {
@@ -28,19 +28,19 @@ export async function login(username: string, password: string) {
 
   return { success: false };
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-01"),
+    status: 'available',
+    createdAt: new Date('2025-01-01'),
   },
   {
-    id: "ch-xss",
-    difficulty: "junior",
-    category: "security",
-    language: "typescript",
-    title: "XSS en Comentarios",
-    codeSmell: "Cross-Site Scripting",
+    id: 'ch-xss',
+    difficulty: 'junior',
+    category: 'security',
+    language: 'typescript',
+    title: 'XSS en Comentarios',
+    codeSmell: 'Cross-Site Scripting',
     description:
-      "Este componente renderiza comentarios de usuarios directamente con innerHTML, sin sanitizar. Un usuario malicioso puede inyectar scripts arbitrarios que se ejecutarán en el navegador de otros usuarios.",
-    repoUrl: "https://github.com/example/social-app",
+      'Este componente renderiza comentarios de usuarios directamente con innerHTML, sin sanitizar. Un usuario malicioso puede inyectar scripts arbitrarios que se ejecutarán en el navegador de otros usuarios.',
+    repoUrl: 'https://github.com/example/social-app',
     code: `import { Component, Input } from '@angular/core';
 
 @Component({
@@ -56,19 +56,19 @@ export class CommentThread {
       .join('');
   }
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-02"),
+    status: 'available',
+    createdAt: new Date('2025-01-02'),
   },
   {
-    id: "ch-god",
-    difficulty: "mid",
-    category: "design",
-    language: "typescript",
-    title: "Diosidad / Cyclomatic Complexity",
-    codeSmell: "God Function",
+    id: 'ch-god',
+    difficulty: 'mid',
+    category: 'design',
+    language: 'typescript',
+    title: 'Diosidad / Cyclomatic Complexity',
+    codeSmell: 'God Function',
     description:
-      "Esta función handlePayment procesa TODOS los tipos de pago en un solo bloque. Tiene complejidad ciclomática altísima, mezcla responsabilidades y es imposible de testear por separado. Cualquier cambio en un método de pago puede romper los otros.",
-    repoUrl: "https://github.com/example/payment-service",
+      'Esta función handlePayment procesa TODOS los tipos de pago en un solo bloque. Tiene complejidad ciclomática altísima, mezcla responsabilidades y es imposible de testear por separado. Cualquier cambio en un método de pago puede romper los otros.',
+    repoUrl: 'https://github.com/example/payment-service',
     code: `async function handlePayment(order: Order, method: string, data: any) {
   if (method === 'credit_card') {
     const validated = validateCard(data.cardNumber, data.cvv, data.expiry);
@@ -98,19 +98,19 @@ export class CommentThread {
   }
   throw new Error('Unsupported payment method');
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-03"),
+    status: 'available',
+    createdAt: new Date('2025-01-03'),
   },
   {
-    id: "ch-callback",
-    difficulty: "junior",
-    category: "async",
-    language: "typescript",
-    title: "Callback Hell / Promesas Anidadas",
-    codeSmell: "Callback Hell",
+    id: 'ch-callback',
+    difficulty: 'junior',
+    category: 'async',
+    language: 'typescript',
+    title: 'Callback Hell / Promesas Anidadas',
+    codeSmell: 'Callback Hell',
     description:
-      "Esta función procesa un usuario nuevo con una cadena de callbacks anidados. Es ilegible, difícil de debuggear, y cualquier error en un paso intermedio deja el sistema en un estado inconsistente porque no hay manejo de errores.",
-    repoUrl: "https://github.com/example/user-service",
+      'Esta función procesa un usuario nuevo con una cadena de callbacks anidados. Es ilegible, difícil de debuggear, y cualquier error en un paso intermedio deja el sistema en un estado inconsistente porque no hay manejo de errores.',
+    repoUrl: 'https://github.com/example/user-service',
     code: `function createUser(email: string, password: string, callback: (err?: Error) => void) {
   validateEmail(email, (err) => {
     if (err) return callback(err);
@@ -128,19 +128,19 @@ export class CommentThread {
     });
   });
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-04"),
+    status: 'available',
+    createdAt: new Date('2025-01-04'),
   },
   {
-    id: "ch-mutation",
-    difficulty: "junior",
-    category: "angular",
-    language: "typescript",
-    title: "Mutación de Props en Componentes",
-    codeSmell: "Prop Mutation",
+    id: 'ch-mutation',
+    difficulty: 'junior',
+    category: 'angular',
+    language: 'typescript',
+    title: 'Mutación de Props en Componentes',
+    codeSmell: 'Prop Mutation',
     description:
-      "Este componente hijo muta directamente la propiedad recibida del padre. En Angular, los @Input no deben modificarse internamente. Esto causa efectos secundarios impredecibles y bugs intermitentes difíciles de rastrear.",
-    repoUrl: "https://github.com/example/angular-app",
+      'Este componente hijo muta directamente la propiedad recibida del padre. En Angular, los @Input no deben modificarse internamente. Esto causa efectos secundarios impredecibles y bugs intermitentes difíciles de rastrear.',
+    repoUrl: 'https://github.com/example/angular-app',
     code: `import { Component, Input } from '@angular/core';
 
 @Component({
@@ -162,19 +162,19 @@ export class UserListComponent {
     }
   }
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-05"),
+    status: 'available',
+    createdAt: new Date('2025-01-05'),
   },
   {
-    id: "ch-dead",
-    difficulty: "junior",
-    category: "logic",
-    language: "typescript",
-    title: "Código Muerto / Condiciones Redundantes",
-    codeSmell: "Dead Code",
+    id: 'ch-dead',
+    difficulty: 'junior',
+    category: 'logic',
+    language: 'typescript',
+    title: 'Código Muerto / Condiciones Redundantes',
+    codeSmell: 'Dead Code',
     description:
-      "Esta función está llena de condiciones que nunca se cumplen, branches inalcanzables, y variables que se asignan pero nunca se usan. El código muerto aumenta la carga cognitiva y sugiere que hubo refactors incompletos.",
-    repoUrl: "https://github.com/example/legacy-codebase",
+      'Esta función está llena de condiciones que nunca se cumplen, branches inalcanzables, y variables que se asignan pero nunca se usan. El código muerto aumenta la carga cognitiva y sugiere que hubo refactors incompletos.',
+    repoUrl: 'https://github.com/example/legacy-codebase',
     code: `function calculateDiscount(price: number, type: string): number {
   let discount = 0;
   const TAX_RATE = 0.21;
@@ -208,19 +208,19 @@ export class UserListComponent {
 
   return discount;
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-06"),
+    status: 'available',
+    createdAt: new Date('2025-01-06'),
   },
   {
-    id: "ch-errors",
-    difficulty: "junior",
-    category: "error-handling",
-    language: "typescript",
-    title: "Falta de Manejo de Errores",
-    codeSmell: "Silent Failures",
+    id: 'ch-errors',
+    difficulty: 'junior',
+    category: 'error-handling',
+    language: 'typescript',
+    title: 'Falta de Manejo de Errores',
+    codeSmell: 'Silent Failures',
     description:
-      "Esta función asume que todas las operaciones asíncronas van a funcionar perfectamente. No hay try/catch, no hay validación de respuestas, no hay manejo de errores de red. Si la API falla, el usuario ve una pantalla en blanco sin explicación.",
-    repoUrl: "https://github.com/example/dashboard-app",
+      'Esta función asume que todas las operaciones asíncronas van a funcionar perfectamente. No hay try/catch, no hay validación de respuestas, no hay manejo de errores de red. Si la API falla, el usuario ve una pantalla en blanco sin explicación.',
+    repoUrl: 'https://github.com/example/dashboard-app',
     code: `import { Component, OnInit } from '@angular/core';
 
 @Component({
@@ -246,19 +246,19 @@ export class DashboardComponent implements OnInit {
     this.dashboardStats = await stats.json();
   }
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-07"),
+    status: 'available',
+    createdAt: new Date('2025-01-07'),
   },
   {
-    id: "ch-naming",
-    difficulty: "junior",
-    category: "readability",
-    language: "typescript",
-    title: "Variables con Naming Opaco",
-    codeSmell: "Poor Naming",
+    id: 'ch-naming',
+    difficulty: 'junior',
+    category: 'readability',
+    language: 'typescript',
+    title: 'Variables con Naming Opaco',
+    codeSmell: 'Poor Naming',
     description:
-      "Esta función usa nombres de variables crípticos que obligan al lector a hacer ingeniería inversa para entender qué hace cada cosa. En un código profesional, el nombre de una variable debe revelar su intención sin necesidad de comentarios.",
-    repoUrl: "https://github.com/example/obfuscated-code",
+      'Esta función usa nombres de variables crípticos que obligan al lector a hacer ingeniería inversa para entender qué hace cada cosa. En un código profesional, el nombre de una variable debe revelar su intención sin necesidad de comentarios.',
+    repoUrl: 'https://github.com/example/obfuscated-code',
     code: `function calc(a: number, b: number, c: string): number {
   const d = new Date();
   const e = d.getFullYear() - a;
@@ -277,8 +277,8 @@ export class DashboardComponent implements OnInit {
   const n = g * a / 100;
   return Math.round(n * 100) / 100;
 }`,
-    status: "available",
-    createdAt: new Date("2025-01-08"),
+    status: 'available',
+    createdAt: new Date('2025-01-08'),
   },
 ];
 

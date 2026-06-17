@@ -1,14 +1,14 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* Dojo dark palette — CodeAuditor theme */
-  --color-dojo-base: #0D1117;
-  --color-dojo-surface: #161B22;
-  --color-dojo-text: #C9D1D9;
-  --color-dojo-error: #F85149;
-  --color-dojo-accent: #39D353;
-  --color-dojo-warning: #D29922;
-  --color-dojo-border: #30363D;
+  --color-dojo-base: #0d1117;
+  --color-dojo-surface: #161b22;
+  --color-dojo-text: #c9d1d9;
+  --color-dojo-error: #f85149;
+  --color-dojo-accent: #39d353;
+  --color-dojo-warning: #d29922;
+  --color-dojo-border: #30363d;
 }
 
 /* Base resets */
@@ -22,8 +22,15 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
   background-color: var(--color-dojo-base);
   color: var(--color-dojo-text);
   height: 100%;

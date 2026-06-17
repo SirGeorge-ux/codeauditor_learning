@@ -5,8 +5,8 @@
 // 2. Select a specific challenge by ID
 //
 // Zero framework imports. Pure TypeScript.
-import { Challenge } from "../domain/models/challenge";
-import { ChallengeRepository } from "../domain/ports/challenge-repository.port";
+import { Challenge } from '../domain/models/challenge';
+import { ChallengeRepository } from '../domain/ports/challenge-repository.port';
 
 export class ChallengeUseCase {
   constructor(private readonly repo: ChallengeRepository) {}

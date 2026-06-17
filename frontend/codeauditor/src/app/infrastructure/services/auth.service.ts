@@ -18,7 +18,7 @@ export interface UserProfile {
 export class AuthService {
   private supabase: SupabaseClient = createClient(
     environment.supabaseUrl,
-    environment.supabaseAnonKey
+    environment.supabaseAnonKey,
   );
 
   userSignal = signal<UserProfile | null>(null);
@@ -82,9 +82,9 @@ export class AuthService {
     try {
       const response = await fetch(`${environment.apiUrl}/auth/me`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.ok) {

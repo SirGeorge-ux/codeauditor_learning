@@ -6,7 +6,7 @@ export interface AuditSession {
   id: string;
   repositoryUrl: string;
   branch: string;
-  status: "pending" | "scanning" | "analyzing" | "complete" | "failed";
+  status: 'pending' | 'scanning' | 'analyzing' | 'complete' | 'failed';
   createdAt: Date;
   updatedAt: Date;
   findingsCount: number;

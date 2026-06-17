@@ -1,11 +1,23 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, Input, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  Input,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 
 // Monaco is loaded via AMD loader from the CDN in development
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const monaco: any;
 
 // Monaco editor instance type (loosely typed — Monaco types are optional)
-type MonacoEditor = { setValue(v: string): void; getValue(): string; getModel(): { getValue(): string } };
+type MonacoEditor = {
+  setValue(v: string): void;
+  getValue(): string;
+  getModel(): { getValue(): string };
+};
 
 @Component({
   selector: 'app-code-panel',
@@ -36,7 +48,7 @@ export class CodePanelComponent implements AfterViewInit, OnChanges {
       script.onload = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).require.config({
-          paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
+          paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' },
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).require(['vs/editor/editor.main'], () => {

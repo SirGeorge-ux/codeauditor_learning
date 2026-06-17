@@ -1,8 +1,8 @@
 // Challenge — core domain entity representing a code-audit challenge.
 //
 // Zero framework imports. Pure TypeScript domain model.
-export type ChallengeDifficulty = "junior" | "mid" | "senior" | "architect";
-export type ChallengeStatus = "available" | "in_progress" | "completed";
+export type ChallengeDifficulty = 'junior' | 'mid' | 'senior' | 'architect';
+export type ChallengeStatus = 'available' | 'in_progress' | 'completed';
 
 export interface Challenge {
   id: string;

@@ -4,5 +4,5 @@ export const environment = {
   production: false,
   supabaseUrl: 'http://localhost:8000',
   supabaseAnonKey: 'local-dev-demo-key-replace-in-prod',
-  apiUrl: 'http://localhost:8080'
+  apiUrl: 'http://localhost:8080',
 };
