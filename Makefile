@@ -1,4 +1,4 @@
-.PHONY: help test lint build dev clean
+.PHONY: help test lint build dev clean validate fix check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -53,3 +53,33 @@ dev: ## Start full dev stack (Docker + backend + frontend)
 clean: ## Clean build artifacts
 	rm -rf backend/api backend/bin/
 	rm -rf frontend/codeauditor/dist/ frontend/codeauditor/.angular/
+
+# --- Quality gates ---
+
+validate: validate-backend validate-frontend ## Validate code quality (pre-deploy gate)
+
+check: validate ## Alias for validate
+
+validate-backend: ## Validate Go code (gofumpt + golangci-lint)
+	@echo "==> Validating Backend (Go)..."
+	@cd backend && test -z "$$(gofumpt -l .)" || (echo "  gofumpt: files need formatting. Run 'make fix-backend'" && exit 1)
+	@cd backend && golangci-lint run
+	@echo "==> Backend OK"
+
+validate-frontend: ## Validate TypeScript code (Prettier + ESLint)
+	@echo "==> Validating Frontend (TypeScript)..."
+	@cd frontend/codeauditor && pnpm exec prettier --check "src/**/*.{ts,html,css}"
+	@cd frontend/codeauditor && pnpm lint
+	@echo "==> Frontend OK"
+
+fix: fix-backend fix-frontend ## Fix formatting across the project
+
+fix-backend: ## Fix Go formatting (gofumpt)
+	@echo "==> Fixing Backend (Go)..."
+	@cd backend && gofumpt -w .
+	@echo "==> Backend fixed"
+
+fix-frontend: ## Fix TypeScript formatting (Prettier)
+	@echo "==> Fixing Frontend (TypeScript)..."
+	@cd frontend/codeauditor && pnpm format
+	@echo "==> Frontend fixed"
