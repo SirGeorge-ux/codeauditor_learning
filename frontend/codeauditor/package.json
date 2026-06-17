@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "e2e": "playwright test",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\""
   },
   "private": true,
   "type": "module",
