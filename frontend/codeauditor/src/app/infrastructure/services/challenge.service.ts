@@ -1,21 +1,30 @@
 // ChallengeService — Angular injectable service orchestrating challenge use case.
 //
 // Exposes reactive signals for challenges list, selected challenge, and loading state.
-// Uses ChallengeUseCase (application layer) which delegates to MockChallengeRepository.
+// Uses ChallengeUseCase (application layer) which delegates to HttpChallengeRepository.
 // Also manages temporary challenges imported from Gogs repos (in-memory, not persisted).
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { ChallengeUseCase } from '../../application/challenge.use-case';
-import { MockChallengeRepository } from '../repositories/mock-challenge.repository';
+import { HttpChallengeRepository } from '../repositories/http-challenge.repository';
+import { AuthService } from './auth.service';
 import { Challenge } from '../../domain/models/challenge';
 
 @Injectable({ providedIn: 'root' })
 export class ChallengeService {
-  private useCase = new ChallengeUseCase(new MockChallengeRepository());
+  private useCase: ChallengeUseCase;
   private tempChallenges = new Map<string, Challenge>();
 
   challengesSignal = signal<Challenge[]>([]);
   selectedChallengeSignal = signal<Challenge | null>(null);
   loadingSignal = signal(false);
+
+  constructor() {
+    const authService = inject(AuthService);
+    const repo = new HttpChallengeRepository({
+      getToken: () => authService.getAccessToken(),
+    });
+    this.useCase = new ChallengeUseCase(repo);
+  }
 
   async loadChallenges(): Promise<void> {
     this.loadingSignal.set(true);

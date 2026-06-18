@@ -125,6 +125,11 @@ func main() {
 	vaultHandler := handlers.NewVaultHandler(historyService)
 	log.Println("Audit history tracking enabled")
 
+	// Initialize challenge service
+	challengeService := services.NewChallengeService(db)
+	challengeHandler := handlers.NewChallengeHandler(challengeService)
+	log.Println("Challenge service initialized")
+
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
 
@@ -180,6 +185,9 @@ func main() {
 		// Vault / history endpoints
 		r.Get("/audit/history", vaultHandler.GetHistory)
 		r.Get("/audit/stats", vaultHandler.GetStats)
+		// Challenge endpoints
+		r.Get("/challenges", challengeHandler.ListChallenges)
+		r.Get("/challenges/{id}", challengeHandler.GetChallenge)
 	})
 
 	addr := ":" + port
