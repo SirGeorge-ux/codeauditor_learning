@@ -16,4 +16,5 @@ export interface Challenge {
   codeSmell: string;
   status: ChallengeStatus;
   createdAt: Date;
+  sourceRepo?: string;
 }

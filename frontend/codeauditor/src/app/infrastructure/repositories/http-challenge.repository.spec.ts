@@ -141,4 +141,143 @@ describe('HttpChallengeRepository', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
+
+  describe('create', () => {
+    it('should create a challenge and return it', async () => {
+      const createResponse = {
+        ...mockApiResponse,
+        source_repo: 'owner/repo',
+        user_id: 'user-1',
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => createResponse,
+      });
+
+      const input = {
+        title: 'SQL Injection',
+        description: 'A vulnerable endpoint',
+        difficulty: 'junior' as const,
+        category: 'security',
+        language: 'typescript',
+        repoUrl: 'https://github.com/example/vulnerable-api',
+        sourceRepo: 'owner/repo',
+        code: 'const x = 1;',
+        codeSmell: 'SQL Injection',
+      };
+
+      const result = await repo.create(input);
+
+      expect(result.id).toBe('ch-sqli');
+      expect(result.sourceRepo).toBe('owner/repo');
+      expect(result.repoUrl).toBe('https://github.com/example/vulnerable-api');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8080/api/v1/challenges',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer valid-token',
+          },
+        }),
+      );
+
+      // Verify the body was sent with snake_case mapping
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body as string);
+      expect(body.sourceRepo).toBe('owner/repo');
+      expect(body.source_repo).toBeUndefined(); // should be camelCase in request
+    });
+
+    it('should map camelCase fields to snake_case in request body', async () => {
+      const createResponse = {
+        ...mockApiResponse,
+        source_repo: 'owner/repo',
+        code_smell: 'SQL Injection',
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => createResponse,
+      });
+
+      const input = {
+        title: 'Test',
+        description: 'desc',
+        difficulty: 'mid' as const,
+        category: 'security',
+        language: 'go',
+        repoUrl: 'https://example.com',
+        sourceRepo: 'owner/repo',
+        code: 'code',
+        codeSmell: 'SQL Injection',
+      };
+
+      await repo.create(input);
+
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body as string);
+      expect(body.repoUrl).toBe('https://example.com');
+      expect(body.sourceRepo).toBe('owner/repo');
+      expect(body.codeSmell).toBe('SQL Injection');
+    });
+
+    it('should throw on network error', async () => {
+      const input = {
+        title: 'SQL Injection',
+        description: 'A vulnerable endpoint',
+        difficulty: 'junior' as const,
+        category: 'security',
+        language: 'typescript',
+        repoUrl: 'https://github.com/example/vulnerable-api',
+        sourceRepo: 'owner/repo',
+        code: 'const x = 1;',
+        codeSmell: 'SQL Injection',
+      };
+
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(repo.create(input)).rejects.toThrow('Network error');
+    });
+
+    it('should throw on non-OK response', async () => {
+      const input = {
+        title: 'SQL Injection',
+        description: 'A vulnerable endpoint',
+        difficulty: 'junior' as const,
+        category: 'security',
+        language: 'typescript',
+        repoUrl: 'https://github.com/example/vulnerable-api',
+        sourceRepo: 'owner/repo',
+        code: 'const x = 1;',
+        codeSmell: 'SQL Injection',
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+      await expect(repo.create(input)).rejects.toThrow('Failed to create challenge: 500');
+    });
+
+    it('should throw when no token is available', async () => {
+      mockTokenProvider.getToken.mockReturnValue(null);
+
+      const input = {
+        title: 'SQL Injection',
+        description: 'A vulnerable endpoint',
+        difficulty: 'junior' as const,
+        category: 'security',
+        language: 'typescript',
+        repoUrl: 'https://github.com/example/vulnerable-api',
+        sourceRepo: 'owner/repo',
+        code: 'const x = 1;',
+        codeSmell: 'SQL Injection',
+      };
+
+      await expect(repo.create(input)).rejects.toThrow('Authentication required');
+    });
+  });
 });

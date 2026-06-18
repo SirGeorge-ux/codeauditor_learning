@@ -3,6 +3,7 @@
 // Responsibilities:
 // 1. Load all available challenges
 // 2. Select a specific challenge by ID
+// 3. Create a new challenge (import from Gogs)
 //
 // Zero framework imports. Pure TypeScript.
 import { Challenge } from '../domain/models/challenge';
@@ -17,5 +18,9 @@ export class ChallengeUseCase {
 
   async selectChallenge(id: string): Promise<Challenge | null> {
     return this.repo.getById(id);
+  }
+
+  async createChallenge(input: Omit<Challenge, 'id' | 'createdAt' | 'status'>): Promise<Challenge> {
+    return this.repo.create(input);
   }
 }

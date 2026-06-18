@@ -188,6 +188,7 @@ func main() {
 		// Challenge endpoints
 		r.Get("/challenges", challengeHandler.ListChallenges)
 		r.Get("/challenges/{id}", challengeHandler.GetChallenge)
+		r.Post("/challenges", challengeHandler.CreateChallenge)
 	})
 
 	addr := ":" + port

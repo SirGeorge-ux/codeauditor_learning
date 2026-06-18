@@ -190,20 +190,25 @@ export class McpPageComponent implements OnInit {
         next: (response) => {
           this.fetchingFile.set(false);
           const decodedCode = atob(response.content);
-          const tempId = this.challengeService.addTempChallenge({
-            id: '',
-            title: response.path.split('/').pop() || response.path,
-            description: `Imported from ${response.owner}/${response.repo}:${response.branch}`,
-            difficulty: 'mid',
-            category: 'imported',
-            language: response.language,
-            repoUrl: response.path,
-            code: decodedCode,
-            codeSmell: 'pending-analysis',
-            status: 'available',
-            createdAt: new Date(),
-          });
-          this.router.navigate(['/dojo', tempId]);
+          const sourceRepo = repo.full_name.toLowerCase().trim();
+          this.challengeService
+            .importChallenge({
+              title: response.path.split('/').pop() || response.path,
+              description: `Imported from ${response.owner}/${response.repo}:${response.branch}`,
+              difficulty: 'mid',
+              category: 'imported',
+              language: response.language,
+              repoUrl: response.path,
+              sourceRepo,
+              code: decodedCode,
+              codeSmell: 'pending-analysis',
+            })
+            .then((id) => {
+              this.router.navigate(['/dojo', id]);
+            })
+            .catch((err) => {
+              this.fileError.set(err?.message || 'Failed to import challenge');
+            });
         },
         error: (err) => {
           this.fetchingFile.set(false);

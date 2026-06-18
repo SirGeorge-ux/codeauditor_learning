@@ -7,7 +7,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { McpPageComponent } from './mcp-page.component';
 import { GogsService, GogsRepo, GogsFileResponse } from '../../services/gogs.service';
 import { ChallengeService } from '../../services/challenge.service';
-import { Challenge } from '../../../domain/models/challenge';
 
 describe('McpPageComponent', () => {
   let component: McpPageComponent;
@@ -17,7 +16,7 @@ describe('McpPageComponent', () => {
     fetchFile: ReturnType<typeof vi.fn>;
   };
   let challengeServiceMock: {
-    addTempChallenge: ReturnType<typeof vi.fn>;
+    importChallenge: ReturnType<typeof vi.fn>;
   };
   let routerMock: {
     navigate: ReturnType<typeof vi.fn>;
@@ -61,7 +60,7 @@ describe('McpPageComponent', () => {
       fetchFile: vi.fn(),
     };
     challengeServiceMock = {
-      addTempChallenge: vi.fn().mockReturnValue('temp-1234567890'),
+      importChallenge: vi.fn().mockResolvedValue('ch-new-id'),
     };
     routerMock = {
       navigate: vi.fn(),
@@ -145,12 +144,15 @@ describe('McpPageComponent', () => {
     expect(component.selectedRepo()).toBeNull();
   });
 
-  it('should create temp challenge and navigate to dojo on successful file fetch', () => {
+  it('should import challenge and navigate to dojo on successful file fetch', async () => {
     gogsServiceMock.fetchFile.mockReturnValue(of(mockFileResponse));
     fixture.detectChanges();
     component.selectRepo(mockRepos[0]);
     component.filePath = 'src/main.go';
     component.fetchAndAudit();
+
+    // Wait for async operations
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(gogsServiceMock.fetchFile).toHaveBeenCalledWith(
       'org',
@@ -158,18 +160,18 @@ describe('McpPageComponent', () => {
       'main',
       'src/main.go',
     );
-    expect(challengeServiceMock.addTempChallenge).toHaveBeenCalledOnce();
+    expect(challengeServiceMock.importChallenge).toHaveBeenCalledOnce();
 
-    const challengeArg = challengeServiceMock.addTempChallenge.mock.calls[0][0] as Challenge;
-    expect(challengeArg.difficulty).toBe('mid');
-    expect(challengeArg.category).toBe('imported');
-    expect(challengeArg.language).toBe('go');
-    expect(challengeArg.codeSmell).toBe('pending-analysis');
-    expect(challengeArg.status).toBe('available');
-    expect(challengeArg.code).toBe('package main\n\nfunc main() {}');
-    expect(challengeArg.repoUrl).toBe('src/main.go');
+    const importArg = challengeServiceMock.importChallenge.mock.calls[0][0];
+    expect(importArg.difficulty).toBe('mid');
+    expect(importArg.category).toBe('imported');
+    expect(importArg.language).toBe('go');
+    expect(importArg.codeSmell).toBe('pending-analysis');
+    expect(importArg.code).toBe('package main\n\nfunc main() {}');
+    expect(importArg.repoUrl).toBe('src/main.go');
+    expect(importArg.sourceRepo).toBe('org/test-repo');
 
-    expect(routerMock.navigate).toHaveBeenCalledWith(['/dojo', 'temp-1234567890']);
+    expect(routerMock.navigate).toHaveBeenCalledWith(['/dojo', 'ch-new-id']);
   });
 
   it('should show file error when fetchFile fails', () => {

@@ -50,21 +50,55 @@ export class HttpChallengeRepository implements ChallengeRepository {
       return null;
     }
   }
+
+  async create(input: Omit<Challenge, 'id' | 'createdAt' | 'status'>): Promise<Challenge> {
+    const token = this.tokenProvider.getToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch(`${this.baseUrl}/challenges`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: input.title,
+        description: input.description,
+        difficulty: input.difficulty,
+        category: input.category,
+        language: input.language,
+        repoUrl: input.repoUrl,
+        sourceRepo: input.sourceRepo,
+        code: input.code,
+        codeSmell: input.codeSmell,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create challenge: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return mapSnakeToCamel(data);
+  }
 }
 
 // Map snake_case API fields to camelCase domain model fields.
 function mapSnakeToCamel(obj: Record<string, unknown>): Challenge {
   return {
-    id: obj.id as string,
-    title: obj.title as string,
-    description: obj.description as string,
-    difficulty: obj.difficulty as Challenge['difficulty'],
-    category: obj.category as string,
-    language: obj.language as string,
-    repoUrl: (obj.repo_url ?? obj.repoUrl) as string,
-    code: obj.code as string,
-    codeSmell: (obj.code_smell ?? obj.codeSmell) as string,
-    status: obj.status as Challenge['status'],
-    createdAt: new Date(obj.created_at as string ?? obj.createdAt as string),
+    id: obj['id'] as string,
+    title: obj['title'] as string,
+    description: obj['description'] as string,
+    difficulty: obj['difficulty'] as Challenge['difficulty'],
+    category: obj['category'] as string,
+    language: obj['language'] as string,
+    repoUrl: (obj['repo_url'] ?? obj['repoUrl']) as string,
+    code: obj['code'] as string,
+    codeSmell: (obj['code_smell'] ?? obj['codeSmell']) as string,
+    status: obj['status'] as Challenge['status'],
+    createdAt: new Date((obj['created_at'] ?? obj['createdAt']) as string),
+    sourceRepo: (obj['source_repo'] ?? obj['sourceRepo']) as string | undefined,
   };
 }

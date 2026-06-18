@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { VaultService, AuditSession, AuditStats } from '../../services/vault.service';
 import { ChallengeService } from '../../services/challenge.service';
-import { Challenge } from '../../../domain/models/challenge';
 
 @Component({
   selector: 'app-vault-page',
@@ -130,22 +129,19 @@ export class VaultPageComponent implements OnInit {
     });
   }
 
-  reAudit(session: AuditSession): void {
-    const challenge: Challenge = {
-      id: 'vault-' + session.id,
-      title: session.challenge_title,
+  async reAudit(session: AuditSession): Promise<void> {
+    const sourceRepo = `vault-${session.id}`;
+    const id = await this.challengeService.importChallenge({
+      title: session.challenge_title || 'Custom Audit',
       description: 'Re-auditoría del ' + new Date(session.created_at).toLocaleDateString(),
       difficulty: 'mid',
       category: 'vault',
       language: session.language,
       repoUrl: '',
+      sourceRepo,
       code: session.code_snippet,
       codeSmell: 'pending-analysis',
-      status: 'available',
-      createdAt: new Date(session.created_at),
-    };
-
-    const tempId = this.challengeService.addTempChallenge(challenge);
-    this.router.navigate(['/dojo', tempId]);
+    });
+    this.router.navigate(['/dojo', id]);
   }
 }
