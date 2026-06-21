@@ -55,8 +55,8 @@ Chain strategy: feature-branch-chain
 
 ## Phase 5: DockerSandbox Tests
 
-- [ ] 5.1 Add unit tests for command generation (no Docker daemon) — `dockersandbox_test.go`
-- [ ] 5.2 Add integration tests (skippable with `-short`) — `dockersandbox_test.go`
+- [x] 5.1 Add unit tests for command generation (no Docker daemon) — `dockersandbox_test.go`
+- [x] 5.2 Add integration tests (skippable with `-short`) — `dockersandbox_test.go`
 
 ## Phase 6: Wiring & Fixes
 
