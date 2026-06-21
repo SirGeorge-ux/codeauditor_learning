@@ -66,6 +66,6 @@ Chain strategy: feature-branch-chain
 
 ## Phase 7: Verification
 
-- [ ] 7.1 Run `go vet ./...` — no new warnings
-- [ ] 7.2 Run `go test ./...` — all existing + new tests pass
-- [ ] 7.3 Run `go test -short ./...` — Docker integration skipped cleanly
+- [x] 7.1 Run `go vet ./...` — no new warnings
+- [x] 7.2 Run `go test ./...` — all existing + new tests pass
+- [x] 7.3 Run `go test -short ./...` — Docker integration skipped cleanly
