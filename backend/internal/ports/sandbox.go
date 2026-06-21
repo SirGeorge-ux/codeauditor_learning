@@ -9,7 +9,7 @@ import (
 // It is a driven (secondary) port — the application use cases call it.
 type SandboxExecutor interface {
 	// Execute runs the given code snippet in an isolated environment.
-	// language must be one of: "python", "javascript", "go", "bash".
+	// language must be one of: "typescript", "javascript", "go", "python", "ruby", "php", "lua", "bash", "perl".
 	// stdout and stderr are streamed back via the returned ReadCloser.
 	Execute(ctx context.Context, language, code string, timeoutSeconds int) (io.ReadCloser, error)
 

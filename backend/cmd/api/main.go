@@ -18,6 +18,7 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
 	ollama "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox/providers"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
@@ -80,20 +81,24 @@ func main() {
 	authAdapter := supabase.NewSupabaseAuthAdapter(supabaseJWTsecret)
 	log.Println("JWT auth adapter initialized")
 
+	// Initialize the provider registry shared by both sandbox adapters.
+	registry := providers.NewDefaultRegistry()
+	log.Printf("Provider registry initialized: %d languages", len(registry.Languages()))
+
 	// Initialize sandbox executor
 	var sandboxExecutor ports.SandboxExecutor
 	switch sandboxMode {
 	case "docker":
-		sandboxExecutor = sandboxpkg.NewDockerSandbox(30 * time.Second)
+		sandboxExecutor = sandboxpkg.NewDockerSandbox(30*time.Second, registry)
 		log.Printf("Sandbox mode: docker")
 	case "local":
-		sandboxExecutor = sandboxpkg.NewLocalSandbox(30 * time.Second)
+		sandboxExecutor = sandboxpkg.NewLocalSandbox(30*time.Second, registry)
 		log.Printf("Sandbox mode: local")
 	default: // auto
-		dockerSb := sandboxpkg.NewDockerSandbox(30 * time.Second)
+		dockerSb := sandboxpkg.NewDockerSandbox(30*time.Second, registry)
 		if err := dockerSb.Healthcheck(context.Background()); err != nil {
 			log.Printf("Docker unavailable, falling back to LocalSandbox: %v", err)
-			sandboxExecutor = sandboxpkg.NewLocalSandbox(30 * time.Second)
+			sandboxExecutor = sandboxpkg.NewLocalSandbox(30*time.Second, registry)
 		} else {
 			sandboxExecutor = dockerSb
 			log.Printf("Sandbox mode: docker (auto)")
