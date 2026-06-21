@@ -61,7 +61,7 @@ Chain strategy: feature-branch-chain
 ## Phase 6: Wiring & Fixes
 
 - [x] 6.1 Wire `providers.NewDefaultRegistry()` into both sandboxes — `backend/cmd/api/main.go`
-- [ ] 6.2 Fix `"shell"` → `"bash"` in `inferLanguage()` — `gogs_handler.go`
+- [x] 6.2 Fix `"shell"` → `"bash"` in `inferLanguage()` — `gogs_handler.go`
 - [x] 6.3 Update `SandboxExecutor` comment — supported languages — `ports/sandbox.go`
 
 ## Phase 7: Verification
