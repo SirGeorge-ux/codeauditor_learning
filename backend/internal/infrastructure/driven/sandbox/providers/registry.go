@@ -42,6 +42,11 @@ func NewDefaultRegistry() *ProviderRegistry {
 	_ = r.Register(NewKotlinProvider())
 	_ = r.Register(NewScalaProvider())
 	_ = r.Register(NewGroovyProvider())
+	// Systems providers added in Oleada 3 — one file per language.
+	_ = r.Register(NewRustProvider())
+	_ = r.Register(NewCProvider())
+	_ = r.Register(NewCppProvider())
+	_ = r.Register(NewZigProvider())
 	return r
 }
 
