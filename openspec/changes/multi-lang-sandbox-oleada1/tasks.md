@@ -38,14 +38,14 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3: New Language Providers
 
-- [ ] 3.1 Create Python provider — `providers/python.go`
-- [ ] 3.2 Create Ruby provider — `providers/ruby.go`
-- [ ] 3.3 Create PHP provider — `providers/php.go`
-- [ ] 3.4 Create Lua provider — `providers/lua.go`
-- [ ] 3.5 Create Bash provider — `providers/bash.go`
-- [ ] 3.6 Create Perl provider — `providers/perl.go`
-- [ ] 3.7 Write unit tests for all 6 new providers — `providers/*_test.go`
-- [ ] 3.8 Update `NewDefaultRegistry()` to register all 6 — `providers/registry.go`
+- [x] 3.1 Create Python provider — `providers/python.go`
+- [x] 3.2 Create Ruby provider — `providers/ruby.go`
+- [x] 3.3 Create PHP provider — `providers/php.go`
+- [x] 3.4 Create Lua provider — `providers/lua.go`
+- [x] 3.5 Create Bash provider — `providers/bash.go`
+- [x] 3.6 Create Perl provider — `providers/perl.go`
+- [x] 3.7 Write unit tests for all 6 new providers — `providers/*_test.go`
+- [x] 3.8 Update `NewDefaultRegistry()` to register all 6 — `providers/registry.go`
 
 ## Phase 4: Refactor Sandboxes
 

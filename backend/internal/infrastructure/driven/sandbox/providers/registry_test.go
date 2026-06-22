@@ -33,6 +33,12 @@ func TestProviderRegistry_RegisterAndGet(t *testing.T) {
 		{name: "registered typescript", key: "typescript"},
 		{name: "registered javascript", key: "javascript"},
 		{name: "registered go", key: "go"},
+		{name: "registered python", key: "python"},
+		{name: "registered ruby", key: "ruby"},
+		{name: "registered php", key: "php"},
+		{name: "registered lua", key: "lua"},
+		{name: "registered bash", key: "bash"},
+		{name: "registered perl", key: "perl"},
 	}
 
 	r := NewDefaultRegistry()
@@ -135,7 +141,8 @@ func TestProviderRegistry_Languages(t *testing.T) {
 	r := NewDefaultRegistry()
 	got := r.Languages()
 
-	want := []string{"go", "javascript", "typescript"}
+	// Languages() is required to return all 9 registered keys, sorted.
+	want := []string{"bash", "go", "javascript", "lua", "perl", "php", "python", "ruby", "typescript"}
 	if len(got) != len(want) {
 		t.Fatalf("Languages() = %v, want %v", got, want)
 	}

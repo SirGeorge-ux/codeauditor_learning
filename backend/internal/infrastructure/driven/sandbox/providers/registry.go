@@ -20,14 +20,23 @@ func NewProviderRegistry() *ProviderRegistry {
 	return &ProviderRegistry{providers: make(map[string]ports.LanguageProvider)}
 }
 
-// NewDefaultRegistry returns a registry populated with the providers available in
-// the current oleada. For PR 1 this is TypeScript, JavaScript and Go. Future
-// oleadas register additional providers here.
+// NewDefaultRegistry returns a registry populated with every provider
+// available in the current oleada: TypeScript, JavaScript, Go, and the six
+// new languages (Python, Ruby, PHP, Lua, Bash, Perl). Future oleadas register
+// additional providers here.
 func NewDefaultRegistry() *ProviderRegistry {
 	r := NewProviderRegistry()
+	// Existing providers extracted from the original switch (Phase 2).
 	_ = r.Register(NewTypeScriptProvider())
 	_ = r.Register(NewJavaScriptProvider())
 	_ = r.Register(NewGoProvider())
+	// New providers added in Phase 3 — one file per language.
+	_ = r.Register(NewPythonProvider())
+	_ = r.Register(NewRubyProvider())
+	_ = r.Register(NewPhpProvider())
+	_ = r.Register(NewLuaProvider())
+	_ = r.Register(NewBashProvider())
+	_ = r.Register(NewPerlProvider())
 	return r
 }
 
