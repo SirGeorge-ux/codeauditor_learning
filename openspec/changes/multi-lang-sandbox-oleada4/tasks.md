@@ -21,8 +21,8 @@
 
 ## Phase 2: Data & Config Providers
 
-- [ ] 2.1 Create `json.go` and `json_test.go` — `sh -c` with `apk add --no-cache jq && jq . /code/code.json`, alpine:latest
-- [ ] 2.2 Create `yaml.go` and `yaml_test.go` — `sh -c` with `apk add --no-cache yq && yq . /code/code.yaml`, alpine:latest
+- [x] 2.1 Create `json.go` and `json_test.go` — `sh -c` with `apk add --no-cache jq && jq . /code/code.json`, alpine:latest
+- [x] 2.2 Create `yaml.go` and `yaml_test.go` — `sh -c` with `apk add --no-cache yq && yq . /code/code.yaml`, alpine:latest
 
 ## Phase 3: SQL Provider
 
