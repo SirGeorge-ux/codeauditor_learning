@@ -13,12 +13,12 @@ type stubProvider struct {
 	lang string
 }
 
-func (s stubProvider) Language() string                   { return s.lang }
-func (s stubProvider) FileExtension() string              { return ".x" }
-func (s stubProvider) DockerImage() string                { return "stub:latest" }
-func (s stubProvider) DockerCommand(_ string) []string     { return []string{"stub", "check"} }
-func (s stubProvider) LocalCommand() string               { return "stub" }
-func (s stubProvider) InstallHint() string                 { return "install stub" }
+func (s stubProvider) Language() string                { return s.lang }
+func (s stubProvider) FileExtension() string           { return ".x" }
+func (s stubProvider) DockerImage() string             { return "stub:latest" }
+func (s stubProvider) DockerCommand(_ string) []string { return []string{"stub", "check"} }
+func (s stubProvider) LocalCommand() string            { return "stub" }
+func (s stubProvider) InstallHint() string             { return "install stub" }
 
 var _ ports.LanguageProvider = stubProvider{}
 
@@ -53,6 +53,12 @@ func TestProviderRegistry_RegisterAndGet(t *testing.T) {
 		{name: "registered json", key: "json"},
 		{name: "registered yaml", key: "yaml"},
 		{name: "registered sql", key: "sql"},
+		{name: "registered csharp", key: "csharp"},
+		{name: "registered swift", key: "swift"},
+		{name: "registered haskell", key: "haskell"},
+		{name: "registered elixir", key: "elixir"},
+		{name: "registered clojure", key: "clojure"},
+		{name: "registered r", key: "r"},
 	}
 
 	r := NewDefaultRegistry()
@@ -131,23 +137,23 @@ func TestProviderRegistry_Register_Overwrites(t *testing.T) {
 // distinguishableProvider is a stub registered first under "python".
 type distinguishableProvider struct{}
 
-func (d *distinguishableProvider) Language() string               { return "python" }
+func (d *distinguishableProvider) Language() string                { return "python" }
 func (d *distinguishableProvider) FileExtension() string           { return ".py" }
 func (d *distinguishableProvider) DockerImage() string             { return "python:3.12-alpine" }
 func (d *distinguishableProvider) DockerCommand(_ string) []string { return []string{"ruff"} }
 func (d *distinguishableProvider) LocalCommand() string            { return "ruff" }
-func (d *distinguishableProvider) InstallHint() string              { return "pip install ruff" }
+func (d *distinguishableProvider) InstallHint() string             { return "pip install ruff" }
 
 // otherPythonProvider is a second stub under "python" used to assert that
 // Register overwrites (last-write-wins) by pointer identity.
 type otherPythonProvider struct{}
 
-func (o *otherPythonProvider) Language() string               { return "python" }
+func (o *otherPythonProvider) Language() string                { return "python" }
 func (o *otherPythonProvider) FileExtension() string           { return ".py" }
 func (o *otherPythonProvider) DockerImage() string             { return "other:latest" }
 func (o *otherPythonProvider) DockerCommand(_ string) []string { return []string{"other"} }
 func (o *otherPythonProvider) LocalCommand() string            { return "other" }
-func (o *otherPythonProvider) InstallHint() string              { return "install other" }
+func (o *otherPythonProvider) InstallHint() string             { return "install other" }
 
 func TestProviderRegistry_Languages(t *testing.T) {
 	t.Parallel()
@@ -155,8 +161,8 @@ func TestProviderRegistry_Languages(t *testing.T) {
 	r := NewDefaultRegistry()
 	got := r.Languages()
 
-	// Languages() is required to return all 23 registered keys, sorted.
-	want := []string{"bash", "c", "cpp", "css", "go", "groovy", "html", "java", "javascript", "json", "kotlin", "lua", "perl", "php", "python", "ruby", "rust", "scala", "sql", "typescript", "xml", "yaml", "zig"}
+	// Languages() is required to return all 29 registered keys, sorted.
+	want := []string{"bash", "c", "clojure", "cpp", "csharp", "css", "elixir", "go", "groovy", "haskell", "html", "java", "javascript", "json", "kotlin", "lua", "perl", "php", "python", "r", "ruby", "rust", "scala", "sql", "swift", "typescript", "xml", "yaml", "zig"}
 	if len(got) != len(want) {
 		t.Fatalf("Languages() = %v, want %v", got, want)
 	}

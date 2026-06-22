@@ -199,6 +199,14 @@ func inferLanguage(path string) string {
 		return "css"
 	case "sql":
 		return "sql"
+	case "r":
+		return "r"
+	case "hs":
+		return "haskell"
+	case "ex", "exs":
+		return "elixir"
+	case "clj":
+		return "clojure"
 	case "md":
 		return "markdown"
 	default:

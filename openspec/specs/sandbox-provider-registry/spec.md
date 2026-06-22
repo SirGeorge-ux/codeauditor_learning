@@ -414,17 +414,42 @@ The system MUST implement `LanguageProvider` for HTML, CSS, XML, JSON, YAML, and
 
 ---
 
-### Requirement: Registry Registration — 23 Languages
+### Requirement: Functional+.NET+Data+Apple Language Providers (Oleada 5)
 
-The system MUST register all 23 providers in `NewDefaultRegistry()`: the 17 existing (python, ruby, php, lua, bash, perl, typescript, javascript, go, java, kotlin, scala, groovy, rust, c, cpp, zig) plus 6 new (html, css, xml, json, yaml, sql).
+The system MUST implement `LanguageProvider` for C# (csharp), Swift, R, Haskell, Elixir, and Clojure.
 
-#### Scenario: Registry lists 23 languages
+| Language | File | Docker Image | Docker Command | Local Tool |
+|----------|------|-------------|----------------|------------|
+| csharp | `csharp.go` | `mono:latest` | `sh -c "mcs -out:/tmp/out.exe /code/code.cs && mono /tmp/out.exe"` | `mcs` |
+| swift | `swift.go` | `swift:latest` | `swift /code/code.swift` | `swift` |
+| r | `r.go` | `r-base:latest` | `Rscript /code/code.r` | `Rscript` |
+| haskell | `haskell.go` | `haskell:latest` | `runhaskell /code/code.hs` | `runhaskell` |
+| elixir | `elixir.go` | `elixir:alpine` | `elixir /code/code.exs` | `elixir` |
+| clojure | `clojure.go` | `clojure:latest` | `clojure -M /code/code.clj` | `clojure` |
+
+#### Scenario: C# compilation and execution
+- GIVEN the C# provider
+- WHEN `DockerCommand("code.cs")` is called
+- THEN it MUST return `["sh", "-c", "mcs -out:/tmp/out.exe /code/code.cs && mono /tmp/out.exe"]`
+
+#### Scenario: Single-file execution environments
+- GIVEN the Swift, R, Haskell, Elixir, or Clojure provider
+- WHEN `DockerCommand("code.ext")` is called
+- THEN it MUST return the appropriate runner command (`swift`, `Rscript`, `runhaskell`, `elixir`, `clojure`) with the `/code/code.ext` path.
+
+---
+
+### Requirement: Registry Registration — 29 Languages
+
+The system MUST register all 29 providers in `NewDefaultRegistry()`: the 23 existing (python, ruby, php, lua, bash, perl, typescript, javascript, go, java, kotlin, scala, groovy, rust, c, cpp, zig, html, css, xml, json, yaml, sql) plus 6 new (csharp, swift, r, haskell, elixir, clojure).
+
+#### Scenario: Registry lists 29 languages
 
 - GIVEN all providers are registered
 - WHEN `registry.Languages()` is called
-- THEN it MUST return exactly 23 sorted keys including `"html"`, `"css"`, `"xml"`, `"json"`, `"yaml"`, `"sql"`
+- THEN it MUST return exactly 29 sorted keys including `"csharp"`, `"swift"`, `"r"`, `"haskell"`, `"elixir"`, `"clojure"`
 
-#### Scenario: Registry resolves new Web+SQL languages
+#### Scenario: Registry resolves new Oleada 5 languages
 
 - GIVEN the default registry
 - WHEN `registry.Get("html")`, `registry.Get("css")`, `registry.Get("xml")`, `registry.Get("json")`, `registry.Get("yaml")`, and `registry.Get("sql")` are called
@@ -495,3 +520,33 @@ The system MUST map `.zig` file extensions to the `"zig"` language key in `gogs_
 - GIVEN `.rs`, `.c`, `.cpp` file extensions
 - WHEN `inferLanguage()` is called for each
 - THEN they MUST return `"rust"`, `"c"`, `"cpp"` respectively
+
+---
+
+### Requirement: Handler Extension Mapping — Oleada 5
+
+The system MUST map `.r`, `.hs`, `.ex`, `.exs`, and `.clj` file extensions to their corresponding language keys in `gogs_handler.go` `inferLanguage()`.
+
+#### Scenario: R file maps to r
+
+- GIVEN a `.r` file is imported via Gogs
+- WHEN `inferLanguage("script.r")` is called
+- THEN it MUST return `"r"`
+
+#### Scenario: Haskell file maps to haskell
+
+- GIVEN a `.hs` file is imported via Gogs
+- WHEN `inferLanguage("Main.hs")` is called
+- THEN it MUST return `"haskell"`
+
+#### Scenario: Elixir file maps to elixir
+
+- GIVEN a `.ex` or `.exs` file is imported via Gogs
+- WHEN `inferLanguage("test.exs")` is called
+- THEN it MUST return `"elixir"`
+
+#### Scenario: Clojure file maps to clojure
+
+- GIVEN a `.clj` file is imported via Gogs
+- WHEN `inferLanguage("core.clj")` is called
+- THEN it MUST return `"clojure"`

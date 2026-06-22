@@ -294,3 +294,26 @@ The audit system MUST support code auditing for HTML, CSS, XML, JSON, YAML, and 
 - GIVEN valid `AuditRequest` instances for each of the 23 supported languages
 - WHEN each is processed
 - THEN none MUST be rejected as unsupported
+
+---
+
+### Requirement: Language Audit (Oleada 5)
+
+The audit system MUST support code auditing for C#, Swift, R, Haskell, Elixir, and Clojure. Execution MUST correctly reflect standard output for valid code, and MUST capture standard error and non-zero exit codes for invalid syntax or compilation errors.
+
+#### Scenario: C# Compilation error
+- GIVEN a C# snippet with invalid syntax
+- WHEN the C# sandbox executes it
+- THEN it MUST return an error payload
+- AND stderr MUST contain a `mcs` compiler error
+
+#### Scenario: Functional language execution
+- GIVEN a valid Elixir, Haskell, or Clojure snippet
+- WHEN the respective sandbox executes it
+- THEN it MUST complete successfully
+- AND stdout MUST match the expected output
+
+#### Scenario: All 29 language keys valid
+- GIVEN valid `AuditRequest` instances for each of the 29 supported languages
+- WHEN each is processed
+- THEN none MUST be rejected as unsupported
