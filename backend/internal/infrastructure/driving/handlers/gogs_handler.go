@@ -185,6 +185,8 @@ func inferLanguage(path string) string {
 		return "groovy"
 	case "sh":
 		return "bash"
+	case "zig":
+		return "zig"
 	case "yml", "yaml":
 		return "yaml"
 	case "json":

@@ -438,6 +438,7 @@ func TestInferLanguage(t *testing.T) {
 		{"App.scala", "scala"},
 		{"Script.groovy", "groovy"},
 		{"run.sh", "bash"},
+		{"main.zig", "zig"},
 		{"data.xml", "xml"},
 		{"Makefile", "unknown"},
 		{"", "unknown"},
