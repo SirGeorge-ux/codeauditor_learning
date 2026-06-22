@@ -440,6 +440,11 @@ func TestInferLanguage(t *testing.T) {
 		{"run.sh", "bash"},
 		{"main.zig", "zig"},
 		{"data.xml", "xml"},
+		{"analysis.r", "r"},
+		{"Main.hs", "haskell"},
+		{"app.ex", "elixir"},
+		{"script.exs", "elixir"},
+		{"core.clj", "clojure"},
 		{"Makefile", "unknown"},
 		{"", "unknown"},
 	}
