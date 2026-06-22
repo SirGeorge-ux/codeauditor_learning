@@ -181,8 +181,10 @@ func inferLanguage(path string) string {
 		return "kotlin"
 	case "scala":
 		return "scala"
+	case "groovy":
+		return "groovy"
 	case "sh":
-		return "shell"
+		return "bash"
 	case "yml", "yaml":
 		return "yaml"
 	case "json":
