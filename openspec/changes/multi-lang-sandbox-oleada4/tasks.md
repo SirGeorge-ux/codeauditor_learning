@@ -30,5 +30,5 @@
 
 ## Phase 4: Registry Integration
 
-- [ ] 4.1 Update `registry.go` — Register HTML, CSS, XML, JSON, YAML, SQL in `NewDefaultRegistry()`
-- [ ] 4.2 Update `registry_test.go` — Assert 23 languages sorted, update `UnknownKey` test to use `"cobol"` instead of "rust" (which is now registered).
+- [x] 4.1 Update `registry.go` — Register HTML, CSS, XML, JSON, YAML, SQL in `NewDefaultRegistry()`
+- [x] 4.2 Update `registry_test.go` — Assert 23 languages sorted, update `UnknownKey` test to use `"cobol"` instead of "rust" (which is now registered).
