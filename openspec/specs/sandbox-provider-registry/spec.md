@@ -117,12 +117,18 @@ The system MUST have one provider file per language under `infrastructure/driven
 | kotlin | `kotlin.go` | `codeauditor/kotlin-compiler:2.0-alpine` | `kotlinc -d /tmp <file>` | `kotlinc` |
 | scala | `scala.go` | `scala:3.3.1-slim` | `scalac -d /tmp <file>` | `scalac` |
 | groovy | `groovy.go` | `groovy:4.0-jdk21-alpine` | `groovyc -d /tmp <file>` | `groovyc` |
+| html | `html.go` | `alpine:latest` | `cat /code/code.html` | `cat` |
+| css | `css.go` | `alpine:latest` | `cat /code/code.css` | `cat` |
+| xml | `xml.go` | `alpine:latest` | `cat /code/code.xml` | `cat` |
+| json | `json.go` | `alpine:latest` | `sh -c "apk add --no-cache jq && jq . /code/code.json"` | `jq` |
+| yaml | `yaml.go` | `alpine:latest` | `sh -c "apk add --no-cache yq && yq . /code/code.yaml"` | `yq` |
+| sql | `sql.go` | `alpine:latest` | `sh -c "apk add --no-cache sqlite && sqlite3 :memory: '.read /code/code.sql'"` | `sqlite3` |
 
 #### Scenario: All providers expose correct file extension
 
 - GIVEN each provider file
 - WHEN `FileExtension()` is called
-- THEN Python MUST return `".py"`, Ruby `".rb"`, PHP `".php"`, Lua `".lua"`, Bash `".sh"`, Perl `".pl"`, TypeScript `".ts"`, Go `".go"`, Java `".java"`, Kotlin `".kt"`, Scala `".scala"`, Groovy `".groovy"`
+- THEN Python MUST return `".py"`, Ruby `".rb"`, PHP `".php"`, Lua `".lua"`, Bash `".sh"`, Perl `".pl"`, TypeScript `".ts"`, Go `".go"`, Java `".java"`, Kotlin `".kt"`, Scala `".scala"`, Groovy `".groovy"`, HTML `".html"`, CSS `".css"`, XML `".xml"`, JSON `".json"`, YAML `".yaml"`, SQL `".sql"`
 
 #### Scenario: Docker images are pinned
 
@@ -373,27 +379,104 @@ The system MUST provide four new `LanguageProvider` implementations for systems 
 
 ---
 
-### Requirement: Registry Registration — 17 Languages
+### Requirement: Web+SQL Language Providers
 
-The system MUST register all 17 providers in `NewDefaultRegistry()`: the 13 existing (python, ruby, php, lua, bash, perl, typescript, javascript, go, java, kotlin, scala, groovy) plus 4 new (rust, c, cpp, zig).
+The system MUST implement `LanguageProvider` for HTML, CSS, XML, JSON, YAML, and SQL. All 6 MUST use the `alpine:latest` Docker image. HTML, CSS, and XML MUST use `cat /code/<filename>` for their execution command. JSON MUST use a shell wrapper to install and run `jq`. YAML MUST use a shell wrapper to install and run `yq`. SQL MUST use a shell wrapper to install and run `sqlite3` using an in-memory database to execute the SQL script.
 
-#### Scenario: Registry lists 17 languages
+| Language | File | Docker Image | Docker Command | Local Tool |
+|----------|------|-------------|----------------|------------|
+| html | `html.go` | `alpine:latest` | `cat /code/code.html` | `cat` |
+| css | `css.go` | `alpine:latest` | `cat /code/code.css` | `cat` |
+| xml | `xml.go` | `alpine:latest` | `cat /code/code.xml` | `cat` |
+| json | `json.go` | `alpine:latest` | `sh -c "apk add --no-cache jq && jq . /code/code.json"` | `jq` |
+| yaml | `yaml.go` | `alpine:latest` | `sh -c "apk add --no-cache yq && yq . /code/code.yaml"` | `yq` |
+| sql | `sql.go` | `alpine:latest` | `sh -c "apk add --no-cache sqlite && sqlite3 :memory: '.read /code/code.sql'"` | `sqlite3` |
+
+#### Scenario: Markup and Styles execution
+- GIVEN the HTML, CSS, or XML provider
+- WHEN `DockerCommand("code.ext")` is called
+- THEN it MUST return a command that executes `cat /code/code.ext`
+
+#### Scenario: JSON validation
+- GIVEN the JSON provider
+- WHEN `DockerCommand("code.json")` is called
+- THEN it MUST return a command that executes `sh -c "apk add --no-cache jq && jq . /code/code.json"`
+
+#### Scenario: YAML validation
+- GIVEN the YAML provider
+- WHEN `DockerCommand("code.yaml")` is called
+- THEN it MUST return a command that executes `sh -c "apk add --no-cache yq && yq . /code/code.yaml"`
+
+#### Scenario: SQL execution
+- GIVEN the SQL provider
+- WHEN `DockerCommand("code.sql")` is called
+- THEN it MUST return a command that executes `sh -c "apk add --no-cache sqlite && sqlite3 :memory: '.read /code/code.sql'"`
+
+---
+
+### Requirement: Registry Registration — 23 Languages
+
+The system MUST register all 23 providers in `NewDefaultRegistry()`: the 17 existing (python, ruby, php, lua, bash, perl, typescript, javascript, go, java, kotlin, scala, groovy, rust, c, cpp, zig) plus 6 new (html, css, xml, json, yaml, sql).
+
+#### Scenario: Registry lists 23 languages
 
 - GIVEN all providers are registered
 - WHEN `registry.Languages()` is called
-- THEN it MUST return exactly 17 sorted keys including `"rust"`, `"c"`, `"cpp"`, `"zig"`
+- THEN it MUST return exactly 23 sorted keys including `"html"`, `"css"`, `"xml"`, `"json"`, `"yaml"`, `"sql"`
 
-#### Scenario: Registry resolves new systems languages
+#### Scenario: Registry resolves new Web+SQL languages
 
 - GIVEN the default registry
-- WHEN `registry.Get("rust")`, `registry.Get("c")`, `registry.Get("cpp")`, and `registry.Get("zig")` are called
+- WHEN `registry.Get("html")`, `registry.Get("css")`, `registry.Get("xml")`, `registry.Get("json")`, `registry.Get("yaml")`, and `registry.Get("sql")` are called
 - THEN each MUST return the corresponding provider without error
 
-#### Scenario: Registry test expects 17 keys
+#### Scenario: Registry test expects 23 keys
 
 - GIVEN `registry_test.go`
 - WHEN the `Languages()` test assertion runs
-- THEN the expected slice MUST contain 17 entries
+- THEN the expected slice MUST contain 23 entries
+
+---
+
+### Requirement: Handler Extension Mapping — Web+SQL
+
+The system MUST map `.html`, `.css`, `.xml`, `.json`, `.yaml`, and `.sql` file extensions to their corresponding language keys in `gogs_handler.go` `inferLanguage()`.
+
+#### Scenario: HTML file maps to html
+
+- GIVEN a `.html` file is imported via Gogs
+- WHEN `inferLanguage("index.html")` is called
+- THEN it MUST return `"html"`
+
+#### Scenario: CSS file maps to css
+
+- GIVEN a `.css` file is imported via Gogs
+- WHEN `inferLanguage("styles.css")` is called
+- THEN it MUST return `"css"`
+
+#### Scenario: XML file maps to xml
+
+- GIVEN a `.xml` file is imported via Gogs
+- WHEN `inferLanguage("data.xml")` is called
+- THEN it MUST return `"xml"`
+
+#### Scenario: JSON file maps to json
+
+- GIVEN a `.json` file is imported via Gogs
+- WHEN `inferLanguage("config.json")` is called
+- THEN it MUST return `"json"`
+
+#### Scenario: YAML file maps to yaml
+
+- GIVEN a `.yaml` file is imported via Gogs
+- WHEN `inferLanguage("config.yaml")` is called
+- THEN it MUST return `"yaml"`
+
+#### Scenario: SQL file maps to sql
+
+- GIVEN a `.sql` file is imported via Gogs
+- WHEN `inferLanguage("query.sql")` is called
+- THEN it MUST return `"sql"`
 
 ---
 
