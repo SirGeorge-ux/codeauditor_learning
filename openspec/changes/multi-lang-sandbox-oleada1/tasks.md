@@ -26,15 +26,15 @@ Chain strategy: feature-branch-chain
 
 ## Phase 1: Provider Interface & Registry
 
-- [ ] 1.1 Create `LanguageProvider` interface — `backend/internal/ports/provider.go`
-- [ ] 1.2 Create `ProviderRegistry` with `Register()`/`Get()` — `providers/registry.go`
-- [ ] 1.3 Write registry tests (valid key, unknown key, overwrite, Languages) — `providers/registry_test.go`
+- [x] 1.1 Create `LanguageProvider` interface — `backend/internal/ports/provider.go`
+- [x] 1.2 Create `ProviderRegistry` with `Register()`/`Get()` — `providers/registry.go`
+- [x] 1.3 Write registry tests (valid key, unknown key, overwrite, Languages) — `providers/registry_test.go`
 
 ## Phase 2: Extract Existing Language Providers
 
-- [ ] 2.1 Extract TypeScript/JavaScript provider from current switch — `providers/typescript.go`
-- [ ] 2.2 Extract Go provider from current switch — `providers/go.go`
-- [ ] 2.3 Write unit tests for TS and Go providers — `providers/typescript_test.go`, `providers/go_test.go`
+- [x] 2.1 Extract TypeScript/JavaScript provider from current switch — `providers/typescript.go`
+- [x] 2.2 Extract Go provider from current switch — `providers/go.go`
+- [x] 2.3 Write unit tests for TS and Go providers — `providers/typescript_test.go`, `providers/go_test.go`
 
 ## Phase 3: New Language Providers
 
