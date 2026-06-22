@@ -21,9 +21,9 @@ func NewProviderRegistry() *ProviderRegistry {
 }
 
 // NewDefaultRegistry returns a registry populated with every provider
-// available in the current oleada: TypeScript, JavaScript, Go, and the six
-// new languages (Python, Ruby, PHP, Lua, Bash, Perl). Future oleadas register
-// additional providers here.
+// available: TypeScript, JavaScript, Go, the six scripting languages (Python,
+// Ruby, PHP, Lua, Bash, Perl), and the four JVM languages (Java, Kotlin,
+// Scala, Groovy). Future oleadas register additional providers here.
 func NewDefaultRegistry() *ProviderRegistry {
 	r := NewProviderRegistry()
 	// Existing providers extracted from the original switch (Phase 2).
@@ -37,6 +37,11 @@ func NewDefaultRegistry() *ProviderRegistry {
 	_ = r.Register(NewLuaProvider())
 	_ = r.Register(NewBashProvider())
 	_ = r.Register(NewPerlProvider())
+	// JVM providers added in Oleada 2 — one file per language.
+	_ = r.Register(NewJavaProvider())
+	_ = r.Register(NewKotlinProvider())
+	_ = r.Register(NewScalaProvider())
+	_ = r.Register(NewGroovyProvider())
 	return r
 }
 

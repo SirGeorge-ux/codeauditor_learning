@@ -436,6 +436,7 @@ func TestInferLanguage(t *testing.T) {
 		{"app.swift", "swift"},
 		{"app.kt", "kotlin"},
 		{"App.scala", "scala"},
+		{"Script.groovy", "groovy"},
 		{"run.sh", "bash"},
 		{"data.xml", "xml"},
 		{"Makefile", "unknown"},
