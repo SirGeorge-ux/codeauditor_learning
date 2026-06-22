@@ -49,23 +49,23 @@ Chain strategy: feature-branch-chain
 
 ## Phase 4: Refactor Sandboxes
 
-- [ ] 4.1 Replace `switch language` with `registry.Get(lang)` in LocalSandbox — `localsandbox.go`
-- [ ] 4.2 Replace `switch language` with `registry.Get(lang)` in DockerSandbox — `dockersandbox.go`
-- [ ] 4.3 Refactor `localsandbox_test.go` to table-driven (all 8 languages) — `localsandbox_test.go`
+- [x] 4.1 Replace `switch language` with `registry.Get(lang)` in LocalSandbox — `localsandbox.go`
+- [x] 4.2 Replace `switch language` with `registry.Get(lang)` in DockerSandbox — `dockersandbox.go`
+- [x] 4.3 Refactor `localsandbox_test.go` to table-driven (all 8 languages) — `localsandbox_test.go`
 
 ## Phase 5: DockerSandbox Tests
 
-- [ ] 5.1 Add unit tests for command generation (no Docker daemon) — `dockersandbox_test.go`
-- [ ] 5.2 Add integration tests (skippable with `-short`) — `dockersandbox_test.go`
+- [x] 5.1 Add unit tests for command generation (no Docker daemon) — `dockersandbox_test.go`
+- [x] 5.2 Add integration tests (skippable with `-short`) — `dockersandbox_test.go`
 
 ## Phase 6: Wiring & Fixes
 
-- [ ] 6.1 Wire `providers.NewDefaultRegistry()` into both sandboxes — `backend/cmd/api/main.go`
-- [ ] 6.2 Fix `"shell"` → `"bash"` in `inferLanguage()` — `gogs_handler.go`
-- [ ] 6.3 Update `SandboxExecutor` comment — supported languages — `ports/sandbox.go`
+- [x] 6.1 Wire `providers.NewDefaultRegistry()` into both sandboxes — `backend/cmd/api/main.go`
+- [x] 6.2 Fix `"shell"` → `"bash"` in `inferLanguage()` — `gogs_handler.go`
+- [x] 6.3 Update `SandboxExecutor` comment — supported languages — `ports/sandbox.go`
 
 ## Phase 7: Verification
 
-- [ ] 7.1 Run `go vet ./...` — no new warnings
-- [ ] 7.2 Run `go test ./...` — all existing + new tests pass
-- [ ] 7.3 Run `go test -short ./...` — Docker integration skipped cleanly
+- [x] 7.1 Run `go vet ./...` — no new warnings
+- [x] 7.2 Run `go test ./...` — all existing + new tests pass
+- [x] 7.3 Run `go test -short ./...` — Docker integration skipped cleanly

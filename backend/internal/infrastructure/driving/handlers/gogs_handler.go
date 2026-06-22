@@ -182,7 +182,7 @@ func inferLanguage(path string) string {
 	case "scala":
 		return "scala"
 	case "sh":
-		return "shell"
+		return "bash"
 	case "yml", "yaml":
 		return "yaml"
 	case "json":
