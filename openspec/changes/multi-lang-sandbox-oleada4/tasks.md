@@ -26,7 +26,7 @@
 
 ## Phase 3: SQL Provider
 
-- [ ] 3.1 Create `sql.go` and `sql_test.go` — `sh -c` with `apk add --no-cache sqlite && sqlite3 :memory: '.read /code/code.sql'`, alpine:latest
+- [x] 3.1 Create `sql.go` and `sql_test.go` — `sh -c` with `apk add --no-cache sqlite && sqlite3 :memory: '.read /code/code.sql'`, alpine:latest
 
 ## Phase 4: Registry Integration
 
