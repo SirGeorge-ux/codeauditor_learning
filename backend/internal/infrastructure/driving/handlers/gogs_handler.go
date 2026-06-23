@@ -217,6 +217,16 @@ func inferLanguage(path string) string {
 		return "julia"
 	case "nim":
 		return "nim"
+	case "ps1":
+		return "powershell"
+	case "m":
+		return "objective-c"
+	case "fs", "fsx":
+		return "fsharp"
+	case "cbl", "cob":
+		return "cobol"
+	case "rkt":
+		return "racket"
 	case "md":
 		return "markdown"
 	default:

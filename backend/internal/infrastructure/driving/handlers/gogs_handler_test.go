@@ -450,6 +450,13 @@ func TestInferLanguage(t *testing.T) {
 		{"app.dart", "dart"},
 		{"script.jl", "julia"},
 		{"main.nim", "nim"},
+		{"script.ps1", "powershell"},
+		{"main.m", "objective-c"},
+		{"script.fs", "fsharp"},
+		{"script.fsx", "fsharp"},
+		{"program.cbl", "cobol"},
+		{"program.cob", "cobol"},
+		{"main.rkt", "racket"},
 		{"Makefile", "unknown"},
 		{"", "unknown"},
 	}
