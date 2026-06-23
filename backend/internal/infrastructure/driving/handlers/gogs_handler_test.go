@@ -445,6 +445,11 @@ func TestInferLanguage(t *testing.T) {
 		{"app.ex", "elixir"},
 		{"script.exs", "elixir"},
 		{"core.clj", "clojure"},
+		{"Contract.sol", "solidity"},
+		{"main.erl", "erlang"},
+		{"app.dart", "dart"},
+		{"script.jl", "julia"},
+		{"main.nim", "nim"},
 		{"Makefile", "unknown"},
 		{"", "unknown"},
 	}

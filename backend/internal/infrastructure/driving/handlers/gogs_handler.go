@@ -207,6 +207,16 @@ func inferLanguage(path string) string {
 		return "elixir"
 	case "clj":
 		return "clojure"
+	case "sol":
+		return "solidity"
+	case "erl":
+		return "erlang"
+	case "dart":
+		return "dart"
+	case "jl":
+		return "julia"
+	case "nim":
+		return "nim"
 	case "md":
 		return "markdown"
 	default:
