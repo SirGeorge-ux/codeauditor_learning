@@ -24,9 +24,11 @@ func NewProviderRegistry() *ProviderRegistry {
 // available: TypeScript, JavaScript, Go, the six scripting languages (Python,
 // Ruby, PHP, Lua, Bash, Perl), the four JVM languages (Java, Kotlin, Scala,
 // Groovy), the four systems languages (Rust, C, C++, Zig), the six Web+SQL
-// languages added in Oleada 4 (HTML, CSS, XML, JSON, YAML, SQL), and the six
+// languages added in Oleada 4 (HTML, CSS, XML, JSON, YAML, SQL), the six
 // functional/.NET/data/Apple languages added in Oleada 5 (C#, Swift, Haskell,
-// Elixir, Clojure, R). Future oleadas register additional providers here.
+// Elixir, Clojure, R), and the crypto/niche/BEAM languages added in Oleada 6
+// (Solidity, Erlang, Dart, Julia, Nim). Future oleadas register additional
+// providers here.
 func NewDefaultRegistry() *ProviderRegistry {
 	r := NewProviderRegistry()
 	// Existing providers extracted from the original switch (Phase 2).
@@ -64,6 +66,12 @@ func NewDefaultRegistry() *ProviderRegistry {
 	_ = r.Register(NewElixirProvider())
 	_ = r.Register(NewClojureProvider())
 	_ = r.Register(NewRProvider())
+	// Crypto/Niche/BEAM providers added in Oleada 6 — one file per language.
+	_ = r.Register(NewSolidityProvider())
+	_ = r.Register(NewErlangProvider())
+	_ = r.Register(NewDartProvider())
+	_ = r.Register(NewJuliaProvider())
+	_ = r.Register(NewNimProvider())
 	return r
 }
 

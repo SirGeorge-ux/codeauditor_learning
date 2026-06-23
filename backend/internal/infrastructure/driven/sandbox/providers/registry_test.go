@@ -59,6 +59,11 @@ func TestProviderRegistry_RegisterAndGet(t *testing.T) {
 		{name: "registered elixir", key: "elixir"},
 		{name: "registered clojure", key: "clojure"},
 		{name: "registered r", key: "r"},
+		{name: "registered solidity", key: "solidity"},
+		{name: "registered erlang", key: "erlang"},
+		{name: "registered dart", key: "dart"},
+		{name: "registered julia", key: "julia"},
+		{name: "registered nim", key: "nim"},
 	}
 
 	r := NewDefaultRegistry()
@@ -161,8 +166,8 @@ func TestProviderRegistry_Languages(t *testing.T) {
 	r := NewDefaultRegistry()
 	got := r.Languages()
 
-	// Languages() is required to return all 29 registered keys, sorted.
-	want := []string{"bash", "c", "clojure", "cpp", "csharp", "css", "elixir", "go", "groovy", "haskell", "html", "java", "javascript", "json", "kotlin", "lua", "perl", "php", "python", "r", "ruby", "rust", "scala", "sql", "swift", "typescript", "xml", "yaml", "zig"}
+	// Languages() is required to return all 34 registered keys, sorted.
+	want := []string{"bash", "c", "clojure", "cpp", "csharp", "css", "dart", "elixir", "erlang", "go", "groovy", "haskell", "html", "java", "javascript", "json", "julia", "kotlin", "lua", "nim", "perl", "php", "python", "r", "ruby", "rust", "scala", "solidity", "sql", "swift", "typescript", "xml", "yaml", "zig"}
 	if len(got) != len(want) {
 		t.Fatalf("Languages() = %v, want %v", got, want)
 	}

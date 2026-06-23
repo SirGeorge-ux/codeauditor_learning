@@ -26,6 +26,6 @@
 
 ## Phase 3: Integration
 
-- [ ] 3.1 Update `registry.go` — Register Solidity, Erlang, Dart, Julia, Nim in `NewDefaultRegistry()`
-- [ ] 3.2 Update `registry_test.go` — Assert 34 languages sorted, update tests
-- [ ] 3.3 Update `gogs_handler.go` y `gogs_handler_test.go` — Add `.sol`, `.erl`, `.dart`, `.jl`, `.nim` inferences
+- [x] 3.1 Update `registry.go` — Register Solidity, Erlang, Dart, Julia, Nim in `NewDefaultRegistry()`
+- [x] 3.2 Update `registry_test.go` — Assert 34 languages sorted, update tests
+- [x] 3.3 Update `gogs_handler.go` y `gogs_handler_test.go` — Add `.sol`, `.erl`, `.dart`, `.jl`, `.nim` inferences
