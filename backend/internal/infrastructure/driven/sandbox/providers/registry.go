@@ -72,6 +72,12 @@ func NewDefaultRegistry() *ProviderRegistry {
 	_ = r.Register(NewDartProvider())
 	_ = r.Register(NewJuliaProvider())
 	_ = r.Register(NewNimProvider())
+	// Legacy/Niche providers added in Oleada 7 — one file per language.
+	_ = r.Register(NewCobolProvider())
+	_ = r.Register(NewObjectiveCProvider())
+	_ = r.Register(NewFSharpProvider())
+	_ = r.Register(NewPowerShellProvider())
+	_ = r.Register(NewRacketProvider())
 	return r
 }
 

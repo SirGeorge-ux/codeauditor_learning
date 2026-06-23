@@ -64,6 +64,11 @@ func TestProviderRegistry_RegisterAndGet(t *testing.T) {
 		{name: "registered dart", key: "dart"},
 		{name: "registered julia", key: "julia"},
 		{name: "registered nim", key: "nim"},
+		{name: "registered cobol", key: "cobol"},
+		{name: "registered objective-c", key: "objective-c"},
+		{name: "registered fsharp", key: "fsharp"},
+		{name: "registered powershell", key: "powershell"},
+		{name: "registered racket", key: "racket"},
 	}
 
 	r := NewDefaultRegistry()
@@ -91,7 +96,7 @@ func TestProviderRegistry_Get_UnknownKey(t *testing.T) {
 	t.Parallel()
 
 	r := NewDefaultRegistry()
-	p, err := r.Get("cobol")
+	p, err := r.Get("brainfuck")
 	if err == nil {
 		t.Fatalf("expected error for unknown language, got provider %T", p)
 	}
@@ -166,8 +171,8 @@ func TestProviderRegistry_Languages(t *testing.T) {
 	r := NewDefaultRegistry()
 	got := r.Languages()
 
-	// Languages() is required to return all 34 registered keys, sorted.
-	want := []string{"bash", "c", "clojure", "cpp", "csharp", "css", "dart", "elixir", "erlang", "go", "groovy", "haskell", "html", "java", "javascript", "json", "julia", "kotlin", "lua", "nim", "perl", "php", "python", "r", "ruby", "rust", "scala", "solidity", "sql", "swift", "typescript", "xml", "yaml", "zig"}
+	// Languages() is required to return all 39 registered keys, sorted.
+	want := []string{"bash", "c", "clojure", "cobol", "cpp", "csharp", "css", "dart", "elixir", "erlang", "fsharp", "go", "groovy", "haskell", "html", "java", "javascript", "json", "julia", "kotlin", "lua", "nim", "objective-c", "perl", "php", "powershell", "python", "r", "racket", "ruby", "rust", "scala", "solidity", "sql", "swift", "typescript", "xml", "yaml", "zig"}
 	if len(got) != len(want) {
 		t.Fatalf("Languages() = %v, want %v", got, want)
 	}
