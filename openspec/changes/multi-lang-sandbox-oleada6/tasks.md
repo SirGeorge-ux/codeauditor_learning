@@ -20,9 +20,9 @@
 
 ## Phase 2: Niche Providers
 
-- [ ] 2.1 Create `dart.go` and `dart_test.go` — `dart:latest`, `dart run /code/code.dart`
-- [ ] 2.2 Create `julia.go` and `julia_test.go` — `julia:latest`, `julia /code/code.jl`
-- [ ] 2.3 Create `nim.go` and `nim_test.go` — `nimlang/nim:alpine`, `nim c -r --hints:off /code/code.nim`
+- [x] 2.1 Create `dart.go` and `dart_test.go` — `dart:latest`, `dart run /code/code.dart`
+- [x] 2.2 Create `julia.go` and `julia_test.go` — `julia:latest`, `julia /code/code.jl`
+- [x] 2.3 Create `nim.go` and `nim_test.go` — `nimlang/nim:alpine`, `nim c -r --hints:off /code/code.nim`
 
 ## Phase 3: Integration
 
