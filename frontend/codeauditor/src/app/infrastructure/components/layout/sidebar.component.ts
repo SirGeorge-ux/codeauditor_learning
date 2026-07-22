@@ -1,7 +1,7 @@
 import { Component, signal, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { LucideLayoutDashboard, LucideBinary, LucideServer, LucideShield } from '@lucide/angular';
+import { LucideLayoutDashboard, LucideBinary, LucideServer, LucideShield, LucideUser } from '@lucide/angular';
 
 interface NavItem {
   icon: string;
@@ -19,6 +19,7 @@ interface NavItem {
     LucideBinary,
     LucideServer,
     LucideShield,
+    LucideUser,
   ],
   template: `
     <aside
@@ -62,6 +63,9 @@ interface NavItem {
               @case ('vault') {
                 <svg lucideShield class="w-5 h-5"></svg>
               }
+              @case ('profile') {
+                <svg lucideUser class="w-5 h-5"></svg>
+              }
             }
             @if (!isCollapsed()) {
               <span>{{ item.label }}</span>
@@ -81,6 +85,7 @@ export class SidebarComponent {
     { icon: 'dojo', label: 'Dojo', route: '/dojo' },
     { icon: 'mcp', label: 'MCP Connections', route: '/mcp' },
     { icon: 'vault', label: 'Vault', route: '/vault' },
+    { icon: 'profile', label: 'Profile', route: '/profile' },
   ];
 
   constructor() {

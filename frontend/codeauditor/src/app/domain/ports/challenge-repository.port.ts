@@ -1,6 +1,6 @@
 // ChallengeRepository — port interface for challenge data access.
 //
-// Implemented by infrastructure layer (mock or real backend).
+// Implemented by the infrastructure layer (HTTP adapter).
 // Zero framework imports. Pure TypeScript interface.
 import { Challenge } from '../models/challenge';
 

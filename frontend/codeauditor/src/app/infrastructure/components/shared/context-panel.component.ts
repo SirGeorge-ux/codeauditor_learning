@@ -23,35 +23,30 @@ import { Challenge } from '../../../domain/models/challenge';
             </p>
           </div>
 
-          <!-- Repository Origin -->
+          <!-- Provenance -->
           <div>
             <h3
               class="text-sm font-semibold text-dojo-text mb-2"
               style="font-family: Inter, sans-serif;"
             >
-              Repository Origin
+              Source
             </h3>
             <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">—</p>
           </div>
 
-          <!-- Code Smell Info -->
+          <!-- Difficulty / Category -->
           <div>
             <h3
               class="text-sm font-semibold text-dojo-text mb-2"
               style="font-family: Inter, sans-serif;"
             >
-              Code Smell
+              Difficulty
             </h3>
-            <div class="space-y-1">
-              <span
-                class="inline-block px-2 py-0.5 bg-dojo-surface rounded-sm text-xs text-dojo-text border border-dojo-border"
-              >
-                None
-              </span>
-              <p class="text-xs text-dojo-text opacity-70" style="font-family: Inter, sans-serif;">
-                No code smell selected.
-              </p>
-            </div>
+            <span
+              class="inline-block px-2 py-0.5 bg-dojo-surface rounded-sm text-xs text-dojo-text border border-dojo-border"
+            >
+              —
+            </span>
           </div>
         </div>
       } @else {
@@ -66,7 +61,7 @@ import { Challenge } from '../../../domain/models/challenge';
             </h3>
           </div>
 
-          <!-- Challenge Description -->
+          <!-- Challenge Description (context only, never names the smell) -->
           <div>
             <h3
               class="text-sm font-semibold text-dojo-text mb-2"
@@ -79,48 +74,80 @@ import { Challenge } from '../../../domain/models/challenge';
             </p>
           </div>
 
-          <!-- Repository Origin -->
+          <!-- Difficulty / Category / Language -->
           <div>
             <h3
               class="text-sm font-semibold text-dojo-text mb-2"
               style="font-family: Inter, sans-serif;"
             >
-              Repository Origin
+              Profile
+            </h3>
+            <div class="flex items-center gap-2">
+              <span
+                class="inline-block px-2 py-0.5 rounded-sm text-xs font-medium {{
+                  difficultyColor(challenge.difficulty)
+                }}"
+              >
+                {{ challenge.difficulty }}
+              </span>
+              <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
+                {{ challenge.category }}
+              </span>
+              <span class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]">
+                {{ challenge.language }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Estimated time -->
+          <div>
+            <h3
+              class="text-sm font-semibold text-dojo-text mb-2"
+              style="font-family: Inter, sans-serif;"
+            >
+              Estimated Time
             </h3>
             <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">
-              {{ challenge.repoUrl }}
+              {{ challenge.estimatedTimeMinutes }} min
             </p>
           </div>
 
-          <!-- Code Smell Info -->
+          <!-- Learning Objectives -->
+          @if (challenge.learningObjectives.length > 0) {
+            <div>
+              <h3
+                class="text-sm font-semibold text-dojo-text mb-2"
+                style="font-family: Inter, sans-serif;"
+              >
+                Learning Objectives
+              </h3>
+              <ul class="space-y-1">
+                @for (obj of challenge.learningObjectives; track obj) {
+                  <li
+                    class="text-xs text-dojo-text opacity-70"
+                    style="font-family: Inter, sans-serif;"
+                  >
+                    • {{ obj }}
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          <!-- Provenance (v2 origin / sourceRepo) -->
           <div>
             <h3
               class="text-sm font-semibold text-dojo-text mb-2"
               style="font-family: Inter, sans-serif;"
             >
-              Code Smell
+              Source
             </h3>
-            <div class="space-y-2">
-              <span
-                class="inline-block px-2 py-0.5 bg-[#F85149]/10 rounded-sm text-xs text-[#F85149] border border-[#F85149]/30"
-              >
-                {{ challenge.codeSmell }}
-              </span>
-              <div class="flex items-center gap-2">
-                <span
-                  class="inline-block px-2 py-0.5 rounded-sm text-xs font-medium {{
-                    difficultyColor(challenge.difficulty)
-                  }}"
-                >
-                  {{ challenge.difficulty }}
-                </span>
-                <span
-                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]"
-                >
-                  {{ challenge.category }}
-                </span>
-              </div>
-            </div>
+            <p class="text-xs text-dojo-text opacity-70" style="font-family: monospace;">
+              {{ challenge.origin }}
+              @if (challenge.sourceRepo) {
+                &nbsp;·&nbsp; {{ challenge.sourceRepo }}
+              }
+            </p>
           </div>
         </div>
       }

@@ -4,3 +4,4 @@
 // They must NOT contain HTTP handlers, Angular components, or direct DB calls.
 export * from './audit.use-case';
 export * from './challenge.use-case';
+export * from './progress.use-case';

@@ -3,9 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChallengeService } from './challenge.service';
 import { ChallengeUseCase } from '../../application/challenge.use-case';
 import { Challenge } from '../../domain/models/challenge';
+import { ChallengeRepository } from '../../domain/ports/challenge-repository.port';
 
 // Manual DI — no TestBed needed. Uses optional constructor parameter.
-class MockChallengeRepository {
+// This is an inline fake for unit testing ChallengeService, NOT the
+// deleted MockChallengeRepository schema adapter.
+class FakeChallengeRepository {
   getAll = vi.fn<() => Promise<Challenge[]>>();
   getById = vi.fn<(id: string) => Promise<Challenge | null>>();
   create = vi.fn<(input: Omit<Challenge, 'id' | 'createdAt' | 'status'>) => Promise<Challenge>>();
@@ -13,12 +16,12 @@ class MockChallengeRepository {
 
 describe('ChallengeService', () => {
   let service: ChallengeService;
-  let mockRepo: MockChallengeRepository;
+  let mockRepo: FakeChallengeRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRepo = new MockChallengeRepository();
-    const useCase = new ChallengeUseCase(mockRepo as any);
+    mockRepo = new FakeChallengeRepository();
+    const useCase = new ChallengeUseCase(mockRepo as unknown as ChallengeRepository);
     service = new ChallengeService(useCase);
   });
 
@@ -27,31 +30,53 @@ describe('ChallengeService', () => {
       const created: Challenge = {
         id: 'ch-new',
         title: 'New Challenge',
-        description: 'Imported from Gogs',
+        description: 'Imported file from a repository.',
         difficulty: 'mid',
         category: 'imported',
         language: 'go',
-        repoUrl: '',
-        sourceRepo: 'ggogsmic/academy-mic',
         code: 'package main',
-        codeSmell: 'pending-analysis',
         status: 'available',
         createdAt: new Date('2025-06-19T00:00:00.000Z'),
+        createdBy: 'ggogsmic',
+        learningObjectives: [],
+        hints: [],
+        commonMistakes: [],
+        estimatedTimeMinutes: 0,
+        expectedFindings: [],
+        testCases: [],
+        linterRules: [],
+        basePoints: 0,
+        bonusPoints: 0,
+        penaltyPerHint: 0,
+        timeBonus: false,
+        origin: 'imported',
+        sourceRepo: 'ggogsmic/academy-mic',
       };
 
       mockRepo.create.mockResolvedValue(created);
       mockRepo.getAll.mockResolvedValue([created]);
 
-      const input = {
+      const input: Omit<Challenge, 'id' | 'createdAt' | 'status'> = {
         title: 'New Challenge',
-        description: 'Imported from Gogs',
-        difficulty: 'mid' as const,
+        description: 'Imported file from a repository.',
+        difficulty: 'mid',
         category: 'imported',
         language: 'go',
-        repoUrl: '',
-        sourceRepo: 'GgogsMIC/academy-mic',
         code: 'package main',
-        codeSmell: 'pending-analysis',
+        createdBy: 'ggogsmic',
+        sourceRepo: 'GgogsMIC/academy-mic',
+        learningObjectives: [],
+        hints: [],
+        commonMistakes: [],
+        estimatedTimeMinutes: 0,
+        expectedFindings: [],
+        testCases: [],
+        linterRules: [],
+        basePoints: 0,
+        bonusPoints: 0,
+        penaltyPerHint: 0,
+        timeBonus: false,
+        origin: 'imported',
       };
 
       const id = await service.importChallenge(input);
@@ -64,16 +89,27 @@ describe('ChallengeService', () => {
     it('should throw if create fails', async () => {
       mockRepo.create.mockRejectedValue(new Error('Network error'));
 
-      const input = {
-        title: 'New Challenge',
+      const input: Omit<Challenge, 'id' | 'createdAt' | 'status'> = {
+        title: 'T',
         description: 'desc',
-        difficulty: 'mid' as const,
+        difficulty: 'mid',
         category: 'imported',
         language: 'go',
-        repoUrl: '',
-        sourceRepo: 'owner/repo',
         code: 'code',
-        codeSmell: 'smell',
+        createdBy: 'ggogsmic',
+        sourceRepo: 'owner/repo',
+        learningObjectives: [],
+        hints: [],
+        commonMistakes: [],
+        estimatedTimeMinutes: 0,
+        expectedFindings: [],
+        testCases: [],
+        linterRules: [],
+        basePoints: 0,
+        bonusPoints: 0,
+        penaltyPerHint: 0,
+        timeBonus: false,
+        origin: 'gogs',
       };
 
       await expect(service.importChallenge(input)).rejects.toThrow('Network error');
@@ -84,17 +120,27 @@ describe('ChallengeService', () => {
     it('should delegate to the use case repository', async () => {
       const challenge: Challenge = {
         id: 'ch-xss',
-        title: 'XSS',
-        description: 'Cross-site scripting',
+        title: 'Login Form',
+        description: 'A user comment feature.',
         difficulty: 'junior',
         category: 'security',
         language: 'typescript',
-        repoUrl: 'https://github.com/example/social-app',
-        sourceRepo: undefined,
         code: 'some code',
-        codeSmell: 'Cross-Site Scripting',
         status: 'available',
         createdAt: new Date('2025-01-02T00:00:00.000Z'),
+        createdBy: 'curated',
+        learningObjectives: [],
+        hints: [],
+        commonMistakes: [],
+        estimatedTimeMinutes: 15,
+        expectedFindings: [],
+        testCases: [],
+        linterRules: [],
+        basePoints: 100,
+        bonusPoints: 50,
+        penaltyPerHint: 15,
+        timeBonus: true,
+        origin: 'curated',
       };
 
       mockRepo.getById.mockResolvedValue(challenge);

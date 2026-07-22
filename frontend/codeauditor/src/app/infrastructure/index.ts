@@ -8,4 +8,4 @@
 export * from './supabase.adapter';
 export * from './ollama.adapter';
 export * from './services/challenge.service';
-export * from './repositories/mock-challenge.repository';
+export * from './repositories/http-challenge.repository';

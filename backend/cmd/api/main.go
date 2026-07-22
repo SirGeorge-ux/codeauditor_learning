@@ -119,8 +119,9 @@ func main() {
 		log.Println("Ollama not configured — AI analysis disabled")
 	}
 
-	// Initialize user progress service
-	progressService := services.NewUserProgressService(db)
+	// Initialize user progress service (hexagonal: adapter implements the port)
+	progressRepo := supabase.NewSupabaseProgressRepository(db)
+	progressService := services.NewUserProgressService(progressRepo)
 	auditService.WithProgress(progressService)
 	log.Println("User progress tracking enabled")
 
@@ -133,7 +134,12 @@ func main() {
 	// Initialize challenge service
 	challengeService := services.NewChallengeService(db)
 	challengeHandler := handlers.NewChallengeHandler(challengeService)
+	auditService.WithChallengeService(challengeService)
 	log.Println("Challenge service initialized")
+
+	// Initialize progress handler (user language progress + learning profile)
+	progressHandler := handlers.NewProgressHandler(progressService)
+	log.Println("Progress handler initialized")
 
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
@@ -194,6 +200,12 @@ func main() {
 		r.Get("/challenges", challengeHandler.ListChallenges)
 		r.Get("/challenges/{id}", challengeHandler.GetChallenge)
 		r.Post("/challenges", challengeHandler.CreateChallenge)
+		// User progress endpoints (JWT user_id must match path :id)
+		r.Get("/users/{id}/progress", progressHandler.GetAllProgress)
+		r.Get("/users/{id}/progress/{lang}", progressHandler.GetLanguageProgress)
+		r.Put("/users/{id}/progress/{lang}", progressHandler.UpdateLanguageProgress)
+		r.Get("/users/{id}/learning-profile", progressHandler.GetLearningProfile)
+		r.Put("/users/{id}/learning-profile", progressHandler.UpdateLearningProfile)
 	})
 
 	addr := ":" + port

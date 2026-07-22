@@ -4,4 +4,7 @@ export * from './audit-event';
 export * from './audit-session';
 export * from './challenge';
 export * from './finding';
+export * from './language-progress';
+export * from './learning-profile';
+export * from './score-breakdown';
 export * from './user';

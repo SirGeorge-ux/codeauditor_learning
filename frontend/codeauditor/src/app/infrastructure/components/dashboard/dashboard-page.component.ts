@@ -74,9 +74,14 @@ import { ChallengeService } from '../../services/challenge.service';
                   {{ challenge.language }}
                 </span>
                 <span
-                  class="inline-block px-2 py-0.5 bg-dojo-surface rounded-sm text-xs text-[#F85149] border border-[#F85149]"
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#39D353]"
                 >
-                  {{ challenge.codeSmell }}
+                  {{ challenge.basePoints }} pts
+                </span>
+                <span
+                  class="inline-block px-2 py-0.5 bg-[#21262D] rounded-sm text-xs text-[#8B949E]"
+                >
+                  {{ challenge.estimatedTimeMinutes }} min
                 </span>
               </div>
 

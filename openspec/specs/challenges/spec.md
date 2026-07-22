@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Retrieve code-audit challenges from a PostgreSQL database via authenticated REST API, replacing hardcoded mock data. Enables dynamic challenge management while preserving backward compatibility with the frontend domain model and port interfaces.
+Retrieve code-audit challenges from a PostgreSQL database via authenticated REST API, using a v2 Challenge model with JSONB fields for hints, expected findings, test cases, linter rules, and scoring metadata. Replaces hardcoded mock data and the v1 schema. Supports progressive hint disclosure, automated scoring, and context-only descriptions that avoid spoilers.
 
 ## Requirements
 
@@ -31,88 +31,56 @@ The system MUST define a `public.challenges` table matching the `Challenge` doma
 
 ### Requirement: Seed Data
 
-The system MUST provide an idempotent SQL seed file (`003_seed_challenges.sql`) that inserts all 8 challenges from `MockChallengeRepository`. The file MUST use `DO $$ ... END $$` blocks with existence checks (`WHERE NOT EXISTS`) to ensure idempotency. Each challenge MUST use its original mock ID (e.g., `ch-sqli`, `ch-xss`).
+The system MUST provide an idempotent SQL seed file (`005_seed_challenges_v2.sql`) that replaces the 8 curated challenges with v2 data. The file MUST use `ON CONFLICT (id) DO UPDATE` for idempotency. Each challenge MUST include: full v2 description (context-only, no spoilers), 1-3 expected_findings, 2-4 test_cases, 1-3 linter_rules, 3 progressive hints, solution_code, and solution_explanation.
+(Previously: seeded v1 challenges from MockChallengeRepository with code_smell field only)
 
-#### Scenario: First-time seed
+#### Scenario: v2 seed replaces all 8 challenges
 
-- GIVEN an empty `public.challenges` table
-- WHEN `003_seed_challenges.sql` is executed
-- THEN all 8 challenges MUST be inserted with correct data
+- GIVEN the `public.challenges` table has 8 v1 challenges
+- WHEN `005_seed_challenges_v2.sql` is executed
+- THEN all 8 challenges MUST be updated with v2 fields
+- AND no duplicate rows are created
 
-#### Scenario: Re-run seed is idempotent
+#### Scenario: v2 seed is idempotent
 
-- GIVEN all 8 challenges already exist in the table
-- WHEN `003_seed_challenges.sql` is executed again
-- THEN no duplicate rows MUST be created
-- AND the total row count MUST remain 8
+- GIVEN all 8 challenges already have v2 data
+- WHEN `005_seed_challenges_v2.sql` is executed again
+- THEN the data MUST remain unchanged (ON CONFLICT DO UPDATE with same values)
 
 ### Requirement: Backend Challenge Service
 
-The system MUST implement `ChallengeService` in `backend/internal/core/services/challenge_service.go` with a `*sql.DB` dependency via constructor injection. It MUST expose `GetAll(ctx context.Context) ([]Challenge, error)` returning challenges WHERE `user_id IS NULL OR user_id = $currentUser` with status='available', ordered by `created_at DESC`. It MUST expose `GetByID(ctx context.Context, id string) (Challenge, error)` returning a single challenge or 404 error if not found. If the challenge exists but `user_id` belongs to another user (and is not NULL), MUST return not-found error. The pattern MUST follow `AuditHistoryService`.
-(Previously: returned all challenges and any by ID without ownership filtering)
+The system MUST update `ChallengeService` in `backend/internal/core/services/challenge_service.go` to parse v2 JSONB fields when reading challenges from PostgreSQL. The `GetByID` method MUST exclude `solution_code` and `solution_explanation` from the response unless explicitly requested with a `reveal_solution` flag (for tutor use only). The `Create` method MUST validate v2 model constraints (expected_findings 1-3, test_cases 2-4, exactly 3 hints).
+(Previously: returned raw v1 columns without JSONB parsing or solution filtering)
 
-#### Scenario: Get all challenges — seeds + owned
+#### Scenario: GetByID excludes solution by default
 
-- GIVEN the database contains 8 seeded challenges (user_id=NULL) and 2 user-owned challenges
-- WHEN `GetAll(ctx)` is called with `currentUser='u1'`
-- THEN it MUST return all 10 challenges ordered by `created_at DESC`
+- GIVEN a v2 challenge exists with solution_code and solution_explanation
+- WHEN `GetByID(ctx, "ch-sqli")` is called without reveal_solution
+- THEN the returned challenge MUST have empty solution_code and solution_explanation
 
-#### Scenario: Get all challenges — excludes other users
+#### Scenario: Create validates v2 constraints
 
-- GIVEN challenge A has `user_id='u2'` and challenge B has `user_id=NULL`
-- WHEN `GetAll(ctx)` is called with `currentUser='u1'`
-- THEN it MUST return challenge B but NOT challenge A
-
-#### Scenario: Get challenge by valid ID — owned or public
-
-- GIVEN a challenge exists with id='ch-sqli' and `user_id=NULL`
-- WHEN `GetByID(ctx, "ch-sqli")` is called by any authenticated user
-- THEN it MUST return that challenge
-
-#### Scenario: Get challenge by ID — other user's private
-
-- GIVEN a challenge exists with id='ch-private' and `user_id='u2'`
-- WHEN `GetByID(ctx, "ch-private")` is called with `currentUser='u1'`
-- THEN it MUST return a not-found error
-
-#### Scenario: Get challenge by non-existent ID
-
-- GIVEN no challenge exists with id='ch-nonexistent'
-- WHEN `GetByID(ctx, "ch-nonexistent")` is called
-- THEN it MUST return an error (sql.ErrNoRows or wrapped equivalent)
+- GIVEN a challenge payload with 0 expected_findings
+- WHEN `Create` is called
+- THEN it MUST return a validation error
 
 ### Requirement: Backend Challenge Handler
 
-The system MUST implement `ChallengeHandler` in `backend/internal/infrastructure/driving/handlers/challenge_handler.go` with `ChallengeService` dependency via constructor injection. It MUST expose `ListChallenges(w, r)` for `GET /api/v1/challenges` and `GetChallenge(w, r)` for `GET /api/v1/challenges/{id}` and `CreateChallenge(w, r)` for `POST /api/v1/challenges`. Responses MUST use `json.NewEncoder(w).Encode()`. Empty results MUST return `[]` (not null). Not-found MUST return HTTP 404 with JSON error body. `GetChallenge` MUST return 404 if challenge belongs to another user.
-(Previously: only exposed ListChallenges and GetChallenge, no CreateChallenge)
+The system MUST update `ChallengeHandler` responses to include v2 fields (`hints`, `expected_findings`, `test_cases`, `linter_rules`, `base_points`, etc.) in JSON responses. The `GET /api/v1/challenges/{id}` endpoint MUST accept an optional query parameter `?reveal_solution=true` that, when present AND the requesting user has Senior+ rank or is using the tutor context, includes `solution_code` and `solution_explanation` in the response.
+(Previously: returned only v1 fields — title, description, difficulty, category, language, repo_url, code, code_smell)
 
-#### Scenario: List all challenges — includes seeds + owned
+#### Scenario: List returns v2 fields
 
-- GIVEN 8 seeded challenges (user_id=NULL) and 2 user-owned challenges exist
-- WHEN an authenticated user sends `GET /api/v1/challenges`
-- THEN the response MUST be HTTP 200 with a JSON array of 10 challenges
+- GIVEN 8 v2 challenges exist in the database
+- WHEN `GET /api/v1/challenges` is called
+- THEN the response MUST include hints, expected_findings, test_cases, linter_rules, base_points for each challenge
+- AND solution_code and solution_explanation MUST be absent
 
-#### Scenario: Get single challenge — public seed
+#### Scenario: Reveal solution with valid permission
 
-- GIVEN seeded challenge 'ch-sqli' exists with `user_id=NULL`
-- WHEN an authenticated user sends `GET /api/v1/challenges/ch-sqli`
-- THEN the response MUST be HTTP 200 with the challenge as JSON
-
-#### Scenario: Get challenge — other user's private returns 404
-
-- GIVEN challenge 'ch-private' exists with `user_id='u2'`
-- WHEN user 'u1' sends `GET /api/v1/challenges/ch-private`
-- THEN the response MUST be HTTP 404
-
-#### Scenario: Challenge not found
-
-- WHEN an authenticated user sends `GET /api/v1/challenges/ch-nonexistent`
-- THEN the response MUST be HTTP 404 with a JSON error body
-
-#### Scenario: Unauthenticated request
-
-- WHEN a request lacks a valid JWT
-- THEN the endpoint MUST return HTTP 401 (enforced by `AuthMiddleware`)
+- GIVEN a Senior+ user requests `GET /api/v1/challenges/ch-sqli?reveal_solution=true`
+- WHEN the request is processed
+- THEN the response MUST include solution_code and solution_explanation
 
 ### Requirement: Route Registration
 
@@ -126,31 +94,20 @@ The system MUST register challenge routes under `/api/v1/challenges` in the Chi 
 
 ### Requirement: Frontend HTTP Repository
 
-The system MUST implement `HttpChallengeRepository` in `frontend/.../repositories/http-challenge.repository.ts` implementing the `ChallengeRepository` port. It MUST use the native `fetch` API with manual `Authorization: Bearer <token>` header (NOT HttpClient). The token MUST be retrieved from `AuthService`. `getAll()` MUST return `[]` on network error. `getById(id)` MUST return `null` on 404 or network error.
+The system MUST update `HttpChallengeRepository` to parse v2 JSONB response fields into the updated `Challenge` domain model. The repository MUST map backend snake_case fields (`expected_findings`, `test_cases`, `linter_rules`, `base_points`, `time_bonus`) to frontend camelCase (`expectedFindings`, `testCases`, `linterRules`, `basePoints`, `timeBonus`). The `getAll()` and `getById()` methods MUST handle null/missing v2 fields gracefully (default to empty arrays or zero values).
+(Previously: mapped only v1 fields — codeSmell, repoUrl, sourceRepo)
 
-#### Scenario: Fetch all challenges successfully
+#### Scenario: Parse v2 response with all fields
 
-- GIVEN the backend returns 8 challenges
-- WHEN `getAll()` is called with a valid auth token
-- THEN it MUST return an array of 8 Challenge objects
-
-#### Scenario: Network error on getAll
-
-- GIVEN the backend is unreachable
-- WHEN `getAll()` is called
-- THEN it MUST return an empty array `[]` (not throw)
-
-#### Scenario: Get challenge by ID — not found
-
-- GIVEN the backend returns HTTP 404
-- WHEN `getById("ch-nonexistent")` is called
-- THEN it MUST return `null`
-
-#### Scenario: Network error on getById
-
-- GIVEN the backend is unreachable
+- GIVEN the backend returns a full v2 challenge JSON
 - WHEN `getById("ch-sqli")` is called
-- THEN it MUST return `null`
+- THEN the returned Challenge MUST have populated expectedFindings, testCases, linterRules, hints, basePoints
+
+#### Scenario: Handle missing v2 fields gracefully
+
+- GIVEN the backend returns a challenge with null test_cases
+- WHEN the repository parses the response
+- THEN testCases MUST default to an empty array `[]` (not null or undefined)
 
 ### Requirement: Frontend Service Wiring
 
@@ -176,30 +133,6 @@ The system MUST update `ChallengeService` to instantiate `HttpChallengeRepositor
 - WHEN `importChallenge()` completes
 - THEN the challenge MUST be persisted via backend POST
 - AND the challenges list MUST be reloaded
-
-### Requirement: Backward Compatibility
-
-The `Challenge` domain model in the frontend MAY add `sourceRepo?: string` optional field. The `ChallengeRepository` port interface MUST NOT change existing method signatures (`getAll()`, `getById(id)`). Existing 8 seed challenges MUST remain accessible to all authenticated users.
-(Previously: Challenge model had no sourceRepo field)
-
-#### Scenario: Domain model gains optional sourceRepo
-
-- GIVEN the existing `Challenge` interface
-- WHEN the migration is complete
-- THEN `sourceRepo?: string` MUST be an optional field
-- AND all existing fields and types MUST remain identical
-
-#### Scenario: Port interface unchanged
-
-- GIVEN the existing `ChallengeRepository` interface
-- WHEN `HttpChallengeRepository` is implemented with `create()`
-- THEN existing methods `getAll()` and `getById(id)` MUST satisfy the interface without signature changes
-
-#### Scenario: Seed challenges remain accessible
-
-- GIVEN 8 seed challenges exist with `user_id=NULL`
-- WHEN any authenticated user calls `getAll()`
-- THEN all 8 seed challenges MUST be included in the results
 
 ### Requirement: Database Schema — Ownership Columns
 
@@ -336,7 +269,7 @@ The system MUST implement `ChallengeService.importChallenge()` as async, returni
 #### Scenario: getChallenge no longer checks Map
 
 - GIVEN `importChallenge()` has persisted a challenge
-- WHEN `getChallenge(id)` is called
+- WHEN `GetChallenge(id)` is called
 - THEN it MUST fetch from the repository only (no Map lookup)
 
 #### Scenario: Challenges reload after import
@@ -344,3 +277,126 @@ The system MUST implement `ChallengeService.importChallenge()` as async, returni
 - GIVEN `importChallenge()` succeeds
 - WHEN the import completes
 - THEN the challenges list MUST be reloaded from the repository
+
+### Requirement: Challenge model v2
+
+The system MUST persist challenges with the v2 model, replacing the v1 schema. The `Challenge` struct/interface SHALL include: `id` (string), `title` (string), `description` (string — context only, no spoilers), `difficulty` ('junior'|'mid'|'senior'|'architect'), `language` (string), `category` ('security'|'performance'|'refactor'|'style'|'concurrency'|'architecture'), `learning_objectives` ([]string), `hints` ([]Hint), `common_mistakes` ([]string), `estimated_time_minutes` (int), `code` (string — vulnerable code), `expected_findings` ([]ExpectedFinding, 1-3 items), `test_cases` ([]TestCase, 2-4 items), `linter_rules` ([]LinterRule), `solution_code` (string), `solution_explanation` (string), `base_points` (int), `bonus_points` (int), `penalty_per_hint` (int), `time_bonus` (bool), `origin` ('curated'|'generated'|'imported'|'gogs'|'github'), `created_at` (timestamp), `created_by` (string).
+
+#### Scenario: Import a v2 challenge
+
+- GIVEN a valid v2 challenge payload with all required fields
+- WHEN the challenge is persisted to PostgreSQL
+- THEN all v2 fields are stored including JSONB arrays (hints, expected_findings, test_cases, linter_rules)
+- AND solution_code and solution_explanation are persisted but NEVER returned to the frontend
+
+#### Scenario: v2 model validation — expected_findings count
+
+- GIVEN a challenge with 0 expected_findings
+- WHEN the challenge is validated
+- THEN validation MUST fail with "expected_findings must have 1-3 items"
+
+#### Scenario: v2 model validation — test_cases count
+
+- GIVEN a challenge with 1 test_case
+- WHEN the challenge is validated
+- THEN validation MUST fail with "test_cases must have 2-4 items"
+
+#### Scenario: v2 model validation — hints count
+
+- GIVEN a challenge with 4 hints
+- WHEN the challenge is validated
+- THEN validation MUST fail with "exactly 3 hints required"
+
+### Requirement: Scoring engine
+
+The system MUST implement a pure Go `ScoringService` in `backend/internal/core/services/scoring_service.go` with zero infrastructure imports. The score formula SHALL be: `score = base_points + (tests_passed × weight × 30) + (lint_clean × 20) + (findings_matched × 10) - (hints_used × cost) + time_bonus`. The service MUST accept an `AuditSession` and `Challenge` and return a `ScoreBreakdown` struct. Score MUST NOT be negative (floor at 0).
+
+#### Scenario: Perfect solution scores maximum
+
+- GIVEN a challenge with base_points=100, 2 test_cases (weight=5 each), 1 linter_rule, 2 expected_findings, time_bonus=true, no hints used
+- WHEN the user passes all tests, all lint rules, matches all findings, and finishes under estimated_time
+- THEN score = 100 + (2×5×30) + (1×20) + (2×10) + time_bonus = 470 + time_bonus
+
+#### Scenario: Partial findings yield partial points
+
+- GIVEN a challenge with 3 expected_findings
+- WHEN the user's audit detects only 1 of 3 findings
+- THEN findings_matched points = 1 × 10 = 10
+
+#### Scenario: Zero tests yields zero test points
+
+- GIVEN a challenge with 3 test_cases but the user's code passes 0
+- WHEN score is calculated
+- THEN test_points = 0 (not negative)
+
+#### Scenario: All 3 hints used applies full penalty
+
+- GIVEN a challenge with hints costing [0, 10, 25] points
+- WHEN the user uses all 3 hints
+- THEN hints_penalty = 0 + 10 + 25 = 35 points deducted
+
+#### Scenario: Score floors at zero
+
+- GIVEN base_points=50 and hints_penalty=80
+- WHEN score is calculated
+- THEN final score = 0 (not -30)
+
+### Requirement: Description anti-spoiler rule
+
+The system SHALL enforce that every challenge `description` provides context about the code's purpose and environment WITHOUT naming the code smell, vulnerability, or fix. The `description` MUST NOT contain: the smell name (e.g., "SQL injection", "XSS", "God Class"), the fix technique (e.g., "parametrized queries", "sanitize input"), or line numbers pointing to the issue.
+
+#### Scenario: Description passes no-spoiler test
+
+- GIVEN a challenge description for ch-sqli
+- WHEN a developer reads only the description (not the code)
+- THEN they cannot determine the vulnerability type from the description alone
+
+#### Scenario: Spoiler-containing description rejected
+
+- GIVEN a challenge description contains "SQL injection" or "parametrized queries"
+- WHEN the challenge is validated
+- THEN validation MUST fail with "description contains spoiler content"
+
+### Requirement: Hint system
+
+The system SHALL provide exactly 3 progressive hints per challenge. Hint level 1 SHALL be free (cost=0), level 2 SHALL cost 10 points, level 3 SHALL cost 25 points. Each hint MUST be progressively more revealing without giving away the solution. The `Hint` struct SHALL include: `level` (1|2|3), `content` (string), `cost_points` (int). Hints are revealed sequentially — level N+1 is unavailable until level N is consumed.
+
+#### Scenario: First hint is free
+
+- GIVEN a user requests hint level 1 on any challenge
+- WHEN the hint is revealed
+- THEN cost_points = 0 and no penalty is applied
+
+#### Scenario: Sequential hint unlock
+
+- GIVEN a user has NOT consumed hint level 1
+- WHEN the user requests hint level 2
+- THEN the system MUST reject the request with "hint 1 must be consumed first"
+
+#### Scenario: Hint penalty applied to score
+
+- GIVEN a user consumes hint level 2 (cost=10) and completes the audit
+- WHEN the score is calculated
+- THEN hints_penalty includes 10 points deducted
+
+### Requirement: Delete MockChallengeRepository
+
+The system MUST permanently delete `frontend/codeauditor/src/app/infrastructure/repositories/mock-challenge.repository.ts`. No file in the codebase SHALL import from this module. All challenge data MUST come from the HTTP API backed by PostgreSQL.
+
+#### Scenario: Mock repository deleted
+
+- GIVEN the codebase is built
+- WHEN `mock-challenge.repository.ts` is searched in the repository
+- THEN the file MUST NOT exist
+- AND no import statement references it
+
+### Requirement: DB migration — v2 JSONB columns
+
+The system MUST add JSONB columns to `public.challenges` via migration: `learning_objectives` (JSONB array), `hints` (JSONB array), `common_mistakes` (JSONB array), `estimated_time_minutes` (INTEGER), `expected_findings` (JSONB array), `test_cases` (JSONB array), `linter_rules` (JSONB array), `solution_code` (TEXT), `solution_explanation` (TEXT), `base_points` (INTEGER DEFAULT 100), `bonus_points` (INTEGER DEFAULT 50), `penalty_per_hint` (INTEGER DEFAULT 10), `time_bonus` (BOOLEAN DEFAULT false), `origin` (TEXT DEFAULT 'curated'), `created_by` (TEXT). All new columns SHALL be nullable to support backward compatibility during migration.
+
+#### Scenario: Migration adds v2 columns
+
+- GIVEN the `public.challenges` table exists with v1 columns
+- WHEN migration `005_add_v2_challenge_fields.sql` is executed
+- THEN all v2 JSONB and scalar columns MUST exist
+- AND existing v1 rows MUST have NULL for new columns (no data loss)

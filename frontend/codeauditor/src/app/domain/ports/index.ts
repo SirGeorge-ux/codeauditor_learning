@@ -7,3 +7,4 @@ export * from './audit-repository.port';
 export * from './auth.port';
 export * from './challenge-repository.port';
 export * from './llm.port';
+export * from './progress-repository.port';

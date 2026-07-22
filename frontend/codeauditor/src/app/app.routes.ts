@@ -8,6 +8,7 @@ import { DashboardPageComponent } from './infrastructure/components/dashboard/da
 import { DojoPageComponent } from './infrastructure/components/dojo/dojo-page.component';
 import { McpPageComponent } from './infrastructure/components/mcp/mcp-page.component';
 import { VaultPageComponent } from './infrastructure/components/vault/vault-page.component';
+import { ProfilePageComponent } from './infrastructure/components/profile/profile-page.component';
 
 export const routes: Routes = [
   {
@@ -32,6 +33,7 @@ export const routes: Routes = [
       { path: 'dojo/:id', component: DojoPageComponent },
       { path: 'mcp', component: McpPageComponent },
       { path: 'vault', component: VaultPageComponent },
+      { path: 'profile', component: ProfilePageComponent },
     ],
   },
   {

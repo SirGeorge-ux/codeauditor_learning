@@ -16,10 +16,11 @@ import (
 
 // AuditService orchestrates sandbox execution, Ollama analysis, and SSE streaming.
 type AuditService struct {
-	sandbox      ports.SandboxExecutor
-	ollamaClient *ollamadriven.Client
-	progress     *UserProgressService
-	history      *AuditHistoryService
+	sandbox          ports.SandboxExecutor
+	ollamaClient     *ollamadriven.Client
+	progress         *UserProgressService
+	history          *AuditHistoryService
+	challengeService *ChallengeService
 }
 
 // NewAuditService creates a new AuditService.
@@ -45,12 +46,50 @@ func (s *AuditService) WithHistory(h *AuditHistoryService) *AuditService {
 	return s
 }
 
+// WithChallengeService attaches a ChallengeService so that AuditService can
+// look up challenge learning objectives and base points when recording audit
+// completions via UserProgressService.
+func (s *AuditService) WithChallengeService(cs *ChallengeService) *AuditService {
+	s.challengeService = cs
+	return s
+}
+
 // RunAudit executes the audit and streams results via SSE.
 func (s *AuditService) RunAudit(ctx context.Context, req models.AuditRequest, streamer ports.SSEStreamer, clientID string) error {
 	var output strings.Builder
 
+	// recordProgress records the audit attempt against the user's per-language
+	// progress. completed mirrors the spec's AuditSession.status: true ==
+	// "completed" (full scoring path, anti-gaming dedup, topics); false ==
+	// "failed" (challenges_intentados only). It is a no-op when the progress
+	// service is unconfigured or the request is not tied to a specific challenge.
+	recordProgress := func(completed bool) {
+		if s.progress == nil || req.UserID == "" || req.ChallengeID == "" {
+			return
+		}
+		var score int
+		var learningObjectives []string
+		// Only look up challenge metadata for successful audits; the failed
+		// path ignores score and learningObjectives entirely.
+		if completed && s.challengeService != nil {
+			challenge, err := s.challengeService.GetByID(ctx, req.ChallengeID, req.UserID)
+			if err != nil {
+				log.Printf("Failed to look up challenge %s for progress: %v", req.ChallengeID, err)
+			} else {
+				score = challenge.BasePoints
+				learningObjectives = challenge.LearningObjectives
+			}
+		}
+		if err := s.progress.RecordAuditCompletion(ctx, req.UserID, req.Language, req.ChallengeID, score, learningObjectives, completed); err != nil {
+			log.Printf("Failed to record progress for user %s: %v", req.UserID, err)
+		}
+	}
+
 	reader, err := s.sandbox.Execute(ctx, req.Language, req.Code, 30)
 	if err != nil {
+		// The sandbox could not run the audit — record the attempt as a
+		// failure (challenges_intentados only) before signaling the client.
+		recordProgress(false)
 		payload := map[string]string{"message": err.Error()}
 		data, _ := json.Marshal(payload)
 		event := models.AuditEvent{
@@ -83,12 +122,10 @@ func (s *AuditService) RunAudit(ctx context.Context, req models.AuditRequest, st
 		s.runOllamaAnalysis(ctx, req, output.String(), streamer, clientID)
 	}
 
-	// Record user progress (optional — only if service is configured)
-	if s.progress != nil && req.UserID != "" {
-		if err := s.progress.RecordAuditAttempt(ctx, req.UserID); err != nil {
-			log.Printf("Failed to record progress for user %s: %v", req.UserID, err)
-		}
-	}
+	// Record user progress (optional — only if service is configured and
+	// the audit is tied to a specific challenge). On the happy path the
+	// audit completed successfully, so the full scoring path applies.
+	recordProgress(true)
 
 	// Save to audit history (optional)
 	if s.history != nil && req.UserID != "" {

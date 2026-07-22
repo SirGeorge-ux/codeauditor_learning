@@ -137,10 +137,21 @@ export class VaultPageComponent implements OnInit {
       difficulty: 'mid',
       category: 'vault',
       language: session.language,
-      repoUrl: '',
       sourceRepo,
       code: session.code_snippet,
-      codeSmell: 'pending-analysis',
+      createdBy: 'ggogsmic',
+      learningObjectives: [],
+      hints: [],
+      commonMistakes: [],
+      estimatedTimeMinutes: 0,
+      expectedFindings: [],
+      testCases: [],
+      linterRules: [],
+      basePoints: 0,
+      bonusPoints: 0,
+      penaltyPerHint: 0,
+      timeBonus: false,
+      origin: 'imported',
     });
     this.router.navigate(['/dojo', id]);
   }

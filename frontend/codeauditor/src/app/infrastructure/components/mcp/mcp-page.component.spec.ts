@@ -166,10 +166,12 @@ describe('McpPageComponent', () => {
     expect(importArg.difficulty).toBe('mid');
     expect(importArg.category).toBe('imported');
     expect(importArg.language).toBe('go');
-    expect(importArg.codeSmell).toBe('pending-analysis');
+    expect(importArg.origin).toBe('gogs'); // v2 provenance replaces codeSmell
+    expect(importArg.sourcePath).toBe('src/main.go'); // v2 path replaces repoUrl
     expect(importArg.code).toBe('package main\n\nfunc main() {}');
-    expect(importArg.repoUrl).toBe('src/main.go');
     expect(importArg.sourceRepo).toBe('org/test-repo');
+    expect(importArg.learningObjectives).toEqual([]);
+    expect(importArg.hints).toEqual([]);
 
     expect(routerMock.navigate).toHaveBeenCalledWith(['/dojo', 'ch-new-id']);
   });

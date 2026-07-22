@@ -41,6 +41,11 @@ func (h *ChallengeHandler) ListChallenges(w http.ResponseWriter, r *http.Request
 }
 
 // GetChallenge handles GET /api/v1/challenges/{id}.
+//
+// Pass ?reveal_solution=true to include solution_code and solution_explanation
+// in the response. The request MUST also include the header
+// `X-Reveal-Authorized: true` — this is a placeholder gate for the real
+// rank/tutor-context authorization that will be implemented in S2.
 func (h *ChallengeHandler) GetChallenge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -49,8 +54,29 @@ func (h *ChallengeHandler) GetChallenge(w http.ResponseWriter, r *http.Request) 
 	}
 
 	userID := authmiddleware.GetUserID(r.Context())
+	revealSolution := r.URL.Query().Get("reveal_solution") == "true"
 
-	challenge, err := h.service.GetByID(r.Context(), id, userID)
+	// Authorization gate: if the caller requests the solution, verify they
+	// are authorized. This is a placeholder for the full rank/tutor check
+	// that will come in S2.
+	if revealSolution {
+		if r.Header.Get("X-Reveal-Authorized") != "true" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "Solution reveal requires authorization",
+			})
+			return
+		}
+	}
+
+	var challenge models.Challenge
+	var err error
+	if revealSolution {
+		challenge, err = h.service.GetChallengeWithDetails(r.Context(), id, userID)
+	} else {
+		challenge, err = h.service.GetByID(r.Context(), id, userID)
+	}
 	if err != nil {
 		if errors.Is(err, services.ErrChallengeNotFound) {
 			w.Header().Set("Content-Type", "application/json")
@@ -88,7 +114,7 @@ func (h *ChallengeHandler) CreateChallenge(w http.ResponseWriter, r *http.Reques
 
 	challenge, created, err := h.service.Create(r.Context(), input, userID)
 	if err != nil {
-		if errors.Is(err, services.ErrInvalidDifficulty) {
+		if services.IsValidationError(err) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
