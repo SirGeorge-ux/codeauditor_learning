@@ -435,3 +435,13 @@ func (s *ChallengeService) GetChallengeWithDetails(ctx context.Context, id strin
 	}
 	return c, nil
 }
+
+// ValidateChallenge validates a CreateChallengeInput without persisting it.
+// It is the public surface of validateChallengeV2 so the MCP
+// mcp-challenges.validate_challenge tool can give the LLM actionable
+// feedback on a draft challenge BEFORE the user commits to it. The
+// returned error (when non-nil) is one of the IsValidationError sentinels
+// declared above so callers can branch with errors.Is.
+func (s *ChallengeService) ValidateChallenge(input models.CreateChallengeInput) error {
+	return validateChallengeV2(input)
+}
