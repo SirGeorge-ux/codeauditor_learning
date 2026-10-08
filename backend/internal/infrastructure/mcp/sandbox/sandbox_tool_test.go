@@ -78,7 +78,9 @@ func (f *fakeService) Healthcheck(_ context.Context) (HealthStatus, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.healthErr != nil {
-		return HealthStatus{}, f.healthErr
+		// Return the populated status alongside the error so the tool can
+		// surface Issues even when the runtime is degraded.
+		return f.health, f.healthErr
 	}
 	return f.health, nil
 }
