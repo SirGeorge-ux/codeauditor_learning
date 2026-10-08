@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 // Client is a driven adapter for the Ollama LLM API.
@@ -140,3 +142,9 @@ func (c *Client) StreamGenerate(ctx context.Context, system, prompt string, onTo
 func (c *Client) Model() string {
 	return c.model
 }
+
+// Compile-time guard: Client must satisfy the OllamaClient port that
+// core/services depends on. If the driven adapter's signature drifts
+// away from the port (or vice versa), this file will fail to compile
+// and the drift surfaces at PR review rather than at runtime.
+var _ ports.OllamaClient = (*Client)(nil)
