@@ -83,11 +83,31 @@ func (a *serviceAdapter) CreateTempChallenge(ctx context.Context, userID string,
 	return json.Marshal(payload)
 }
 
-// GenerateChallenge is a stub until S5 LLM cascade lands. Returning the
-// sentinel verbatim lets the tool surface the spec's pending-state message
-// without rewriting the contract once the cascade wires in.
-func (a *serviceAdapter) GenerateChallenge(_ context.Context, _ string, _ GenerateHint) (json.RawMessage, error) {
-	return nil, ErrNotImplemented
+// GenerateChallenge delegates to ChallengeService.GenerateChallenge. The
+// "not implemented" business decision lives in the service (the S5 LLM
+// cascade will replace the stub there); we translate the MCP wire shape
+// (GenerateHint) into the domain shape (models.GenerateChallengeHint)
+// before the call and propagate any service error verbatim. When S5
+// lands, this method becomes a thin (decode -> call -> encode) shim
+// with no behavior change required at the tool layer.
+func (a *serviceAdapter) GenerateChallenge(ctx context.Context, userID string, hint GenerateHint) (json.RawMessage, error) {
+	c, err := a.svc.GenerateChallenge(ctx, models.GenerateChallengeHint{
+		Language:   hint.Language,
+		Difficulty: hint.Difficulty,
+		Focus:      hint.Focus,
+	})
+	if err != nil {
+		// ErrChallengeGenerateNotImplemented (and any future sentinel)
+		// travels verbatim to the tool, which the dispatcher then maps
+		// to JSON-RPC -32603. We deliberately do NOT re-wrap as
+		// ErrNotImplemented here — the canonical business sentinel lives
+		// in services so callers across transports branch the same way.
+		return nil, err
+	}
+	// Stub today: the service returns the zero Challenge alongside the
+	// sentinel. Once S5 lands we will marshal c via encodeChallenge(&c, false).
+	_ = userID
+	return json.Marshal(encodeChallenge(&c, false))
 }
 
 // ValidateChallenge runs the v2 validator and shapes the result. The

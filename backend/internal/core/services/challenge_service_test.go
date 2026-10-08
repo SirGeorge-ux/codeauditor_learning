@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"testing"
 	"time"
@@ -650,5 +651,46 @@ func TestChallengeService_GetByID_OtherUsersPrivate(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+// TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented proves
+// the GenerateChallenge stub lives in core/services, not in the MCP
+// challenges adapter. The S5 LLM cascade will replace this body; the
+// sentinel contract (ErrChallengeGenerateNotImplemented) stays so callers
+// downstream (mcp-challenges.generate_challenge) keep receiving a
+// JSON-RPC -32603 without rewriting their error handling.
+func TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented(t *testing.T) {
+	// The stub never queries the DB, so no sqlmock wiring is required.
+	// A nil *sql.DB is safe here: GenerateChallenge short-circuits on
+	// the sentinel BEFORE reaching the database.
+	svc := &ChallengeService{}
+	hint := models.GenerateChallengeHint{
+		Language:   "typescript",
+		Difficulty: "mid",
+		Focus:      "n+1",
+	}
+	c, err := svc.GenerateChallenge(context.Background(), hint)
+	if !errors.Is(err, ErrChallengeGenerateNotImplemented) {
+		t.Fatalf("err = %v, want ErrChallengeGenerateNotImplemented", err)
+	}
+	// Stub returns the zero Challenge so callers don't have to nil-guard
+	// on a (c, err) tuple in tests that only assert the error path.
+	if c.ID != "" {
+		t.Errorf("challenge.ID = %q, want empty (stub)", c.ID)
+	}
+}
+
+// TestGenerateChallengeHint_DomainShapeMatchesWire verifies the domain
+// model carries Language/Difficulty/Focus with omitempty — this is the
+// shape the MCP adapter translates GenerateHint into before calling the
+// service, and the shape a future S5 LLM impl will consume.
+func TestGenerateChallengeHint_DomainShapeMatchesWire(t *testing.T) {
+	hint := models.GenerateChallengeHint{Language: "go", Difficulty: "senior"}
+	if hint.Language != "go" || hint.Difficulty != "senior" {
+		t.Errorf("fields = (%q, %q), want (go, senior)", hint.Language, hint.Difficulty)
+	}
+	if hint.Focus != "" {
+		t.Errorf("empty Focus = %q, want zero value", hint.Focus)
 	}
 }

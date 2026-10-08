@@ -127,7 +127,12 @@ func (f *fakeService) GenerateChallenge(_ context.Context, userID string, hint G
 	if f.generateErr != nil {
 		return nil, f.generateErr
 	}
-	return nil, ErrNotImplemented
+	// Mirror the production adapter's behavior: the canonical "not
+	// implemented" sentinel lives in core/services, not in the MCP layer.
+	// The fake simulates that so tests downstream of this fake (e.g. the
+	// HTTP transport smoke test) propagate the same sentinel verbatim
+	// and the dispatcher's JSON-RPC -32603 mapping stays consistent.
+	return nil, services.ErrChallengeGenerateNotImplemented
 }
 
 func (f *fakeService) ValidateChallenge(_ context.Context, _ string, in validateChallengeInput) (ValidateResult, error) {
@@ -320,6 +325,15 @@ func TestCreateTempChallengeTool_MissingUserID_RejectsWithInvalidParams(t *testi
 
 // --- mcp-challenges.generate_challenge ---
 
+// TestGenerateChallengeTool_StubReturnsErrNotImplemented proves the
+// generate_challenge tool surfaces the S5-pending sentinel up to the
+// JSON-RPC layer (the dispatcher maps it to -32603). The wire-shape
+// assertion proves the LLM gets an actionable "enable via S5 cascade"
+// hint instead of a stack trace.
+//
+// PR 2 amendment: the canonical "not implemented" sentinel lives in
+// core/services (ErrChallengeGenerateNotImplemented). The production
+// adapter propagates it verbatim, and this test mirrors that path.
 func TestGenerateChallengeTool_StubReturnsErrNotImplemented(t *testing.T) {
 	svc := newFakeService()
 	tool := NewGenerateChallengeTool(svc)
@@ -328,10 +342,10 @@ func TestGenerateChallengeTool_StubReturnsErrNotImplemented(t *testing.T) {
 		"difficulty": "senior"
 	}`))
 	if err == nil {
-		t.Fatalf("expected ErrNotImplemented, got nil")
+		t.Fatalf("expected ErrChallengeGenerateNotImplemented, got nil")
 	}
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("err = %v, want ErrNotImplemented", err)
+	if !errors.Is(err, services.ErrChallengeGenerateNotImplemented) {
+		t.Errorf("err = %v, want services.ErrChallengeGenerateNotImplemented", err)
 	}
 	if svc.lastGenerateUser != "u" {
 		t.Errorf("generate routed userID=%q, want u", svc.lastGenerateUser)

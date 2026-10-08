@@ -31,6 +31,15 @@ var ErrInvalidHintsCount = errors.New("exactly 3 hints required")
 // ErrSpoilerInDescription is returned when the description contains spoiler keywords.
 var ErrSpoilerInDescription = errors.New("description contains spoiler content")
 
+// ErrChallengeGenerateNotImplemented is returned by ChallengeService.GenerateChallenge
+// until the S5 LLM cascade lands. The MCP mcp-challenges.generate_challenge
+// tool surfaces this sentinel so the LLM caller gets an actionable
+// "enable via S5 cascade" hint instead of a stack trace. Keeping the
+// sentinel here (not in the MCP adapter) lets future callers — HTTP
+// handlers, other transport adapters — branch with errors.Is without
+// importing the MCP layer.
+var ErrChallengeGenerateNotImplemented = errors.New("challenge generation not implemented (S5 LLM cascade)")
+
 // validDifficulties contains allowed difficulty values.
 var validDifficulties = map[string]bool{
 	"junior":    true,
@@ -448,4 +457,15 @@ func (s *ChallengeService) GetChallengeWithDetails(ctx context.Context, id strin
 // declared above so callers can branch with errors.Is.
 func (s *ChallengeService) ValidateChallenge(input models.CreateChallengeInput) error {
 	return validateChallengeV2(input)
+}
+
+// GenerateChallenge returns a freshly-authored challenge. PR 2 ships a
+// stub returning ErrChallengeGenerateNotImplemented; the full LLM-driven
+// implementation lands with the S5 LLM cascade (OpenRouter + Ollama).
+// The MCP mcp-challenges.generate_challenge tool delegates here so the
+// "not implemented" business decision lives in core/services — not in
+// the transport adapter. Callers branch with errors.Is to surface a
+// stable JSON-RPC -32603 regardless of transport.
+func (s *ChallengeService) GenerateChallenge(_ context.Context, _ models.GenerateChallengeHint) (models.Challenge, error) {
+	return models.Challenge{}, ErrChallengeGenerateNotImplemented
 }
