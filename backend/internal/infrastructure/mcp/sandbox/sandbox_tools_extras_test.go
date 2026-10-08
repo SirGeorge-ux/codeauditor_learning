@@ -120,8 +120,8 @@ func TestHealthcheckTool_MissingUserID_RejectsWithInvalidParams(t *testing.T) {
 func TestGetInstallHintTool_HappyPath_ReturnsHint(t *testing.T) {
 	svc := newFakeService()
 	svc.installHintOut = map[string]string{
-		"go":      "apt install golang (or asdf install golang)",
-		"python":  "apt install python3",
+		"go":     "apt install golang (or asdf install golang)",
+		"python": "apt install python3",
 	}
 	tool := NewGetInstallHintTool(svc)
 	got, err := tool.Execute(ctxWithUser(t, "u"), json.RawMessage(`{"language":"go"}`))

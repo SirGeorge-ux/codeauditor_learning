@@ -79,11 +79,11 @@ type RunResult struct {
 
 // HealthStatus summarizes the sandbox runtime state at a point in time.
 type HealthStatus struct {
-	OK            bool     `json:"ok"`
-	Backend       string   `json:"backend"`
-	Issues        []string `json:"issues"`
-	MissingTools  []string `json:"missingTools"`
-	BackendHints  []string `json:"backendHints"`
+	OK           bool     `json:"ok"`
+	Backend      string   `json:"backend"`
+	Issues       []string `json:"issues"`
+	MissingTools []string `json:"missingTools"`
+	BackendHints []string `json:"backendHints"`
 }
 
 // userIDKey is the local context key for the authenticated user_id. The MCP

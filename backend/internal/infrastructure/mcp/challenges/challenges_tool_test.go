@@ -24,23 +24,23 @@ type fakeService struct {
 	store map[string]*models.Challenge
 
 	// Knobs.
-	listErr       error
-	getErr        error
-	createErr     error
-	generateErr   error
-	validateErr   error
-	dedupHit      bool // CreateTempChallenge returns created=false
-	missingID     string
+	listErr     error
+	getErr      error
+	createErr   error
+	generateErr error
+	validateErr error
+	dedupHit    bool // CreateTempChallenge returns created=false
+	missingID   string
 
 	// Recorded.
-	lastListUserID    string
-	lastGetID         string
-	lastGetReveal     bool
-	lastCreateInput   challengeInputEnvelope
-	lastCreateUserID  string
-	lastGenerateUser  string
-	lastGenerateHint  GenerateHint
-	lastValidateIn    validateChallengeInput
+	lastListUserID   string
+	lastGetID        string
+	lastGetReveal    bool
+	lastCreateInput  challengeInputEnvelope
+	lastCreateUserID string
+	lastGenerateUser string
+	lastGenerateHint GenerateHint
+	lastValidateIn   validateChallengeInput
 }
 
 func newFakeService() *fakeService {
@@ -107,11 +107,11 @@ func (f *fakeService) CreateTempChallenge(_ context.Context, userID string, in c
 	}
 	userIDCopy := userID
 	c := &models.Challenge{
-		ID:       id,
-		Title:    in.Title,
+		ID:         id,
+		Title:      in.Title,
 		Difficulty: in.Difficulty,
-		Language: in.Language,
-		UserID:   &userIDCopy,
+		Language:   in.Language,
+		UserID:     &userIDCopy,
 	}
 	f.store[id] = c
 	payload := map[string]any{"id": id, "title": in.Title, "deduped": false}

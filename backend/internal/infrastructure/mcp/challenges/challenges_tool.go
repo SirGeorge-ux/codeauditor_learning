@@ -110,7 +110,7 @@ type ValidateResult struct {
 // GenerateHint is the optional input the tutor can pass to generate_challenge
 // to bias the produced challenge (language, difficulty, smell focus).
 type GenerateHint struct {
-	Language  string `json:"language,omitempty"`
+	Language   string `json:"language,omitempty"`
 	Difficulty string `json:"difficulty,omitempty"`
 	Focus      string `json:"focus,omitempty"`
 }
@@ -403,13 +403,13 @@ func (t *validateChallengeTool) Schema() openai.Tool {
 	return schema(
 		t.Name(), t.Description(),
 		map[string]propertyArg{
-			"title":             {Type: "string", Description: "Challenge title."},
-			"description":       {Type: "string", Description: "Description body (checked for spoiler keywords)."},
-			"difficulty":        {Type: "string", Description: "One of: junior, mid, senior, architect."},
-			"language":          {Type: "string", Description: "Primary language."},
-			"expectedFindings":  {Type: "array", Description: "Array of expected findings (must contain 1..3 items)."},
-			"testCases":         {Type: "array", Description: "Array of test cases (must contain 2..4 items)."},
-			"hints":             {Type: "array", Description: "Array of hints (must contain exactly 3 items)."},
+			"title":            {Type: "string", Description: "Challenge title."},
+			"description":      {Type: "string", Description: "Description body (checked for spoiler keywords)."},
+			"difficulty":       {Type: "string", Description: "One of: junior, mid, senior, architect."},
+			"language":         {Type: "string", Description: "Primary language."},
+			"expectedFindings": {Type: "array", Description: "Array of expected findings (must contain 1..3 items)."},
+			"testCases":        {Type: "array", Description: "Array of test cases (must contain 2..4 items)."},
+			"hints":            {Type: "array", Description: "Array of hints (must contain exactly 3 items)."},
 		},
 		requiredProps("title", "description", "difficulty", "language"),
 	)

@@ -17,16 +17,16 @@ type fakeService struct {
 	mu sync.Mutex
 
 	// Behavior knobs.
-	profile          SecurityProfile
-	runResult        RunResult
-	runErr           error
-	health           HealthStatus
-	healthErr        error
-	listOut          []LanguageInfo
-	listErr          error
-	installHintOut   map[string]string
-	installHintErr   error
-	unknownLanguage  string
+	profile         SecurityProfile
+	runResult       RunResult
+	runErr          error
+	health          HealthStatus
+	healthErr       error
+	listOut         []LanguageInfo
+	listErr         error
+	installHintOut  map[string]string
+	installHintErr  error
+	unknownLanguage string
 
 	// Recorded inputs.
 	lastRunUserID    string
@@ -38,7 +38,7 @@ type fakeService struct {
 
 func newFakeService() *fakeService {
 	return &fakeService{
-		profile: SecurityProfile{Backend: "docker", RequiredFlags: append([]string(nil), requiredFlags...)},
+		profile:        SecurityProfile{Backend: "docker", RequiredFlags: append([]string(nil), requiredFlags...)},
 		installHintOut: map[string]string{},
 	}
 }
@@ -136,7 +136,7 @@ func TestRunCodeTool_LocalBackend_RejectsWithInvalidParams(t *testing.T) {
 func TestRunCodeTool_MissingRequiredFlag_RejectsWithInvalidParams(t *testing.T) {
 	svc := newFakeService()
 	svc.profile = SecurityProfile{
-		Backend:      "docker",
+		Backend:       "docker",
 		RequiredFlags: []string{"--cap-drop=ALL", "--read-only"}, // missing --network=none
 	}
 	tool := NewRunCodeTool(svc)

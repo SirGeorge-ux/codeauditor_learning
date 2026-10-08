@@ -36,6 +36,7 @@ type challengesFakeValidator struct {
 func newChallengesFakeValidator() *challengesFakeValidator {
 	return &challengesFakeValidator{tokens: map[string]string{"TOKEN_U": "u-1"}}
 }
+
 func (f *challengesFakeValidator) ValidateToken(_ context.Context, token string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -44,6 +45,7 @@ func (f *challengesFakeValidator) ValidateToken(_ context.Context, token string)
 	}
 	return nil
 }
+
 func (f *challengesFakeValidator) UserIDFromToken(token string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -121,8 +123,8 @@ func TestMCPHTTPTransport_Challenges_ListTools_IncludesAll5(t *testing.T) {
 		t.Fatalf("decode: %v body=%s", err, body)
 	}
 	want := map[string]bool{
-		"mcp-challenges.list_challenges":     false,
-		"mcp-challenges.get_challenge":       false,
+		"mcp-challenges.list_challenges":       false,
+		"mcp-challenges.get_challenge":         false,
 		"mcp-challenges.create_temp_challenge": false,
 		"mcp-challenges.generate_challenge":    false,
 		"mcp-challenges.validate_challenge":    false,
@@ -173,13 +175,13 @@ func TestMCPHTTPTransport_Challenges_Validate_HappyPathOverHTTP(t *testing.T) {
 	stack, db := challengesFixture(t)
 	defer db.Close()
 	body := challengesRPCCall(t, "req-v", "mcp-challenges.validate_challenge", map[string]any{
-		"title":             "T",
-		"description":       "long enough description here",
-		"difficulty":        "mid",
-		"language":          "typescript",
-		"expectedFindings":  []map[string]any{{"severity": "low", "category": "smell", "message": "x"}},
-		"testCases":         []map[string]any{{"name": "t1"}, {"name": "t2"}},
-		"hints":             []map[string]any{{"level": 1}, {"level": 2}, {"level": 3}},
+		"title":            "T",
+		"description":      "long enough description here",
+		"difficulty":       "mid",
+		"language":         "typescript",
+		"expectedFindings": []map[string]any{{"severity": "low", "category": "smell", "message": "x"}},
+		"testCases":        []map[string]any{{"name": "t1"}, {"name": "t2"}},
+		"hints":            []map[string]any{{"level": 1}, {"level": 2}, {"level": 3}},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/mcp/tools/call", bytes.NewReader(body))
 	req.Header.Set("X-Test-Token", "TOKEN_U")
@@ -191,7 +193,7 @@ func TestMCPHTTPTransport_Challenges_Validate_HappyPathOverHTTP(t *testing.T) {
 	}
 	rspBody, _ := io.ReadAll(rr.Body)
 	var env struct {
-		Error any             `json:"error"`
+		Error  any             `json:"error"`
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(rspBody, &env); err != nil {

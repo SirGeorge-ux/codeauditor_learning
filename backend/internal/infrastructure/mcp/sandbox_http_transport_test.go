@@ -36,6 +36,7 @@ type fakeValidator struct {
 func newFakeValidator() *fakeValidator {
 	return &fakeValidator{tokens: map[string]string{"TOKEN_U": "u-1"}}
 }
+
 func (f *fakeValidator) ValidateToken(_ context.Context, token string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -44,6 +45,7 @@ func (f *fakeValidator) ValidateToken(_ context.Context, token string) error {
 	}
 	return nil
 }
+
 func (f *fakeValidator) UserIDFromToken(token string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -147,7 +149,7 @@ func TestMCPHTTPTransport_Sandbox_ListLanguages_ReturnsCatalogOverHTTP(t *testin
 	}
 	rspBody, _ := io.ReadAll(rr.Body)
 	var env struct {
-		Error any             `json:"error"`
+		Error  any             `json:"error"`
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(rspBody, &env); err != nil {

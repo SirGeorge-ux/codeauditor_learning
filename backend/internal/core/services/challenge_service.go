@@ -286,7 +286,8 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 	normalizedRepo := strings.ToLower(strings.TrimSpace(input.SourceRepo))
 
 	// Check for duplicate — selects v2 columns so the returned challenge is complete
-	dedupRow := s.db.QueryRowContext(ctx,
+	dedupRow := s.db.QueryRowContext(
+		ctx,
 		`SELECT `+challengeSelectColumns+`
 		 FROM public.challenges
 		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`,
@@ -311,7 +312,8 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 	status := "available"
 	var createdAt time.Time
 
-	err = s.db.QueryRowContext(ctx,
+	err = s.db.QueryRowContext(
+		ctx,
 		`INSERT INTO public.challenges (
 			id, title, description, difficulty, category, language, repo_url, source_repo, code, code_smell, status, user_id,
 			learning_objectives, hints, common_mistakes, estimated_time_minutes,
@@ -332,7 +334,6 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 		input.BasePoints, input.BonusPoints, input.PenaltyPerHint, input.TimeBonus,
 		input.Origin, input.SourcePath, input.GeneratedBy, input.CreatedBy,
 	).Scan(&createdAt)
-
 	if err != nil {
 		return nil, false, fmt.Errorf("inserting challenge: %w", err)
 	}
@@ -340,41 +341,42 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 	return &models.Challenge{
 		ID:                   id,
 		Title:                input.Title,
-		Description:           input.Description,
-		Difficulty:            input.Difficulty,
-		Category:              input.Category,
-		Language:              input.Language,
-		RepoURL:               input.RepoURL,
-		Code:                  input.Code,
-		CodeSmell:             input.CodeSmell,
-		Status:                status,
-		CreatedAt:             createdAt,
-		UserID:                &userID,
-		SourceRepo:            normalizedRepo,
-		LearningObjectives:    input.LearningObjectives,
-		Hints:                 input.Hints,
-		CommonMistakes:        input.CommonMistakes,
-		EstimatedTimeMinutes:  input.EstimatedTimeMinutes,
-		ExpectedFindings:      input.ExpectedFindings,
-		TestCases:             input.TestCases,
-		LinterRules:           input.LinterRules,
-		SolutionCode:          input.SolutionCode,
-		SolutionExplanation:   input.SolutionExplanation,
-		BasePoints:            input.BasePoints,
-		BonusPoints:           input.BonusPoints,
-		PenaltyPerHint:        input.PenaltyPerHint,
-		TimeBonus:             input.TimeBonus,
-		Origin:                input.Origin,
-		SourcePath:            input.SourcePath,
-		GeneratedBy:           input.GeneratedBy,
-		CreatedBy:             input.CreatedBy,
+		Description:          input.Description,
+		Difficulty:           input.Difficulty,
+		Category:             input.Category,
+		Language:             input.Language,
+		RepoURL:              input.RepoURL,
+		Code:                 input.Code,
+		CodeSmell:            input.CodeSmell,
+		Status:               status,
+		CreatedAt:            createdAt,
+		UserID:               &userID,
+		SourceRepo:           normalizedRepo,
+		LearningObjectives:   input.LearningObjectives,
+		Hints:                input.Hints,
+		CommonMistakes:       input.CommonMistakes,
+		EstimatedTimeMinutes: input.EstimatedTimeMinutes,
+		ExpectedFindings:     input.ExpectedFindings,
+		TestCases:            input.TestCases,
+		LinterRules:          input.LinterRules,
+		SolutionCode:         input.SolutionCode,
+		SolutionExplanation:  input.SolutionExplanation,
+		BasePoints:           input.BasePoints,
+		BonusPoints:          input.BonusPoints,
+		PenaltyPerHint:       input.PenaltyPerHint,
+		TimeBonus:            input.TimeBonus,
+		Origin:               input.Origin,
+		SourcePath:           input.SourcePath,
+		GeneratedBy:          input.GeneratedBy,
+		CreatedBy:            input.CreatedBy,
 	}, true, nil
 }
 
 // GetAll returns all challenges visible to the given user: seeds (NULL user_id) plus user-owned.
 // Solution fields (solution_code, solution_explanation) are NOT included in the response.
 func (s *ChallengeService) GetAll(ctx context.Context, userID string) ([]models.Challenge, error) {
-	rows, err := s.db.QueryContext(ctx,
+	rows, err := s.db.QueryContext(
+		ctx,
 		`SELECT `+challengeSelectColumns+`
 		 FROM public.challenges
 		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
@@ -400,7 +402,8 @@ func (s *ChallengeService) GetAll(ctx context.Context, userID string) ([]models.
 // GetByID returns a single challenge by ID visible to the given user, or ErrChallengeNotFound.
 // Solution fields are NOT included — use GetChallengeWithDetails for the full challenge.
 func (s *ChallengeService) GetByID(ctx context.Context, id string, userID string) (models.Challenge, error) {
-	row := s.db.QueryRowContext(ctx,
+	row := s.db.QueryRowContext(
+		ctx,
 		`SELECT `+challengeSelectColumns+`
 		 FROM public.challenges
 		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`,
@@ -420,7 +423,8 @@ func (s *ChallengeService) GetByID(ctx context.Context, id string, userID string
 // solution_explanation. Use this only when the caller is authorized to see
 // the solution (tutor context or reveal flag).
 func (s *ChallengeService) GetChallengeWithDetails(ctx context.Context, id string, userID string) (models.Challenge, error) {
-	row := s.db.QueryRowContext(ctx,
+	row := s.db.QueryRowContext(
+		ctx,
 		`SELECT `+challengeSelectColumnsWithSolution+`
 		 FROM public.challenges
 		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`,
