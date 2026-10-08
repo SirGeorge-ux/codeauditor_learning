@@ -149,18 +149,12 @@ func rpcErrorFrom(err error, toolName string) *RPCError {
 		return &RPCError{Code: CodeMethodNotFound, Message: fmt.Sprintf("method not found: %s (-32601)", toolName)}
 	case IsRateLimitedError(err):
 		return &RPCError{Code: CodeRateLimited, Message: "Rate limit exceeded"}
-	case errors.Is(err, ErrInvalidParams):
+	case errors.Is(err, mcpctx.ErrInvalidParams):
 		return &RPCError{Code: CodeInvalidParams, Message: err.Error()}
 	default:
 		return &RPCError{Code: CodeInternalError, Message: SanitizeErrorMessage(err.Error())}
 	}
 }
-
-// ErrInvalidParams is re-exported as an alias of mcpctx.ErrInvalidParams so
-// existing imports `mcp.ErrInvalidParams` keep compiling while the value
-// lives in the canonical mcpctx package (used by the dictionary tool group
-// too, so errors.Is checks actually succeed across the boundary).
-var ErrInvalidParams = mcpctx.ErrInvalidParams
 
 // normalizeID converts a raw JSON id into an any safe to marshal back. json
 // null or absent becomes nil.

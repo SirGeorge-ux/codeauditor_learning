@@ -1,7 +1,6 @@
 package mcpkit
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,26 +12,6 @@ import (
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 )
-
-// Re-export the canonical auth context helpers for backward compat with
-// any caller that imported them directly from this package. New code
-// should import mcpctx directly.
-type AuthUserIDKey = mcpctx.AuthUserIDKey
-
-// ContextWithUserID injects the authenticated user_id into ctx so MCP
-// tools can read it via mcpctx.UserIDFromContext (or UserIDFromContext
-// below for backward compatibility). The HTTP bridge in `Server.Router`
-// calls this when the auth middleware has already stamped the user id
-// from the JWT.
-func ContextWithUserID(ctx context.Context, userID string) context.Context {
-	return mcpctx.ContextWithUserID(ctx, userID)
-}
-
-// UserIDFromContext extracts the authenticated user id. Returns "" when
-// no id is present; tools translate that to ErrInvalidParams (-32602).
-func UserIDFromContext(ctx context.Context) string {
-	return mcpctx.UserIDFromContext(ctx)
-}
 
 // Server is the driving HTTP adapter for the MCP monolith. It mounts three
 // JSON-RPC/SSE endpoints under /mcp/ and is protected by the same JWT auth
@@ -97,7 +76,7 @@ func httpContextBridge(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		ctx := ContextWithUserID(r.Context(), userID)
+		ctx := mcpctx.ContextWithUserID(r.Context(), userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
