@@ -1,10 +1,12 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Frontend Angular 21, Backend Go (Golang)
-  Architecture: Hexagonal Architecture (dual — Go backend + Angular frontend, each with domain/application/infrastructure layers). Frontend hexagonal uses pure TS for domain/application, Angular for infrastructure. Backend hexagonal uses pure Go for domain/application, framework adapters for infrastructure.
-  Testing: To be initialized (Angular CLI/Karma/Jest + go test)
-  Style: Standard Go + Angular style guides
+  Project: CodeAuditor — interactive code audit dojo with 3 practice modes.
+  Stack: Go 1.23 backend (Chi v5, hexagonal), Angular 21.2 frontend (hexagonal, Signals, Vitest).
+  Architecture: Dual hexagonal (Go + Angular), strict layer separation.
+  Testing: Go stdlib + Vitest 4 + Playwright E2E. Workspace `make test` covers both.
+  Persistence: Supabase (PostgreSQL 15 + Auth). Sandbox: Local + Docker.
+  LLM: Ollama local, OpenRouter cascade, MiniMax M3 opt-in.
 
 rules:
   proposal:
@@ -20,53 +22,71 @@ rules:
     - Keep tasks completable in one session
   apply:
     - Follow existing code patterns
-    tdd: false
-    test_command: ""
+    - Run TDD cycle: test → implement → refactor
+    tdd: true
+    test_command: "make test"
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: "make test"
+    build_command: "make build"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
 
+projects:
+  - path: backend/
+    stack: Go 1.23
+    test_command: "make test-backend"
+    lint_command: "make lint-backend"
+    format_command: "make fix-backend"
+    build_command: "make build-backend"
+  - path: frontend/codeauditor/
+    stack: Angular 21.2 + TypeScript 5.9
+    test_command: "make test-frontend"
+    lint_command: "make lint-frontend"
+    format_command: "make fix-frontend"
+    build_command: "make build-frontend"
+
 testing:
-  strict_tdd: false
+  strict_tdd: true
   capabilities: |
     ## Testing Capabilities
 
-    **Strict TDD Mode**: disabled (explicit in config)
-    **Detected**: 2026-06-14 (init)
+    **Strict TDD Mode**: enabled
+    **Detected**: 2026-09-21 (reinit)
+    **Workspace-level test command**: `make test` (covers backend + frontend)
 
-    ### Test Runners
+    ### Projects
 
-    | Stack    | Command          | Framework | Config                                  |
-    | -------- | ---------------- | --------- | --------------------------------------- |
-    | Backend  | `go test ./...`  | Go stdlib | Go 1.23, standard `*testing.T`          |
-    | Frontend | `ng test`        | Vitest    | Angular 21 `@angular/build:unit-test`, vitest 4.0.8, jsdom 28, tsconfig.spec.json with vitest/globals |
+    | Relative path | Stack | Test command | Framework |
+    | ------------- | ----- | ------------ | --------- |
+    | `backend/` | Go 1.23 | `make test-backend` | Go stdlib + testify |
+    | `frontend/codeauditor/` | Angular 21.2 | `make test-frontend` | Vitest 4.0.8 + jsdom 28 |
 
-    ### Test Coverage
+    ### Test Layers
 
-    | Stack    | Available | Command                      |
-    | -------- | --------- | ---------------------------- |
-    | Backend  | ✅        | `go test -coverprofile=coverage.out ./...` |
-    | Frontend | ✅        | `ng test --code-coverage` (via Vitest)    |
+    | Relative path | Layer       | Available | Tool        |
+    | ------------- | ----------- | --------- | ----------- |
+    | `backend/` | Unit        | ✅        | go test     |
+    | `backend/` | Integration | ❌        | —           |
+    | `backend/` | E2E         | ❌        | —           |
+    | `frontend/codeauditor/` | Unit        | ✅        | Vitest 4    |
+    | `frontend/codeauditor/` | Integration | ❌        | —           |
+    | `frontend/codeauditor/` | E2E         | ✅        | Playwright 1.60 |
+
+    ### Coverage
+
+    | Relative path | Available | Command |
+    | ------------- | --------- | ------- |
+    | `backend/` | ✅        | `go test -coverprofile=coverage.out ./...` |
+    | `frontend/codeauditor/` | ✅        | `ng test --code-coverage` |
 
     ### Quality Tools
 
-    | Stack    | Tool              | Available | Command                                |
-    | -------- | ----------------- | --------- | -------------------------------------- |
-    | Backend  | Linter            | ❌        | No golangci-lint config found          |
-    | Backend  | Type checker      | ✅        | `go vet ./...`                         |
-    | Backend  | Formatter         | ✅        | `go fmt ./...`                         |
-    | Frontend | Linter            | ❌        | No ESLint config found                 |
-    | Frontend | Type checker      | ✅        | TypeScript 5.9 (via `ng build` / `tsc`) |
-    | Frontend | Formatter         | ✅        | Prettier 3.8.1                         |
-
-    ### Existing Tests
-
-    | File | Type | Location |
-    | ---- | ---- | -------- |
-    | supabase_auth_test.go | Unit (Go) | backend/internal/infrastructure/driven/supabase/ |
-    | localsandbox_test.go | Unit (Go) | backend/internal/infrastructure/driven/sandbox/ |
-    | app.spec.ts | Component (Angular) | frontend/codeauditor/src/app/ |
-    | auth.service.spec.ts | Service (Angular) | frontend/codeauditor/src/app/infrastructure/services/ |
+    | Relative path | Tool         | Available | Command        |
+    | ------------- | ------------ | --------- | -------------- |
+    | `backend/` | Linter       | ✅        | `make lint-backend` (golangci-lint) |
+    | `backend/` | Type checker | ✅        | `go vet ./...` |
+    | `backend/` | Formatter    | ✅        | `make fix-backend` (gofumpt) |
+    | `frontend/codeauditor/` | Linter       | ✅        | `make lint-frontend` (ESLint) |
+    | `frontend/codeauditor/` | Type checker | ✅        | TypeScript 5.9 (via `ng build`) |
+    | `frontend/codeauditor/` | Formatter    | ✅        | `make fix-frontend` (Prettier 3.8.1) |

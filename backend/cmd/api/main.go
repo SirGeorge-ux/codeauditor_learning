@@ -22,6 +22,9 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp"
+	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
+	tutormcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -137,6 +140,41 @@ func main() {
 	auditService.WithChallengeService(challengeService)
 	log.Println("Challenge service initialized")
 
+	// Initialize dictionary service (personal tech glossary — S2)
+	dictionaryRepo := supabase.NewSupabaseDictionaryRepository(db)
+	dictionaryService := services.NewDictionaryService(dictionaryRepo)
+	dictionaryHandler := handlers.NewDictionaryHandler(dictionaryService)
+	log.Println("Dictionary service initialized")
+
+	// Initialize the tutor lookup service (the bridge the tutor LLM uses
+	// to look up user-defined terms before answering "Que es X?" style
+	// questions). It depends ONLY on DictionaryService; the Socratic
+	// level-aware framing is the dark logic it owns so it can be reused
+	// by both the MCP tutor tool and the (future) HTTP tutor-chat
+	// endpoint.
+	tutorLookupService := services.NewTutorLookupService(dictionaryService)
+	log.Println("Tutor lookup service initialized")
+
+	// MCP tools registry. The dictionary group (search_term, get_term,
+	// add_term, list_terms) AND the tutor group (tutor_lookup) are
+	// registered here AND mounted on the HTTP router under /mcp/tools/*
+	// so external callers (tutor LLM, scripted clients) can invoke them
+	// via the JSON-RPC 2.0 transport the dictionary spec mandates. The
+	// HTTP bridge translates the JWT-derived user_id from auth middleware
+	// into the MCP tool context so user-scoped tools see the same
+	// user_id the REST endpoints use — this is the bridge that preserves
+	// the dictionary spec's Row-Level Security invariant end-to-end.
+	mcpRegistry := mcp.NewRegistry()
+	dictMCPSvc := dictionarymcp.NewServiceAdapter(dictionaryService)
+	mcpRegistry.Register(dictionarymcp.NewSearchTermTool(dictMCPSvc))
+	mcpRegistry.Register(dictionarymcp.NewGetTermTool(dictMCPSvc))
+	mcpRegistry.Register(dictionarymcp.NewAddTermTool(dictMCPSvc))
+	mcpRegistry.Register(dictionarymcp.NewListTermsTool(dictMCPSvc))
+	tutorMCPSvc := tutormcp.NewServiceAdapter(tutorLookupService)
+	mcpRegistry.Register(tutormcp.NewTutorLookupTool(tutorMCPSvc))
+	mcpHTTPServer := mcp.NewServer(mcpRegistry)
+	log.Printf("MCP dictionary + tutor groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
+
 	// Initialize progress handler (user language progress + learning profile)
 	progressHandler := handlers.NewProgressHandler(progressService)
 	log.Println("Progress handler initialized")
@@ -183,6 +221,15 @@ func main() {
 		r.Get("/auth/me", authHandler.Me)
 	})
 
+	// MCP monolito HTTP transport: JSON-RPC 2.0 over HTTP, JWT-protected.
+	// Mounted at /mcp so the dictionary spec's `POST /mcp/tools/call`
+	// contract reaches the registered tools end-to-end. The MCP HTTP
+	// server owns its own auth (passed in below) so we do NOT wrap the
+	// parent group with AuthMiddleware here — that would double-validate
+	// the JWT and reject requests whose Authorization header has any
+	// whitespace quirk a single middleware would otherwise accept.
+	r.Mount("/mcp", mcpHTTPServer.Router(authmiddleware.AuthMiddleware(authAdapter)))
+
 	// API v1 routes (protected)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(authmiddleware.AuthMiddleware(authAdapter))
@@ -200,6 +247,12 @@ func main() {
 		r.Get("/challenges", challengeHandler.ListChallenges)
 		r.Get("/challenges/{id}", challengeHandler.GetChallenge)
 		r.Post("/challenges", challengeHandler.CreateChallenge)
+		// Dictionary endpoints (S2)
+		r.Get("/dictionary", dictionaryHandler.ListOrSearchTerms)
+		r.Post("/dictionary", dictionaryHandler.CreateTerm)
+		r.Get("/dictionary/{id}", dictionaryHandler.GetTerm)
+		r.Put("/dictionary/{id}", dictionaryHandler.UpdateTerm)
+		r.Delete("/dictionary/{id}", dictionaryHandler.DeleteTerm)
 		// User progress endpoints (JWT user_id must match path :id)
 		r.Get("/users/{id}/progress", progressHandler.GetAllProgress)
 		r.Get("/users/{id}/progress/{lang}", progressHandler.GetLanguageProgress)
