@@ -95,6 +95,24 @@ type Challenge struct {
 	CreatedBy            string            `json:"createdBy,omitempty"`
 }
 
+// GenerateChallengeHint is the domain input for ChallengeService.GenerateChallenge.
+// The MCP mcp-challenges.generate_challenge tool surfaces a JSON shape with
+// these three optional fields; the adapter translates the wire form into
+// this struct before calling the service. Keeping the type in domain
+// (instead of buried in the MCP layer) lets the S5 LLM cascade own the
+// canonical input shape regardless of transport.
+type GenerateChallengeHint struct {
+	// Language biases the produced challenge to a target language
+	// (typescript, python, go, ...). Empty means "no preference".
+	Language string `json:"language,omitempty"`
+	// Difficulty biases the produced challenge to a range
+	// (junior, mid, senior, architect). Empty means "no preference".
+	Difficulty string `json:"difficulty,omitempty"`
+	// Focus biases the produced challenge to a code-smell category
+	// (n+1, callback hell, ...). Empty means "no preference".
+	Focus string `json:"focus,omitempty"`
+}
+
 // CreateChallengeInput is the request body for creating a challenge.
 //
 // v1 fields (RepoURL, CodeSmell) are retained for backward compatibility.

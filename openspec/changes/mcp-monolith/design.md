@@ -199,6 +199,15 @@ The system registers exactly 32 tools across 7 groups. Status at 2026-10-08: `mc
 | `mcp-pedagogical` | `get_learning_objective`, `generate_story_context`, `create_scaffolded_steps`, `validate_solution`, `get_socratic_prompt`, `peer_review_topic` | `PedagogicalService`, `CurriculumService`, `LLMClient` |
 | `mcp-external_docs`| `get_library_docs`, `search_documentation`, `get_real_example` | `ExternalDocsService` (Context7 + Brave) |
 
+#### Why `run_code` depends on `*sandbox.DockerSandbox`, not the `SandboxExecutor` port
+
+The Tool-per-Group table above lists `mcp-sandbox` as depending on `SandboxExecutor`, but the *production* wiring is intentionally narrower: `sandbox.NewServiceAdapter` takes the concrete `*sandbox.DockerSandbox`, not the port. The deviation is deliberate, security-motivated, and documented here so reviewers don't flag it as a hexagonal regression.
+
+- The port `SandboxExecutor` covers both `LocalSandbox` and `DockerSandbox`. For `run_code` we want a **structural** (compile-time) guarantee that the spec's security flags (`--cap-drop=ALL`, `--network=none`, `--read-only`) are actually present — not just a runtime check the wiring might forget.
+- `*sandbox.DockerSandbox` is the only production wiring that constructs a docker container with those flags. Because `NewServiceAdapter(sb *sandbox.DockerSandbox, ...)` constrains the type at the parameter, an unauthorized wiring (e.g. `LocalSandbox`, which provides none of those flags) would not compile and therefore cannot reach `main.go`.
+- The runtime `SecurityProfile()` check inside `Execute()` (see `backend/internal/infrastructure/mcp/sandbox/sandbox_tool.go:234-242`, where `runCodeTool.Execute` consults `t.svc.SecurityProfile()` and iterates `requiredFlags`) is belt-and-suspenders: it catches test fakes that *do* match the concrete type but misconfigure the backend (e.g. omit a flag). Without the compile-time constraint on `NewServiceAdapter`, only the runtime check would remain — and a future refactor could drop the runtime check without the tool-layer tests catching it.
+- The other `mcp-sandbox` tools (`list_languages`, `healthcheck`, `get_install_hint`) still use the broader port-shaped `Service` interface (see `sandbox.Service`) because they don't enforce execution-time security; they read registry metadata only and would gain nothing from the structural constraint.
+
 ## Auth Middleware & Rate Limiter
 
 1. **Authentication**: All `/mcp/*` endpoints are protected by the same JWT middleware as `/api/v1/*`. The middleware injects `user_id` into the `context.Context`. Tools use `ctx.Value("user_id")` to read/write user-scoped data.
