@@ -22,9 +22,9 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp"
 	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
 	tutormcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -164,7 +164,7 @@ func main() {
 	// into the MCP tool context so user-scoped tools see the same
 	// user_id the REST endpoints use — this is the bridge that preserves
 	// the dictionary spec's Row-Level Security invariant end-to-end.
-	mcpRegistry := mcp.NewRegistry()
+	mcpRegistry := mcpkit.NewRegistry()
 	dictMCPSvc := dictionarymcp.NewServiceAdapter(dictionaryService)
 	mcpRegistry.Register(dictionarymcp.NewSearchTermTool(dictMCPSvc))
 	mcpRegistry.Register(dictionarymcp.NewGetTermTool(dictMCPSvc))
@@ -172,7 +172,7 @@ func main() {
 	mcpRegistry.Register(dictionarymcp.NewListTermsTool(dictMCPSvc))
 	tutorMCPSvc := tutormcp.NewServiceAdapter(tutorLookupService)
 	mcpRegistry.Register(tutormcp.NewTutorLookupTool(tutorMCPSvc))
-	mcpHTTPServer := mcp.NewServer(mcpRegistry)
+	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
 	log.Printf("MCP dictionary + tutor groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
 
 	// Initialize progress handler (user language progress + learning profile)

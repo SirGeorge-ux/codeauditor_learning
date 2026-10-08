@@ -1,4 +1,4 @@
-package mcp_test
+package dictionary_test
 
 import (
 	"bytes"
@@ -16,9 +16,9 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp"
 	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -60,7 +60,7 @@ func (f *fakeValidator) UserIDFromToken(token string) (string, error) {
 
 type fakeUserIDKey struct{}
 
-// fakeAuthMiddlewareFactory is the mcp.Router auth callback. It stamps
+// fakeAuthMiddlewareFactory is the mcpkit.Router auth callback. It stamps
 // the user id under our fake key but tells the mcp bridge to read the
 // same id — this is what production main.go does with
 // `authmiddleware.AuthMiddleware(authAdapter)`.
@@ -218,14 +218,14 @@ func (r *httTransportRepo) SearchTerms(_ context.Context, userID, query string) 
 // httpFixture builds the production-equivalent HTTP stack so the test
 // exercises exactly the wire shape deployed in main.go:
 //
-// chi.NewRouter -> /mcp mount -> mcp.Server.Router(authMW) -> /tools/{list,call}
+// chi.NewRouter -> /mcp mount -> mcpkit.Server.Router(authMW) -> /tools/{list,call}
 func httpFixture(t *testing.T) (http.Handler, *httTransportRepo, *fakeValidator) {
 	t.Helper()
 	repo := newHTTTransportRepo()
 	dictSvc := services.NewDictionaryService(repo)
 	dictAdapter := dictionarymcp.NewServiceAdapter(dictSvc)
 
-	registry := mcp.NewRegistry()
+	registry := mcpkit.NewRegistry()
 	registry.Register(dictionarymcp.NewSearchTermTool(dictAdapter))
 	registry.Register(dictionarymcp.NewGetTermTool(dictAdapter))
 	registry.Register(dictionarymcp.NewAddTermTool(dictAdapter))
@@ -234,7 +234,7 @@ func httpFixture(t *testing.T) (http.Handler, *httTransportRepo, *fakeValidator)
 	validator := newFakeValidator()
 
 	r := chi.NewRouter()
-	r.Mount("/mcp", mcp.NewServer(registry).Router(fakeAuthMiddlewareFactory(validator)))
+	r.Mount("/mcp", mcpkit.NewServer(registry).Router(fakeAuthMiddlewareFactory(validator)))
 	return r, repo, validator
 }
 
@@ -364,8 +364,8 @@ func TestMCPHTTPTransport_AddTerm_ValidationRejectionReachesLLM(t *testing.T) {
 	if env.Error == nil {
 		t.Fatalf("expected RPC error for short explanation, got success\nbody: %s", rspBody)
 	}
-	if env.Error.Code != mcp.CodeInvalidParams {
-		t.Errorf("error code = %d, want %d (-32602)", env.Error.Code, mcp.CodeInvalidParams)
+	if env.Error.Code != mcpkit.CodeInvalidParams {
+		t.Errorf("error code = %d, want %d (-32602)", env.Error.Code, mcpkit.CodeInvalidParams)
 	}
 	if !strings.Contains(strings.ToLower(env.Error.Message), "explanation") {
 		t.Errorf("error message should mention explanation, got %q", env.Error.Message)

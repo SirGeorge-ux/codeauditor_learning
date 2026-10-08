@@ -1,4 +1,4 @@
-package mcp
+package mcpkit
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 )
 
 // Re-export the canonical auth context helpers for backward compat with

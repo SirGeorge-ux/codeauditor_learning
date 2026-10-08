@@ -1,4 +1,4 @@
-package mcp
+package mcpkit
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 )
 
 // JSON-RPC 2.0 error codes used by the MCP dispatcher.

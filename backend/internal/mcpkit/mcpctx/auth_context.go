@@ -1,7 +1,7 @@
 // Package mcpctx owns the canonical context key + helpers that bridge the
 // HTTP auth context (stamped by authmiddleware.AuthMiddleware) into MCP
 // tool request scopes. Defining it as its own leaf package avoids a
-// circular import otherwise between mcp.Server and the dictionary tool
+// circular import otherwise between mcpkit.Server and the dictionary tool
 // group: both depend on mcpctx, neither depends on the other.
 package mcpctx
 
@@ -15,7 +15,7 @@ type AuthUserIDKey struct{}
 
 // ErrInvalidParams is the shared sentinel returned by MCP tools when
 // arguments or context fail validation; the dispatcher maps it to the
-// JSON-RPC 2.0 -32602 code. Both mcp.Server (the dispatcher) and the
+// JSON-RPC 2.0 -32602 code. Both mcpkit.Server (the dispatcher) and the
 // dictionary tool group import this so `errors.Is` matches across the
 // boundary.
 var ErrInvalidParams = errors.New("invalid params (-32602)")

@@ -16,8 +16,8 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -161,12 +161,12 @@ func tutorHTTPFixture(t *testing.T) (*chi.Mux, *repoStub, *fakeValidator) {
 	tutorSvc := services.NewTutorLookupService(dictSvc)
 	adapter := NewServiceAdapter(tutorSvc)
 
-	registry := mcp.NewRegistry()
+	registry := mcpkit.NewRegistry()
 	registry.Register(NewTutorLookupTool(adapter))
 	validator := newFakeValidator()
 
 	r := chi.NewRouter()
-	r.Mount("/mcp", mcp.NewServer(registry).Router(fakeAuthMiddlewareFactory(validator)))
+	r.Mount("/mcp", mcpkit.NewServer(registry).Router(fakeAuthMiddlewareFactory(validator)))
 	return r, repo, validator
 }
 

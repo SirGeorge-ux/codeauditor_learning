@@ -1,4 +1,4 @@
-// Package mcp implements the MCP (Model Context Protocol) monolith: a
+// Package mcpkit implements the MCP (Model Context Protocol) runtime: a
 // JSON-RPC 2.0 server that exposes tool calls as driving adapters over the
 // hexagonal core/services/ layer.
 //
@@ -7,7 +7,7 @@
 // tool definitions). It MUST NOT import database/sql, net/http clients, or
 // external IO SDKs. HTTP wiring lives in server.go which uses the chi router
 // but relies on the delegated auth middleware for user identity.
-package mcp
+package mcpkit
 
 import (
 	"context"
