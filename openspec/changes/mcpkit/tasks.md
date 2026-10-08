@@ -86,8 +86,8 @@ Expected output: empty. If non-empty, the change MUST NOT commit — a re-export
 - [x] 5.6 `cd backend && go mod tidy && git diff go.mod go.sum` — verify `sashabaranov/go-openai` was NOT dropped; if dropped, manually restore it (`tool.go` uses `openai.Tool`).
 - [x] 5.7 Verify file inventory matches `design.md` "File Changes" table (create-side files exist; delete-side files are gone). Run `ls -R backend/internal/mcpkit/ backend/internal/infrastructure/mcp/` and compare to `design.md`.
 - [x] 5.8 Re-run the decision-2 grep (see Phase 3) — still empty.
-- [ ] 5.9 Run `make validate` (per `openspec/config.yaml` rules.apply + AGENTS.md) — `gofumpt` + `golangci-lint` clean.
-- [ ] 5.10 Mark all 8 success-criteria checkboxes in `proposal.md` with `[x]` after final pass.
+- [x] 5.9 `make validate` equivalent gates (this environment has no `make`; per 2026-10-05 session note): `gofumpt -l` on the mcpkit + infrastructure/mcp dirs empty, `golangci-lint` clean, `go build ./...` exit 0, `go test -count=1 ./...` 11/11 ok. Pre-existing base `make validate` debt (sandbox gofmt, prettier 8 files, eslint challenge.service.ts) is out of scope for this change.
+- [x] 5.10 All 8 success-criteria checkboxes in `proposal.md` marked `[x]` (verified by the verify phase re-read).
 - [x] 5.11 Apply commit per `work-unit-commits` skill: one work-unit per phase OR one combined commit per maintainer override. Default: single combined commit with the conventional message `refactor(mcp): extract runtime to internal/mcpkit`. Body summarizes: files moved (11), package renamed (9 files), import paths rewritten (6 consumers), 4 dead re-exports deleted, 1 bridge test relocated.
 
 ## Out-of-Scope Tasks (do NOT add to this change)
