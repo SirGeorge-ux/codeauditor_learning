@@ -9,3 +9,5 @@ require (
 )
 
 require github.com/DATA-DOG/go-sqlmock v1.5.2
+
+require github.com/sashabaranov/go-openai v1.41.2 // indirect

@@ -9,6 +9,8 @@ import { DojoPageComponent } from './infrastructure/components/dojo/dojo-page.co
 import { McpPageComponent } from './infrastructure/components/mcp/mcp-page.component';
 import { VaultPageComponent } from './infrastructure/components/vault/vault-page.component';
 import { ProfilePageComponent } from './infrastructure/components/profile/profile-page.component';
+import { DictionaryPageComponent } from './infrastructure/components/dictionary/dictionary-page.component';
+import { DictionaryDetailComponent } from './infrastructure/components/dictionary/dictionary-detail.component';
 
 export const routes: Routes = [
   {
@@ -34,6 +36,8 @@ export const routes: Routes = [
       { path: 'mcp', component: McpPageComponent },
       { path: 'vault', component: VaultPageComponent },
       { path: 'profile', component: ProfilePageComponent },
+      { path: 'dictionary', component: DictionaryPageComponent },
+      { path: 'dictionary/:id', component: DictionaryDetailComponent },
     ],
   },
   {
