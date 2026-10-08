@@ -1,0 +1,26 @@
+# Decision 2 grep evidence (post-cleanup)
+# Command: grep -rn 'mcp\.(ContextWithUserID\|UserIDFromContext\|AuthUserIDKey\|ErrInvalidParams)' backend/
+# Run at: 2026-10-08T00:31:35Z
+# Scope: source code only (.go)
+
+## 1. Full source-tree grep for the four deleted re-exports
+
+```
+$ grep -rn --include="*.go" 'mcp\.\(ContextWithUserID\|UserIDFromContext\|AuthUserIDKey\|ErrInvalidParams\)' backend/
+(no matches)
+```
+
+## 2. server.go + dispatcher.go — only canonical mcpctx helpers remain
+
+```
+$ grep -n "ContextWithUserID\|UserIDFromContext\|AuthUserIDKey\|ErrInvalidParams" backend/internal/mcpkit/server.go backend/internal/mcpkit/dispatcher.go
+backend/internal/mcpkit/server.go:79:		ctx := mcpctx.ContextWithUserID(r.Context(), userID)
+backend/internal/mcpkit/dispatcher.go:152:	case errors.Is(err, mcpctx.ErrInvalidParams):
+```
+
+## 3. Hexagonal purity — core/ does not import mcpkit
+
+```
+$ grep -rn "anomalyco/codeauditor/backend/internal/mcpkit" backend/internal/core/
+(no matches)
+```

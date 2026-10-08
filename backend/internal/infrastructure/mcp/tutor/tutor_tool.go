@@ -21,7 +21,7 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 )
 
 // ErrInvalidParams is the shared sentinel the MCP dispatcher maps to
@@ -30,13 +30,13 @@ import (
 var ErrInvalidParams = mcpctx.ErrInvalidParams
 
 // userIDKey is the local context key for the authenticated user_id. The MCP
-// server's auth middleware (mcp.Server.Router) stamps this into the request
+// server's auth middleware (mcpkit.Server.Router) stamps this into the request
 // context before invoking any tool. Tools read it via userIDFromContext;
 // they MUST refuse to act without an authenticated context.
 type userIDKey struct{}
 
 // ContextWithUserID returns a child context carrying userID. Production
-// callers use this through mcp.Server.Router; tests use it directly so the
+// callers use this through mcpkit.Server.Router; tests use it directly so the
 // tool's user-isolation contract stays identical across both.
 func ContextWithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, userIDKey{}, userID)
@@ -45,7 +45,7 @@ func ContextWithUserID(ctx context.Context, userID string) context.Context {
 // userIDFromContext extracts the authenticated user id stored in ctx. It
 // first consults this package's own key (ContextWithUserID); if not set,
 // it falls back to the canonical MCP bridge key (mcpctx.AuthUserIDKey,
-// used by mcp.Server.Router when the request came in over HTTP). An empty
+// used by mcpkit.Server.Router when the request came in over HTTP). An empty
 // string is returned when neither was stamped — callers translate that into
 // ErrInvalidParams.
 func userIDFromContext(ctx context.Context) string {

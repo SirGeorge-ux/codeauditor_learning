@@ -19,14 +19,14 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
 )
 
 // ErrInvalidParams is the shared sentinel the MCP dispatcher maps to
 // JSON-RPC -32602. Re-exported here as a type alias so tool-local code
 // can keep using the short name; the underlying value lives in
-// `infrastructure/mcp/mcpctx` so the dispatcher's `errors.Is` check
-// (in `infrastructure/mcp/dispatcher.go`) actually matches.
+// `mcpkit/mcpctx` so the dispatcher's `errors.Is` check
+// (in `mcpkit/dispatcher.go`) actually matches.
 var ErrInvalidParams = mcpctx.ErrInvalidParams
 
 // userIDKey is the context key for the authenticated user_id. The MCP
@@ -45,7 +45,7 @@ func ContextWithUserID(ctx context.Context, userID string) context.Context {
 // userIDFromContext extracts the authenticated user id stored in ctx. It
 // first consults this package's own key (ContextWithUserID); if not set,
 // it falls back to the canonical MCP bridge key (mcpctx.AuthUserIDKey,
-// used by mcp.Server.Router when the request came in over HTTP). An
+// used by mcpkit.Server.Router when the request came in over HTTP). An
 // empty string is returned when neither was stamped — callers translate
 // that into ErrInvalidParams.
 func userIDFromContext(ctx context.Context) string {
@@ -486,7 +486,7 @@ func (t *listTermTool) Execute(ctx context.Context, args json.RawMessage) (any, 
 
 // --- Registry bridge -----------------------------------------------------
 
-// RegistryRegistrar is the surface mcp.Registry exposes for adding tools.
+// RegistryRegistrar is the surface mcpkit.Registry exposes for adding tools.
 // Defining a tiny interface keeps this package decoupled from the
 // underlying registry while preserving compile-time safety.
 type RegistryRegistrar interface {
@@ -494,9 +494,9 @@ type RegistryRegistrar interface {
 }
 
 // MCPToolRegistrar matches the name / description / schema / execute
-// surface of mcp.MCPTool without importing the upstream package. The
+// surface of mcpkit.MCPTool without importing the upstream package. The
 // production adapter in main.go implements this contract by passing the
-// real mcp.MCPTool value through.
+// real mcpkit.MCPTool value through.
 type MCPToolRegistrar interface {
 	Name() string
 	Description() string
