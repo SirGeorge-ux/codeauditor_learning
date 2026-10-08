@@ -11,11 +11,12 @@ type PerlProvider struct{}
 func NewPerlProvider() ports.LanguageProvider { return &PerlProvider{} }
 
 func (p *PerlProvider) Language() string      { return "perl" }
-func (p *PerlProvider) FileExtension() string  { return ".pl" }
-func (p *PerlProvider) DockerImage() string    { return "perl:5.38-slim" }
+func (p *PerlProvider) FileExtension() string { return ".pl" }
+func (p *PerlProvider) DockerImage() string   { return "perl:5.38-slim" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   perl -c <filename>
+//
+//	perl -c <filename>
 func (p *PerlProvider) DockerCommand(filename string) []string {
 	return []string{"perl", "-c", filename}
 }

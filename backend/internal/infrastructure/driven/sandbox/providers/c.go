@@ -10,7 +10,7 @@ type CProvider struct{}
 // NewCProvider returns a ports.LanguageProvider for C.
 func NewCProvider() ports.LanguageProvider { return &CProvider{} }
 
-func (p *CProvider) Language() string     { return "c" }
+func (p *CProvider) Language() string      { return "c" }
 func (p *CProvider) FileExtension() string { return ".c" }
 func (p *CProvider) DockerImage() string   { return "gcc:15.3.0" }
 

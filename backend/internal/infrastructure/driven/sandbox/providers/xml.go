@@ -10,9 +10,9 @@ type XmlProvider struct{}
 // NewXmlProvider returns a ports.LanguageProvider for XML.
 func NewXmlProvider() ports.LanguageProvider { return &XmlProvider{} }
 
-func (p *XmlProvider) Language() string     { return "xml" }
+func (p *XmlProvider) Language() string      { return "xml" }
 func (p *XmlProvider) FileExtension() string { return ".xml" }
-func (p *XmlProvider) DockerImage() string    { return "alpine:latest" }
+func (p *XmlProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

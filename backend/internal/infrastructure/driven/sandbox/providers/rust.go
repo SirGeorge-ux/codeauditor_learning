@@ -10,7 +10,7 @@ type RustProvider struct{}
 // NewRustProvider returns a ports.LanguageProvider for Rust.
 func NewRustProvider() ports.LanguageProvider { return &RustProvider{} }
 
-func (p *RustProvider) Language() string     { return "rust" }
+func (p *RustProvider) Language() string      { return "rust" }
 func (p *RustProvider) FileExtension() string { return ".rs" }
 func (p *RustProvider) DockerImage() string   { return "rust:1.96-alpine" }
 

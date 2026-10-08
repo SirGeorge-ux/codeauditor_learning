@@ -105,7 +105,7 @@ type mockUserIDValidator struct {
 }
 
 func (m *mockUserIDValidator) ValidateToken(_ context.Context, _ string) error { return nil }
-func (m *mockUserIDValidator) UserIDFromToken(_ string) (string, error)          { return m.userID, nil }
+func (m *mockUserIDValidator) UserIDFromToken(_ string) (string, error)        { return m.userID, nil }
 
 // seedProgress adds a LanguageProgress row to the mock repo.
 func (m *mockProgressRepo) seedProgress(p *models.LanguageProgress) {

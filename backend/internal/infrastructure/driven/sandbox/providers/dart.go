@@ -15,8 +15,8 @@ type DartProvider struct{}
 func NewDartProvider() ports.LanguageProvider { return &DartProvider{} }
 
 func (p *DartProvider) Language() string      { return "dart" }
-func (p *DartProvider) FileExtension() string  { return ".dart" }
-func (p *DartProvider) DockerImage() string    { return "dart:latest" }
+func (p *DartProvider) FileExtension() string { return ".dart" }
+func (p *DartProvider) DockerImage() string   { return "dart:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

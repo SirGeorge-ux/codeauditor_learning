@@ -16,7 +16,7 @@ func NewPowerShellProvider() ports.LanguageProvider { return &PowerShellProvider
 
 func (p *PowerShellProvider) Language() string      { return "powershell" }
 func (p *PowerShellProvider) FileExtension() string { return ".ps1" }
-func (p *PowerShellProvider) DockerImage() string  { return "mcr.microsoft.com/powershell:latest" }
+func (p *PowerShellProvider) DockerImage() string   { return "mcr.microsoft.com/powershell:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

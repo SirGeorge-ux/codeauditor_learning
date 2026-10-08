@@ -15,8 +15,8 @@ type NimProvider struct{}
 func NewNimProvider() ports.LanguageProvider { return &NimProvider{} }
 
 func (p *NimProvider) Language() string      { return "nim" }
-func (p *NimProvider) FileExtension() string  { return ".nim" }
-func (p *NimProvider) DockerImage() string    { return "nimlang/nim:alpine" }
+func (p *NimProvider) FileExtension() string { return ".nim" }
+func (p *NimProvider) DockerImage() string   { return "nimlang/nim:alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

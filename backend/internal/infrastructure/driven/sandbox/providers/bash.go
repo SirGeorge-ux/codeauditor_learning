@@ -11,11 +11,12 @@ type BashProvider struct{}
 func NewBashProvider() ports.LanguageProvider { return &BashProvider{} }
 
 func (p *BashProvider) Language() string      { return "bash" }
-func (p *BashProvider) FileExtension() string  { return ".sh" }
-func (p *BashProvider) DockerImage() string    { return "koalaman/shellcheck-alpine:latest" }
+func (p *BashProvider) FileExtension() string { return ".sh" }
+func (p *BashProvider) DockerImage() string   { return "koalaman/shellcheck-alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   shellcheck <filename>
+//
+//	shellcheck <filename>
 func (p *BashProvider) DockerCommand(filename string) []string {
 	return []string{"shellcheck", filename}
 }

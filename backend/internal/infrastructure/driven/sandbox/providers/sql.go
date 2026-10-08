@@ -11,9 +11,9 @@ type SqlProvider struct{}
 // NewSqlProvider returns a ports.LanguageProvider for SQL.
 func NewSqlProvider() ports.LanguageProvider { return &SqlProvider{} }
 
-func (p *SqlProvider) Language() string     { return "sql" }
+func (p *SqlProvider) Language() string      { return "sql" }
 func (p *SqlProvider) FileExtension() string { return ".sql" }
-func (p *SqlProvider) DockerImage() string    { return "alpine:latest" }
+func (p *SqlProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

@@ -15,8 +15,8 @@ type SolidityProvider struct{}
 func NewSolidityProvider() ports.LanguageProvider { return &SolidityProvider{} }
 
 func (p *SolidityProvider) Language() string      { return "solidity" }
-func (p *SolidityProvider) FileExtension() string  { return ".sol" }
-func (p *SolidityProvider) DockerImage() string    { return "ethereum/solc:stable" }
+func (p *SolidityProvider) FileExtension() string { return ".sol" }
+func (p *SolidityProvider) DockerImage() string   { return "ethereum/solc:stable" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

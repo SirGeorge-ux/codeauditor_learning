@@ -11,11 +11,12 @@ type PythonProvider struct{}
 func NewPythonProvider() ports.LanguageProvider { return &PythonProvider{} }
 
 func (p *PythonProvider) Language() string      { return "python" }
-func (p *PythonProvider) FileExtension() string  { return ".py" }
-func (p *PythonProvider) DockerImage() string    { return "python:3.12-alpine" }
+func (p *PythonProvider) FileExtension() string { return ".py" }
+func (p *PythonProvider) DockerImage() string   { return "python:3.12-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   ruff check --output-format=text <filename>
+//
+//	ruff check --output-format=text <filename>
 func (p *PythonProvider) DockerCommand(filename string) []string {
 	return []string{"ruff", "check", "--output-format=text", filename}
 }

@@ -37,12 +37,12 @@ func TestScoringService_Calculate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		challenge  models.Challenge
-		input      models.AuditInput
-		want       models.ScoreBreakdown
+		challenge models.Challenge
+		input     models.AuditInput
+		want      models.ScoreBreakdown
 	}{
 		{
-			name:     "perfect solution scores maximum",
+			name:      "perfect solution scores maximum",
 			challenge: baseChallenge(),
 			input: models.AuditInput{
 				TestsPassed:     []bool{true, true},
@@ -53,16 +53,16 @@ func TestScoringService_Calculate(t *testing.T) {
 			},
 			want: models.ScoreBreakdown{
 				BasePoints:      100,
-				TestPoints:      300,  // 2 * 5 * 30
-				LintPoints:      20,   // 1 * 20
-				FindingsMatched: 30,   // 3 * 10
+				TestPoints:      300, // 2 * 5 * 30
+				LintPoints:      20,  // 1 * 20
+				FindingsMatched: 30,  // 3 * 10
 				HintsPenalty:    0,
-				TimeBonus:       10,   // 10% of 100
-				Total:           460,  // 100 + 300 + 20 + 30 + 0 + 10
+				TimeBonus:       10,  // 10% of 100
+				Total:           460, // 100 + 300 + 20 + 30 + 0 + 10
 			},
 		},
 		{
-			name:     "all hints used applies full penalty",
+			name:      "all hints used applies full penalty",
 			challenge: baseChallenge(),
 			input: models.AuditInput{
 				TestsPassed:     []bool{true, true},
@@ -76,13 +76,13 @@ func TestScoringService_Calculate(t *testing.T) {
 				TestPoints:      300,
 				LintPoints:      20,
 				FindingsMatched: 30,
-				HintsPenalty:    35,   // 0 + 10 + 25
+				HintsPenalty:    35, // 0 + 10 + 25
 				TimeBonus:       10,
-				Total:           425,  // 100 + 300 + 20 + 30 - 35 + 10
+				Total:           425, // 100 + 300 + 20 + 30 - 35 + 10
 			},
 		},
 		{
-			name:     "zero tests passed yields only base and findings",
+			name:      "zero tests passed yields only base and findings",
 			challenge: baseChallenge(),
 			input: models.AuditInput{
 				TestsPassed:     []bool{false, false},
@@ -98,11 +98,11 @@ func TestScoringService_Calculate(t *testing.T) {
 				FindingsMatched: 30,
 				HintsPenalty:    0,
 				TimeBonus:       10,
-				Total:           140,  // 100 + 0 + 0 + 30 - 0 + 10
+				Total:           140, // 100 + 0 + 0 + 30 - 0 + 10
 			},
 		},
 		{
-			name:     "partial findings matched yields partial points",
+			name:      "partial findings matched yields partial points",
 			challenge: baseChallenge(),
 			input: models.AuditInput{
 				TestsPassed:     []bool{true, true},
@@ -115,14 +115,14 @@ func TestScoringService_Calculate(t *testing.T) {
 				BasePoints:      100,
 				TestPoints:      300,
 				LintPoints:      20,
-				FindingsMatched: 10,  // 1 * 10
+				FindingsMatched: 10, // 1 * 10
 				HintsPenalty:    0,
 				TimeBonus:       10,
-				Total:           440,  // 100 + 300 + 20 + 10 - 0 + 10
+				Total:           440, // 100 + 300 + 20 + 10 - 0 + 10
 			},
 		},
 		{
-			name:     "time bonus when finishing within estimated time",
+			name:      "time bonus when finishing within estimated time",
 			challenge: baseChallenge(),
 			input: models.AuditInput{
 				TestsPassed:     []bool{false, false},
@@ -137,7 +137,7 @@ func TestScoringService_Calculate(t *testing.T) {
 				LintPoints:      0,
 				FindingsMatched: 0,
 				HintsPenalty:    0,
-				TimeBonus:       10,  // 10% of 100
+				TimeBonus:       10, // 10% of 100
 				Total:           110,
 			},
 		},
@@ -186,7 +186,7 @@ func TestScoringService_Calculate(t *testing.T) {
 				FindingsMatched: 0,
 				HintsPenalty:    80,
 				TimeBonus:       5, // 10% of 50
-				Total:           0,  // 50 + 0 + 0 + 0 - 80 + 5 = -25 → floor at 0
+				Total:           0, // 50 + 0 + 0 + 0 - 80 + 5 = -25 → floor at 0
 			},
 		},
 		{

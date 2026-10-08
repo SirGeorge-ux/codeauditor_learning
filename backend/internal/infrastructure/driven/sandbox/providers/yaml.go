@@ -10,9 +10,9 @@ type YamlProvider struct{}
 // NewYamlProvider returns a ports.LanguageProvider for YAML.
 func NewYamlProvider() ports.LanguageProvider { return &YamlProvider{} }
 
-func (p *YamlProvider) Language() string     { return "yaml" }
+func (p *YamlProvider) Language() string      { return "yaml" }
 func (p *YamlProvider) FileExtension() string { return ".yaml" }
-func (p *YamlProvider) DockerImage() string    { return "alpine:latest" }
+func (p *YamlProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

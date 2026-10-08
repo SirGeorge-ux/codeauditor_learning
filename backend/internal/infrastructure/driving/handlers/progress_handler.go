@@ -25,7 +25,7 @@ func NewProgressHandler(progressService *services.UserProgressService) *Progress
 
 // progressListResponse is the JSON body for GET /api/v1/users/{id}/progress.
 type progressListResponse struct {
-	RangoGlobal string                   `json:"rangoGlobal"`
+	RangoGlobal string                     `json:"rangoGlobal"`
 	Languages   []*models.LanguageProgress `json:"languages"`
 }
 

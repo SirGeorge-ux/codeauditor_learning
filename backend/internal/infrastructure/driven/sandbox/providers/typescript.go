@@ -10,12 +10,13 @@ type TypeScriptProvider struct{}
 func NewTypeScriptProvider() ports.LanguageProvider { return &TypeScriptProvider{} }
 
 func (p *TypeScriptProvider) Language() string      { return "typescript" }
-func (p *TypeScriptProvider) FileExtension() string  { return ".ts" }
-func (p *TypeScriptProvider) DockerImage() string    { return "node:22-alpine" }
+func (p *TypeScriptProvider) FileExtension() string { return ".ts" }
+func (p *TypeScriptProvider) DockerImage() string   { return "node:22-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`.
 // It mirrors the previous dockersandbox.go case:
-//   npx eslint --format=unix {filename}
+//
+//	npx eslint --format=unix {filename}
 func (p *TypeScriptProvider) DockerCommand(filename string) []string {
 	return []string{"npx", "eslint", "--format=unix", filename}
 }
@@ -38,7 +39,7 @@ func NewJavaScriptProvider() ports.LanguageProvider { return &JavaScriptProvider
 
 func (p *JavaScriptProvider) Language() string      { return "javascript" }
 func (p *JavaScriptProvider) FileExtension() string { return ".js" }
-func (p *JavaScriptProvider) DockerImage() string    { return "node:22-alpine" }
+func (p *JavaScriptProvider) DockerImage() string   { return "node:22-alpine" }
 
 // DockerCommand mirrors the TypeScript argv — eslint accepts .js files unchanged.
 func (p *JavaScriptProvider) DockerCommand(filename string) []string {

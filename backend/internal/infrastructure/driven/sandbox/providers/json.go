@@ -10,9 +10,9 @@ type JsonProvider struct{}
 // NewJsonProvider returns a ports.LanguageProvider for JSON.
 func NewJsonProvider() ports.LanguageProvider { return &JsonProvider{} }
 
-func (p *JsonProvider) Language() string     { return "json" }
+func (p *JsonProvider) Language() string      { return "json" }
 func (p *JsonProvider) FileExtension() string { return ".json" }
-func (p *JsonProvider) DockerImage() string    { return "alpine:latest" }
+func (p *JsonProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

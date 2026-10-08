@@ -11,11 +11,12 @@ type PhpProvider struct{}
 func NewPhpProvider() ports.LanguageProvider { return &PhpProvider{} }
 
 func (p *PhpProvider) Language() string      { return "php" }
-func (p *PhpProvider) FileExtension() string  { return ".php" }
-func (p *PhpProvider) DockerImage() string    { return "php:8.3-cli-alpine" }
+func (p *PhpProvider) FileExtension() string { return ".php" }
+func (p *PhpProvider) DockerImage() string   { return "php:8.3-cli-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   php -l <filename>
+//
+//	php -l <filename>
 func (p *PhpProvider) DockerCommand(filename string) []string {
 	return []string{"php", "-l", filename}
 }

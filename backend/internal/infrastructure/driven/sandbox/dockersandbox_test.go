@@ -249,4 +249,4 @@ func readAll(r interface{ Read([]byte) (int, error) }) ([]byte, error) {
 }
 
 // Compile-time guard: the test helpers satisfy the port.
-var _ ports.LanguageProvider = (ports.LanguageProvider)(nil)
+var _ ports.LanguageProvider = ports.LanguageProvider(nil)
