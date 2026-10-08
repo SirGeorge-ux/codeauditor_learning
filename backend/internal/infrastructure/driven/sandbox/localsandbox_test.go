@@ -190,23 +190,24 @@ func TestHealthcheck(t *testing.T) {
 // exercise the healthcheck without registering all 9 providers.
 type goProviderForTest struct{}
 
-func (goProviderForTest) Language() string                  { return "go" }
-func (goProviderForTest) FileExtension() string             { return ".go" }
-func (goProviderForTest) DockerImage() string               { return "golang:1.23-alpine" }
-func (goProviderForTest) DockerCommand(_ string) []string   { return []string{"go", "vet", "./..."} }
-func (goProviderForTest) LocalCommand() string              { return "go" }
-func (goProviderForTest) InstallHint() string               { return "install Go" }
+func (goProviderForTest) Language() string                { return "go" }
+func (goProviderForTest) FileExtension() string           { return ".go" }
+func (goProviderForTest) DockerImage() string             { return "golang:1.23-alpine" }
+func (goProviderForTest) DockerCommand(_ string) []string { return []string{"go", "vet", "./..."} }
+func (goProviderForTest) LocalCommand() string            { return "go" }
+func (goProviderForTest) InstallHint() string             { return "install Go" }
 
 // missingToolProvider is a minimal provider whose LocalCommand is guaranteed
 // not to exist in PATH.
 type missingToolProvider struct{}
 
-func (missingToolProvider) Language() string                  { return "ghostlang" }
-func (missingToolProvider) FileExtension() string             { return ".gh" }
-func (missingToolProvider) DockerImage() string              { return "ghost:latest" }
-func (missingToolProvider) DockerCommand(_ string) []string  { return []string{"ghost-tool"} }
-func (missingToolProvider) LocalCommand() string             { return "definitely-not-real-tool-xyz" }
-func (missingToolProvider) InstallHint() string               { return "pip install definitely-not-real" }
+func (missingToolProvider) Language() string                { return "ghostlang" }
+func (missingToolProvider) FileExtension() string           { return ".gh" }
+func (missingToolProvider) DockerImage() string             { return "ghost:latest" }
+func (missingToolProvider) DockerCommand(_ string) []string { return []string{"ghost-tool"} }
+func (missingToolProvider) LocalCommand() string            { return "definitely-not-real-tool-xyz" }
+
+func (missingToolProvider) InstallHint() string { return "pip install definitely-not-real" }
 
 // Compile-time guards.
 var (

@@ -12,9 +12,9 @@ type ZigProvider struct{}
 // NewZigProvider returns a ports.LanguageProvider for Zig.
 func NewZigProvider() ports.LanguageProvider { return &ZigProvider{} }
 
-func (p *ZigProvider) Language() string     { return "zig" }
+func (p *ZigProvider) Language() string      { return "zig" }
 func (p *ZigProvider) FileExtension() string { return ".zig" }
-func (p *ZigProvider) DockerImage() string    { return "alpine:latest" }
+func (p *ZigProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`.
 // It installs zig from the Alpine package index, copies the mounted source

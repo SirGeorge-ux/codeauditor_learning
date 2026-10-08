@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestJsonProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewJsonProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("JsonProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

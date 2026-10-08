@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestSolidityProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewSolidityProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("SolidityProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

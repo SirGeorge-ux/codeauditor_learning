@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestGroovyProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewGroovyProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("GroovyProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

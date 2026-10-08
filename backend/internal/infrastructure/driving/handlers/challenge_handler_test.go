@@ -161,7 +161,7 @@ func TestChallengeHandler_GetChallenge_Success(t *testing.T) {
 			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
 			100, 50, 0, false, "curated", nil, nil, nil)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + services.ChallengeSelectColumns() + `
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+services.ChallengeSelectColumns()+`
 		 FROM public.challenges
 		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
 		WithArgs("ch-sqli", userID).
@@ -212,7 +212,7 @@ func TestChallengeHandler_GetChallenge_RevealSolution(t *testing.T) {
 			100, 50, 0, false, "curated", nil, nil, nil,
 			"SELECT * FROM users WHERE...", "Use parameterized queries")
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + services.ChallengeSelectColumnsWithSolution() + `
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+services.ChallengeSelectColumnsWithSolution()+`
 		 FROM public.challenges
 		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
 		WithArgs("ch-sqli", userID).
@@ -295,7 +295,7 @@ func TestChallengeHandler_GetChallenge_NotFound(t *testing.T) {
 
 	userID := "user-1"
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + services.ChallengeSelectColumns() + `
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+services.ChallengeSelectColumns()+`
 		 FROM public.challenges
 		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
 		WithArgs("ch-nonexistent", userID).
@@ -333,7 +333,7 @@ func TestChallengeHandler_CreateChallenge_Success(t *testing.T) {
 	userID := "user-1"
 
 	// Expect dedup check — no existing row found
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + services.ChallengeSelectColumns() + `
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+services.ChallengeSelectColumns()+`
 		 FROM public.challenges
 		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`)).
 		WithArgs("ggogsmic/academy-mic", userID).
@@ -403,7 +403,7 @@ func TestChallengeHandler_CreateChallenge_Dedup(t *testing.T) {
 			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
 			100, 50, 0, false, "curated", nil, nil, nil)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + services.ChallengeSelectColumns() + `
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+services.ChallengeSelectColumns()+`
 		 FROM public.challenges
 		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`)).
 		WithArgs("ggogsmic/academy-mic", userID).

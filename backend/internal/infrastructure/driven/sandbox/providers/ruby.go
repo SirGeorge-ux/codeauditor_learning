@@ -11,11 +11,12 @@ type RubyProvider struct{}
 func NewRubyProvider() ports.LanguageProvider { return &RubyProvider{} }
 
 func (p *RubyProvider) Language() string      { return "ruby" }
-func (p *RubyProvider) FileExtension() string  { return ".rb" }
-func (p *RubyProvider) DockerImage() string    { return "ruby:3.3-alpine" }
+func (p *RubyProvider) FileExtension() string { return ".rb" }
+func (p *RubyProvider) DockerImage() string   { return "ruby:3.3-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   rubocop --format=simple <filename>
+//
+//	rubocop --format=simple <filename>
 func (p *RubyProvider) DockerCommand(filename string) []string {
 	return []string{"rubocop", "--format=simple", filename}
 }

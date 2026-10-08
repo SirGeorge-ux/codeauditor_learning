@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestKotlinProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewKotlinProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("KotlinProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

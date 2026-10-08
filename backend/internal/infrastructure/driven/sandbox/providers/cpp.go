@@ -10,7 +10,7 @@ type CppProvider struct{}
 // NewCppProvider returns a ports.LanguageProvider for C++.
 func NewCppProvider() ports.LanguageProvider { return &CppProvider{} }
 
-func (p *CppProvider) Language() string     { return "cpp" }
+func (p *CppProvider) Language() string      { return "cpp" }
 func (p *CppProvider) FileExtension() string { return ".cpp" }
 func (p *CppProvider) DockerImage() string   { return "gcc:15.3.0" }
 

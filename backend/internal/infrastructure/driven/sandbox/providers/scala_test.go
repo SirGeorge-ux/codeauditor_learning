@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestScalaProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewScalaProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("ScalaProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

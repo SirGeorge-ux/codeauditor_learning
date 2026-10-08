@@ -46,12 +46,12 @@ type AuditInput struct {
 // ScoreBreakdown provides a transparent breakdown of the audit score.
 type ScoreBreakdown struct {
 	BasePoints      int `json:"base_points"`
-	TestPoints      int `json:"test_points"`       // sum(test_passed * weight * 30)
-	LintPoints      int `json:"lint_points"`       // sum(lint_clean * 20)
-	FindingsMatched int `json:"findings_matched"`  // sum(expected_finding_matched * 10)
-	HintsPenalty    int `json:"hints_penalty"`     // sum(hint_used * cost)
-	TimeBonus       int `json:"time_bonus"`        // 10% of base_points when within time
-	Total           int `json:"total"`             // floored at 0
+	TestPoints      int `json:"test_points"`      // sum(test_passed * weight * 30)
+	LintPoints      int `json:"lint_points"`      // sum(lint_clean * 20)
+	FindingsMatched int `json:"findings_matched"` // sum(expected_finding_matched * 10)
+	HintsPenalty    int `json:"hints_penalty"`    // sum(hint_used * cost)
+	TimeBonus       int `json:"time_bonus"`       // 10% of base_points when within time
+	Total           int `json:"total"`            // floored at 0
 }
 
 // Challenge represents a code-audit challenge.

@@ -12,11 +12,12 @@ type KotlinProvider struct{}
 func NewKotlinProvider() ports.LanguageProvider { return &KotlinProvider{} }
 
 func (p *KotlinProvider) Language() string      { return "kotlin" }
-func (p *KotlinProvider) FileExtension() string  { return ".kt" }
-func (p *KotlinProvider) DockerImage() string    { return "codeauditor/kotlin-compiler:2.0-alpine" }
+func (p *KotlinProvider) FileExtension() string { return ".kt" }
+func (p *KotlinProvider) DockerImage() string   { return "codeauditor/kotlin-compiler:2.0-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   kotlinc -d /tmp <filename>
+//
+//	kotlinc -d /tmp <filename>
 //
 // The -d /tmp flag directs .class output to the writable tmpfs, since
 // DockerSandbox mounts /code as read-only.

@@ -23,25 +23,6 @@ func pqStringArr(s []string) any {
 // scans these into sql.NullTime so a non-null default is required.
 func anyTime() any { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
 
-// allDictionaryStatements enumerates the SQL statement strings emitted by
-// the Supabase adapter's five CRUD methods on the dictionary_terms table.
-// Tests that want to assert a contract — for example, "every read carries a
-// user_id predicate" — compare the adapter's SQL against this canonical
-// list. A failure of any substring check means the contract document is
-// stale OR the adapter has drifted from the spec.
-//
-// Keep the list exhaustively and ESSENTIALLY: any production SQL shape
-// change MUST come with a matching contract update here.
-var allDictionaryStatements = []string{
-	`INSERT INTO public.dictionary_terms`,
-	`SELECT ` + dictionarySelectColumns + `
-	FROM public.dictionary_terms`,
-	`UPDATE public.dictionary_terms`,
-	`DELETE FROM public.dictionary_terms`,
-	`WHERE user_id = $1
-		  AND search_vector @@ to_tsquery`,
-}
-
 // requireUserIDPredicate asserts that the SQL fragment carries a
 // `user_id = $N` predicate for some parameter index N. RLS at the DB level
 // is enforced via a JWT-context policy; the application MUST also enforce

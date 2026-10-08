@@ -12,11 +12,12 @@ type JavaProvider struct{}
 func NewJavaProvider() ports.LanguageProvider { return &JavaProvider{} }
 
 func (p *JavaProvider) Language() string      { return "java" }
-func (p *JavaProvider) FileExtension() string  { return ".java" }
-func (p *JavaProvider) DockerImage() string    { return "eclipse-temurin:21-jdk-alpine" }
+func (p *JavaProvider) FileExtension() string { return ".java" }
+func (p *JavaProvider) DockerImage() string   { return "eclipse-temurin:21-jdk-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   javac -d /tmp <filename>
+//
+//	javac -d /tmp <filename>
 //
 // The -d /tmp flag directs .class output to the writable tmpfs, since
 // DockerSandbox mounts /code as read-only.

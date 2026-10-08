@@ -15,8 +15,8 @@ type ErlangProvider struct{}
 func NewErlangProvider() ports.LanguageProvider { return &ErlangProvider{} }
 
 func (p *ErlangProvider) Language() string      { return "erlang" }
-func (p *ErlangProvider) FileExtension() string  { return ".erl" }
-func (p *ErlangProvider) DockerImage() string    { return "erlang:latest" }
+func (p *ErlangProvider) FileExtension() string { return ".erl" }
+func (p *ErlangProvider) DockerImage() string   { return "erlang:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

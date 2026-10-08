@@ -10,9 +10,9 @@ type HtmlProvider struct{}
 // NewHtmlProvider returns a ports.LanguageProvider for HTML.
 func NewHtmlProvider() ports.LanguageProvider { return &HtmlProvider{} }
 
-func (p *HtmlProvider) Language() string     { return "html" }
+func (p *HtmlProvider) Language() string      { return "html" }
 func (p *HtmlProvider) FileExtension() string { return ".html" }
-func (p *HtmlProvider) DockerImage() string    { return "alpine:latest" }
+func (p *HtmlProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

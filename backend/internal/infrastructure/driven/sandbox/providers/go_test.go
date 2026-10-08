@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestGoProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewGoProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("GoProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

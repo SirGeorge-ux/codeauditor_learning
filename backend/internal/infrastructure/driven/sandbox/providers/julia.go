@@ -15,8 +15,8 @@ type JuliaProvider struct{}
 func NewJuliaProvider() ports.LanguageProvider { return &JuliaProvider{} }
 
 func (p *JuliaProvider) Language() string      { return "julia" }
-func (p *JuliaProvider) FileExtension() string  { return ".jl" }
-func (p *JuliaProvider) DockerImage() string    { return "julia:latest" }
+func (p *JuliaProvider) FileExtension() string { return ".jl" }
+func (p *JuliaProvider) DockerImage() string   { return "julia:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

@@ -12,11 +12,12 @@ type ScalaProvider struct{}
 func NewScalaProvider() ports.LanguageProvider { return &ScalaProvider{} }
 
 func (p *ScalaProvider) Language() string      { return "scala" }
-func (p *ScalaProvider) FileExtension() string  { return ".scala" }
-func (p *ScalaProvider) DockerImage() string    { return "scala:3.3.1-slim" }
+func (p *ScalaProvider) FileExtension() string { return ".scala" }
+func (p *ScalaProvider) DockerImage() string   { return "scala:3.3.1-slim" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   scalac -d /tmp <filename>
+//
+//	scalac -d /tmp <filename>
 //
 // The -d /tmp flag directs .class output to the writable tmpfs, since
 // DockerSandbox mounts /code as read-only.

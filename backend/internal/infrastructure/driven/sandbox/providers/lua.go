@@ -11,11 +11,12 @@ type LuaProvider struct{}
 func NewLuaProvider() ports.LanguageProvider { return &LuaProvider{} }
 
 func (p *LuaProvider) Language() string      { return "lua" }
-func (p *LuaProvider) FileExtension() string  { return ".lua" }
-func (p *LuaProvider) DockerImage() string    { return "nickblah/luacheck:latest" }
+func (p *LuaProvider) FileExtension() string { return ".lua" }
+func (p *LuaProvider) DockerImage() string   { return "nickblah/luacheck:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   luacheck <filename>
+//
+//	luacheck <filename>
 func (p *LuaProvider) DockerCommand(filename string) []string {
 	return []string{"luacheck", filename}
 }

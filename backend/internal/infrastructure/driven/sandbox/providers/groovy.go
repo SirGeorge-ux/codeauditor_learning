@@ -12,11 +12,12 @@ type GroovyProvider struct{}
 func NewGroovyProvider() ports.LanguageProvider { return &GroovyProvider{} }
 
 func (p *GroovyProvider) Language() string      { return "groovy" }
-func (p *GroovyProvider) FileExtension() string  { return ".groovy" }
-func (p *GroovyProvider) DockerImage() string    { return "groovy:4.0-jdk21-alpine" }
+func (p *GroovyProvider) FileExtension() string { return ".groovy" }
+func (p *GroovyProvider) DockerImage() string   { return "groovy:4.0-jdk21-alpine" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
-//   groovyc -d /tmp <filename>
+//
+//	groovyc -d /tmp <filename>
 //
 // The -d /tmp flag directs .class output to the writable tmpfs, since
 // DockerSandbox mounts /code as read-only.

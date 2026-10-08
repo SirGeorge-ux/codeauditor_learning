@@ -10,14 +10,13 @@ import (
 	"time"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
-	ollamadriven "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 // AuditService orchestrates sandbox execution, Ollama analysis, and SSE streaming.
 type AuditService struct {
 	sandbox          ports.SandboxExecutor
-	ollamaClient     *ollamadriven.Client
+	ollamaClient     ports.OllamaClient
 	progress         *UserProgressService
 	history          *AuditHistoryService
 	challengeService *ChallengeService
@@ -29,7 +28,9 @@ func NewAuditService(sandbox ports.SandboxExecutor) *AuditService {
 }
 
 // WithOllama attaches an Ollama client for AI-powered code analysis.
-func (s *AuditService) WithOllama(client *ollamadriven.Client) *AuditService {
+// The argument is the OllamaClient port (not the concrete adapter) so
+// core/services stays decoupled from infrastructure/driven/ollama.
+func (s *AuditService) WithOllama(client ports.OllamaClient) *AuditService {
 	s.ollamaClient = client
 	return s
 }

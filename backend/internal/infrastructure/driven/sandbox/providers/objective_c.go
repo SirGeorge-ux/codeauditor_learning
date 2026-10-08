@@ -17,7 +17,7 @@ func NewObjectiveCProvider() ports.LanguageProvider { return &ObjectiveCProvider
 
 func (p *ObjectiveCProvider) Language() string      { return "objective-c" }
 func (p *ObjectiveCProvider) FileExtension() string { return ".m" }
-func (p *ObjectiveCProvider) DockerImage() string    { return "gcc:latest" }
+func (p *ObjectiveCProvider) DockerImage() string   { return "gcc:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`.
 // A shell wrapper compiles the source to /tmp/out and runs it, linking against

@@ -10,9 +10,9 @@ type CssProvider struct{}
 // NewCssProvider returns a ports.LanguageProvider for CSS.
 func NewCssProvider() ports.LanguageProvider { return &CssProvider{} }
 
-func (p *CssProvider) Language() string     { return "css" }
+func (p *CssProvider) Language() string      { return "css" }
 func (p *CssProvider) FileExtension() string { return ".css" }
-func (p *CssProvider) DockerImage() string    { return "alpine:latest" }
+func (p *CssProvider) DockerImage() string   { return "alpine:latest" }
 
 // DockerCommand returns the argv appended after the image in `docker run`:
 //

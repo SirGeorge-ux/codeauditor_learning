@@ -49,7 +49,7 @@ func TestChallengeService_GetAll_ReturnsChallenges(t *testing.T) {
 			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
 			100, 50, 0, false, "curated", nil, nil, nil)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + challengeSelectColumns + `
 		 FROM public.challenges
 		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
 		 ORDER BY created_at DESC`)).
@@ -87,7 +87,7 @@ func TestChallengeService_GetAll_EmptyResult(t *testing.T) {
 	cols := challengeColumns()
 	rows := sqlmock.NewRows(cols)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + challengeSelectColumns + `
 		 FROM public.challenges
 		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
 		 ORDER BY created_at DESC`)).

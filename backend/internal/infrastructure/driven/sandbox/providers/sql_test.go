@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestSqlProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewSqlProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("SqlProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string
