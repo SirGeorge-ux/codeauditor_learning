@@ -23,6 +23,7 @@ import (
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
 	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
+	sandboxmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/sandbox"
 	tutormcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
@@ -88,17 +89,24 @@ func main() {
 	registry := providers.NewDefaultRegistry()
 	log.Printf("Provider registry initialized: %d languages", len(registry.Languages()))
 
-	// Initialize sandbox executor
+	// Initialize sandbox executor. dockerSb is always created so the
+	// mcp-sandbox tool group can be wired (its run_code tool requires the
+	// hardened DockerSandbox). When SANDBOX_MODE=local is forced, the
+	// audit flow still uses LocalSandbox but mcp-sandbox.* tools report
+	// the docker runtime as degraded via /mcp healthcheck.
+	var dockerSb *sandboxpkg.DockerSandbox
 	var sandboxExecutor ports.SandboxExecutor
 	switch sandboxMode {
 	case "docker":
-		sandboxExecutor = sandboxpkg.NewDockerSandbox(30*time.Second, registry)
+		dockerSb = sandboxpkg.NewDockerSandbox(30*time.Second, registry)
+		sandboxExecutor = dockerSb
 		log.Printf("Sandbox mode: docker")
 	case "local":
+		dockerSb = sandboxpkg.NewDockerSandbox(30*time.Second, registry)
 		sandboxExecutor = sandboxpkg.NewLocalSandbox(30*time.Second, registry)
-		log.Printf("Sandbox mode: local")
+		log.Printf("Sandbox mode: local (mcp-sandbox tools will report docker unavailable)")
 	default: // auto
-		dockerSb := sandboxpkg.NewDockerSandbox(30*time.Second, registry)
+		dockerSb = sandboxpkg.NewDockerSandbox(30*time.Second, registry)
 		if err := dockerSb.Healthcheck(context.Background()); err != nil {
 			log.Printf("Docker unavailable, falling back to LocalSandbox: %v", err)
 			sandboxExecutor = sandboxpkg.NewLocalSandbox(30*time.Second, registry)
@@ -172,8 +180,17 @@ func main() {
 	mcpRegistry.Register(dictionarymcp.NewListTermsTool(dictMCPSvc))
 	tutorMCPSvc := tutormcp.NewServiceAdapter(tutorLookupService)
 	mcpRegistry.Register(tutormcp.NewTutorLookupTool(tutorMCPSvc))
+	// Sandbox group: 4 tools (run_code, list_languages, healthcheck,
+	// get_install_hint). Wired to the DockerSandbox + ProviderRegistry
+	// so run_code can enforce --cap-drop=ALL/--network=none/--read-only
+	// even when the audit flow has fallen back to LocalSandbox.
+	sandboxMCPSvc := sandboxmcp.NewServiceAdapter(dockerSb, registry)
+	mcpRegistry.Register(sandboxmcp.NewRunCodeTool(sandboxMCPSvc))
+	mcpRegistry.Register(sandboxmcp.NewListLanguagesTool(sandboxMCPSvc))
+	mcpRegistry.Register(sandboxmcp.NewHealthcheckTool(sandboxMCPSvc))
+	mcpRegistry.Register(sandboxmcp.NewGetInstallHintTool(sandboxMCPSvc))
 	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
-	log.Printf("MCP dictionary + tutor groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
+	log.Printf("MCP dictionary + tutor + sandbox groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
 
 	// Initialize progress handler (user language progress + learning profile)
 	progressHandler := handlers.NewProgressHandler(progressService)
