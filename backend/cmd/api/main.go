@@ -24,6 +24,7 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
 	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
 	sandboxmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/sandbox"
+	challengesmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/challenges"
 	tutormcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
@@ -189,8 +190,18 @@ func main() {
 	mcpRegistry.Register(sandboxmcp.NewListLanguagesTool(sandboxMCPSvc))
 	mcpRegistry.Register(sandboxmcp.NewHealthcheckTool(sandboxMCPSvc))
 	mcpRegistry.Register(sandboxmcp.NewGetInstallHintTool(sandboxMCPSvc))
+	// Challenges group: 5 tools (list_challenges, get_challenge,
+	// create_temp_challenge, generate_challenge, validate_challenge).
+	// Wired to the production ChallengeService. generate_challenge is a
+	// stub returning ErrNotImplemented until the S5 LLM cascade lands.
+	challengesMCPSvc := challengesmcp.NewServiceAdapter(challengeService)
+	mcpRegistry.Register(challengesmcp.NewListChallengesTool(challengesMCPSvc))
+	mcpRegistry.Register(challengesmcp.NewGetChallengeTool(challengesMCPSvc))
+	mcpRegistry.Register(challengesmcp.NewCreateTempChallengeTool(challengesMCPSvc))
+	mcpRegistry.Register(challengesmcp.NewGenerateChallengeTool(challengesMCPSvc))
+	mcpRegistry.Register(challengesmcp.NewValidateChallengeTool(challengesMCPSvc))
 	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
-	log.Printf("MCP dictionary + tutor + sandbox groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
+	log.Printf("MCP dictionary + tutor + sandbox + challenges groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
 
 	// Initialize progress handler (user language progress + learning profile)
 	progressHandler := handlers.NewProgressHandler(progressService)
