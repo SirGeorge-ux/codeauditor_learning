@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestPowerShellProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewPowerShellProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("PowerShellProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

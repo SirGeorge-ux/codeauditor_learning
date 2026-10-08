@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestRustProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewRustProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("RustProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

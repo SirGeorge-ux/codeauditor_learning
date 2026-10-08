@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestLuaProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewLuaProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("LuaProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

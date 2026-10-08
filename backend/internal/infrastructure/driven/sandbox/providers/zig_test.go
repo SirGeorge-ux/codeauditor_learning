@@ -3,18 +3,12 @@ package providers
 import (
 	"strings"
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestZigProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewZigProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("ZigProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

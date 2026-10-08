@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestBashProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewBashProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("BashProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string

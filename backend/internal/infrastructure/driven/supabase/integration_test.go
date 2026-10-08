@@ -198,7 +198,7 @@ INSERT INTO %s.dictionary_terms
 	if err != nil {
 		t.Fatalf("begin tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.Exec(fmt.Sprintf("SET LOCAL search_path TO %s, public", schema)); err != nil {
 		t.Fatalf("set search_path tx: %v", err)
 	}

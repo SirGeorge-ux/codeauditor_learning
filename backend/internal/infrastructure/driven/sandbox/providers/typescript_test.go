@@ -2,18 +2,12 @@ package providers
 
 import (
 	"testing"
-
-	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 func TestTypeScriptProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewTypeScriptProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("TypeScriptProvider does not satisfy ports.LanguageProvider")
-	}
-
 	want := struct {
 		language      string
 		fileExtension string
@@ -60,10 +54,6 @@ func TestJavaScriptProvider(t *testing.T) {
 	t.Parallel()
 
 	p := NewJavaScriptProvider()
-	if _, ok := p.(ports.LanguageProvider); !ok {
-		t.Fatalf("JavaScriptProvider does not satisfy ports.LanguageProvider")
-	}
-
 	tests := []struct {
 		name string
 		got  string
