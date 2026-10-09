@@ -143,7 +143,8 @@ func main() {
 	log.Println("Audit history tracking enabled")
 
 	// Initialize challenge service
-	challengeService := services.NewChallengeService(db)
+	challengeRepo := supabase.NewSupabaseChallengeRepository(db)
+	challengeService := services.NewChallengeService(challengeRepo)
 	challengeHandler := handlers.NewChallengeHandler(challengeService)
 	auditService.WithChallengeService(challengeService)
 	log.Println("Challenge service initialized")
