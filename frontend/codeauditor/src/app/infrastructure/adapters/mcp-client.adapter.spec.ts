@@ -15,13 +15,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 
-import { MCPClientAdapter } from './mcp-client.adapter';
+import { MCPClientAdapter, MCP_TOKEN_PROVIDER } from './mcp-client.adapter';
 import { MCPTool } from '../../domain/ports/mcp-client.port';
 import { environment } from '../../../environments/environment';
 
@@ -51,7 +48,7 @@ describe('MCPClientAdapter', () => {
     TestBed.configureTestingModule({
       providers: [
         MCPClientAdapter,
-        { provide: 'MCP_TOKEN_PROVIDER', useValue: tokenProvider },
+        { provide: MCP_TOKEN_PROVIDER, useValue: tokenProvider },
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),
       ],
@@ -161,7 +158,12 @@ describe('MCPClientAdapter', () => {
 
       const req = httpMock.expectOne(`${environment.apiUrl}/mcp/tools/call`);
       expect(req.request.method).toBe('POST');
-      const body = req.request.body as { jsonrpc: string; id: string; method: string; params: { name: string; arguments: unknown } };
+      const body = req.request.body as {
+        jsonrpc: string;
+        id: string;
+        method: string;
+        params: { name: string; arguments: unknown };
+      };
       expect(body.jsonrpc).toBe('2.0');
       expect(body.method).toBe('tools/call');
       expect(body.params.name).toBe('mcp-pedagogical.get_socratic_prompt');
@@ -278,9 +280,7 @@ describe('MCPClientAdapter', () => {
     });
 
     it('completes cleanly when the stream closes without a trailing event', async () => {
-      mockFetch.mockResolvedValueOnce(
-        sseResponse(['event: ping\ndata: {"status":"alive"}\n\n']),
-      );
+      mockFetch.mockResolvedValueOnce(sseResponse(['event: ping\ndata: {"status":"alive"}\n\n']));
 
       let completed = false;
       await new Promise<void>((resolve, reject) => {
