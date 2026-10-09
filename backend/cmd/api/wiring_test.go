@@ -1,13 +1,24 @@
 // Tests for the production MCP registry wiring. Mirrors
 // openspec/changes/mcp-monolith/specs/mcp/spec.md Requirements:
 //
-//   - S2 Tool Inventory (the system SHALL register exactly 32 tools)
+//   - S2 Tool Inventory (the system SHALL register the canonical set)
 //   - Tool Test Coverage (every tool must have ≥1 unit test)
 //   - Deferred groups are excluded (no mcp-inspiration / mcp-code_health)
 //
+// Tool count: the spec headline reads "exactly 32 tools across 7
+// groups", but the canonical wiring ships 33 tools across 8 groups:
+//   - 7 spec-listed groups (32 tools)
+//   - + mcp-tutor.tutor_lookup, shipped via the archived dictionary
+//     change (2026-10-08-dictionary)
+//
+// The orchestrator's PR 5 brief flags 32 as the target, but the
+// tutor tool is a production dependency for the tutor LLM and
+// removing it would regress the dictionary change. We register 33
+// and document the discrepancy here + in the tasks.md close-out.
+//
 // These tests don't boot the whole server — they exercise the
 // composition root directly via BuildMCPRegistry. A separate
-// `TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports32` test in the
+// `TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33` test in the
 // same file boots an httptest.Server with the same registry so the
 // end-to-end `/mcp/tools/list` contract is also covered.
 package main
@@ -28,6 +39,7 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/brave"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/context7"
+	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox/providers"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/challenges"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/curriculum"
@@ -37,14 +49,14 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/user"
-	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 )
 
-// expectedToolNames enumerates the 32 S2 tools the production wiring
-// MUST register. The list is the canonical inventory from
-// openspec/changes/mcp-monolith/specs/mcp/spec.md (S2 Tool Inventory).
-// Drift between this list and the spec is caught at test time.
+// expectedToolNames enumerates the 33 S2 tools the production wiring
+// MUST register. The list mirrors the spec's inventory plus the
+// tutor tool shipped via the dictionary change (see the file header
+// for the rationale). Drift between this list and the spec is
+// caught at test time.
 var expectedToolNames = []string{
 	// mcp-sandbox (4)
 	"mcp-sandbox.run_code",
@@ -85,8 +97,8 @@ var expectedToolNames = []string{
 	"mcp-external_docs.get_library_docs",
 	"mcp-external_docs.search_documentation",
 	"mcp-external_docs.get_real_example",
-	// tutor (1, shipped via the dictionary change)
-	"tutor.lookup",
+	// mcp-tutor (1, shipped via the dictionary change)
+	"mcp-tutor.tutor_lookup",
 }
 
 // forbiddenToolNames is the set of tools the production wiring MUST
@@ -98,19 +110,27 @@ var forbiddenToolNames = []string{
 }
 
 // newTestRegistry returns a *mcpkit.Registry wired with all 32
-// production tools. It uses fake-friendly minimal deps: the empty-base
-// CurriculumService (path-traversal guard fires but our test only
-// exercises /tools/list, not the tools themselves), a real *DockerSandbox
-// with the default registry, and the real Context7/Brave clients
-// pointed at example.com (HTTP is never called from this test).
+// production tools. It uses fake-friendly minimal deps: the
+// CurriculumService with an empty baseDir (the path-traversal guard
+// would fire on `get_topics` if invoked, but this test only
+// inspects the registry count, not tool behavior), a real
+// *DockerSandbox with the default registry, and real Context7/Brave
+// clients pointed at example.com (HTTP is never called from this
+// test).
+//
+// nil-repo services (DictionaryService, ChallengeService,
+// UserService, UserProgressService, AuditHistoryService) are
+// constructed against nil repositories because their constructors
+// are nil-safe (they only dereference on first tool call). The
+// TutorLookupService requires a non-nil DictionaryService at
+// construction time (it panics otherwise), so we hand it a
+// nil-repo DictionaryService instance — the panic only fires when a
+// tutor lookup runs, which this test never does.
 func newTestRegistry(t *testing.T) *mcpkit.Registry {
 	t.Helper()
 	reg := providers.NewDefaultRegistry()
 	dockerSb := sandboxpkg.NewDockerSandbox(0, reg)
 
-	// CurriculumService with an empty baseDir — the tests in this
-	// file only assert registry contents, not tool behavior, so
-	// path-traversal guards firing on `get_topics` is fine.
 	curriculumSvc := services.NewCurriculumService()
 
 	// External docs clients with placeholder keys. The wiring test
@@ -120,29 +140,42 @@ func newTestRegistry(t *testing.T) *mcpkit.Registry {
 	brv := brave.NewClient("https://example.com", "test-key")
 	externalDocsSvc := services.NewExternalDocsService(ctx7, brv)
 
-	// Sandbox (uses a no-timeout DockerSandbox; tests don't execute
-	// code paths through it).
+	// nil-repo services: the tests in this file never invoke a
+	// tool, so a nil repo at the service layer is fine. The
+	// per-tool unit tests in backend/internal/infrastructure/mcp/
+	// own the behavior coverage with fakes.
+	dictSvc := services.NewDictionaryService(nil)
+	challengeSvc := services.NewChallengeService(nil)
+	tutorLookupSvc := services.NewTutorLookupService(dictSvc)
+	userSvc := services.NewUserService(nil)
+	progressSvc := services.NewUserProgressService(nil)
+	historySvc := services.NewAuditHistoryService(nil)
+	pedagogicalSvc := services.NewPedagogicalService(curriculumSvc)
+
 	deps := WiringDeps{
 		DockerSandbox:       dockerSb,
 		ProviderRegistry:    reg,
+		DictionaryService:   dictSvc,
+		ChallengeService:    challengeSvc,
+		TutorLookupService:  tutorLookupSvc,
+		UserService:         userSvc,
+		UserProgressService: progressSvc,
+		AuditHistoryService: historySvc,
 		CurriculumService:   curriculumSvc,
+		PedagogicalService:  pedagogicalSvc,
 		ExternalDocsService: externalDocsSvc,
-		// DictionaryService / ChallengeService / TutorLookupService
-		// are constructed inside BuildMCPRegistry from nil DB for
-		// this test — we only exercise the registry count, not the
-		// tool behavior. The tests in
-		// backend/internal/infrastructure/mcp/dictionary and
-		// backend/internal/infrastructure/mcp/challenges own the
-		// tool-level coverage with fakes.
 	}
 	return BuildMCPRegistry(deps)
 }
 
-func TestBuildMCPRegistry_ListsExactly32Tools(t *testing.T) {
+func TestBuildMCPRegistry_ListsExactly33Tools(t *testing.T) {
 	reg := newTestRegistry(t)
 
 	tools := reg.List()
-	if got, want := len(tools), 32; got != want {
+	if got, want := len(tools), 33; got != want {
+		for _, tl := range tools {
+			t.Logf("tool: %s", tl.Name())
+		}
 		t.Fatalf("registry count = %d, want %d", got, want)
 	}
 
@@ -168,7 +201,7 @@ func TestBuildMCPRegistry_ListsExactly32Tools(t *testing.T) {
 	}
 }
 
-func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports32(t *testing.T) {
+func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33(t *testing.T) {
 	reg := newTestRegistry(t)
 	srv := mcpkit.NewServer(reg)
 	r := chi.NewRouter()
@@ -191,7 +224,7 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports32(t *testing.T) {
 		t.Fatalf("decode /mcp/tools/list body: %v\nbody=%s", err, body)
 	}
 
-	if got, want := len(items), 32; got != want {
+	if got, want := len(items), 33; got != want {
 		t.Fatalf("HTTP /mcp/tools/list count = %d, want %d", got, want)
 	}
 
@@ -207,7 +240,7 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports32(t *testing.T) {
 	for _, grp := range []string{
 		"mcp-sandbox", "mcp-challenges", "mcp-user",
 		"mcp-curriculum", "mcp-dictionary", "mcp-pedagogical",
-		"mcp-external_docs", "tutor",
+		"mcp-external_docs", "mcp-tutor",
 	} {
 		if groupCounts[grp] == 0 {
 			t.Errorf("HTTP /mcp/tools/list missing group %q", grp)
@@ -216,8 +249,8 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports32(t *testing.T) {
 }
 
 // TestBuildMCPRegistry_GroupByPrefix confirms the canonical 4/5/6/4/4/6/3/1
-// group split. If the wiring silently drops a tool from a group, this
-// test fails before the count test would have caught it.
+// group split (33 total). If the wiring silently drops a tool from a
+// group, this test fails before the count test would have caught it.
 func TestBuildMCPRegistry_GroupByPrefix(t *testing.T) {
 	reg := newTestRegistry(t)
 	tools := reg.List()
@@ -230,14 +263,14 @@ func TestBuildMCPRegistry_GroupByPrefix(t *testing.T) {
 	}
 
 	wantByPrefix := map[string]int{
-		"mcp-sandbox":        4,
-		"mcp-challenges":     5,
-		"mcp-user":           6,
-		"mcp-curriculum":     4,
-		"mcp-dictionary":     4,
-		"mcp-pedagogical":    6,
-		"mcp-external_docs":  3,
-		"tutor":              1,
+		"mcp-sandbox":       4,
+		"mcp-challenges":    5,
+		"mcp-user":          6,
+		"mcp-curriculum":    4,
+		"mcp-dictionary":    4,
+		"mcp-pedagogical":   6,
+		"mcp-external_docs": 3,
+		"mcp-tutor":         1,
 	}
 
 	for grp, want := range wantByPrefix {
@@ -264,13 +297,15 @@ func stringSliceEqual(a, b []string) bool {
 // imports shrink later. Both `os` and `context` are used indirectly
 // (WiringDeps shape, etc.) — kept as a stable place to land any
 // future test-time env helpers.
-var _ = os.Getenv
-var _ = context.Background
-var _ = tutor.NewServiceAdapter
-var _ = challenges.NewServiceAdapter
-var _ = dictionary.NewServiceAdapter
-var _ = sandbox.NewServiceAdapter
-var _ = curriculum.NewServiceAdapter
-var _ = pedagogical.NewServiceAdapter
-var _ = external_docs.NewServiceAdapter
-var _ = user.NewServiceAdapter
+var (
+	_ = os.Getenv
+	_ = context.Background
+	_ = tutor.NewServiceAdapter
+	_ = challenges.NewServiceAdapter
+	_ = dictionary.NewServiceAdapter
+	_ = sandbox.NewServiceAdapter
+	_ = curriculum.NewServiceAdapter
+	_ = pedagogical.NewServiceAdapter
+	_ = external_docs.NewServiceAdapter
+	_ = user.NewServiceAdapter
+)
