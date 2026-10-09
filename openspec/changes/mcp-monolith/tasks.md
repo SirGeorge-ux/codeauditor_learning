@@ -44,10 +44,10 @@ Chain strategy: feature-branch-chain
 
 ## Phase 4: Dict + Pedagogical + ExtDocs (PR 4)
 
-- [ ] 4.1 RED: `mcp-pedagogical.get_socratic_prompt` resists prompt injection
+- [x] 4.1 RED: `mcp-pedagogical.get_socratic_prompt` resists prompt injection
 - [x] 4.2 `mcp/dictionary/` — `search_term`, `get_term`, `add_term`, `list_terms` (shipped via the `dictionary` change, archived 2026-10-08; 4 tools registered in `cmd/api/main.go`)
-- [ ] 4.3 `mcp/pedagogical/` — 6 tools (objective, story, scaffolding, validate, socratic, peer_review)
-- [ ] 4.4 `mcp/external_docs/` — `get_library_docs`, `search_documentation`, `get_real_example`
+- [x] 4.3 `mcp/pedagogical/` — 6 tools (objective, story, scaffolding, validate, socratic, peer_review)
+- [x] 4.4 `mcp/external_docs/` — `get_library_docs`, `search_documentation`, `get_real_example`
 
 ## Phase 5: Frontend + Wiring (PR 5)
 
