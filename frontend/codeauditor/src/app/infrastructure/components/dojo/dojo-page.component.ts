@@ -7,8 +7,8 @@ import { TerminalPanelComponent } from '../shared/terminal-panel.component';
 import { ResizeDirective } from '../shared/resize.directive';
 import { AuditService } from '../../services/audit.service';
 import { ChallengeService } from '../../services/challenge.service';
-import { Challenge, Hint } from '../../domain/models/challenge';
-import { ScoreBreakdown } from '../../domain/models/score-breakdown';
+import { Challenge, Hint } from '../../../domain/models/challenge';
+import { ScoreBreakdown } from '../../../domain/models/score-breakdown';
 
 @Component({
   selector: 'app-dojo-page',
