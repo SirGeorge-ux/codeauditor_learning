@@ -119,7 +119,7 @@ type Service interface {
 	GetLanguageProgress(ctx context.Context, userID, language string) (*models.LanguageProgress, error)
 	// GetHistory returns the last N audit sessions (cap configurable; the
 	// service clamps <=0 to 20).
-	GetHistory(ctx context.Context, userID string, limit int) ([]services.AuditSession, error)
+	GetHistory(ctx context.Context, userID string, limit int) ([]models.AuditSession, error)
 	// GetLearningProfile returns the learning profile, upserting a
 	// default on first read.
 	GetLearningProfile(ctx context.Context, userID string) (*models.LearningProfile, error)
@@ -177,13 +177,13 @@ func (a *serviceAdapter) GetLanguageProgress(ctx context.Context, userID, langua
 	return p, nil
 }
 
-func (a *serviceAdapter) GetHistory(ctx context.Context, userID string, limit int) ([]services.AuditSession, error) {
+func (a *serviceAdapter) GetHistory(ctx context.Context, userID string, limit int) ([]models.AuditSession, error) {
 	sessions, err := a.historySvc.GetHistory(ctx, userID, limit)
 	if err != nil {
 		return nil, err
 	}
 	if sessions == nil {
-		return []services.AuditSession{}, nil
+		return []models.AuditSession{}, nil
 	}
 	return sessions, nil
 }
@@ -368,7 +368,7 @@ func (t *getHistoryTool) Execute(ctx context.Context, args json.RawMessage) (any
 		return nil, err
 	}
 	if sessions == nil {
-		return []services.AuditSession{}, nil
+		return []models.AuditSession{}, nil
 	}
 	return sessions, nil
 }

@@ -3,21 +3,9 @@ package services
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 )
-
-// AuditSession represents a saved audit session for vault display.
-type AuditSession struct {
-	ID             string    `json:"id"`
-	UserID         string    `json:"user_id"`
-	ChallengeTitle string    `json:"challenge_title"`
-	Language       string    `json:"language"`
-	CodeSnippet    string    `json:"code_snippet"`
-	FindingsCount  int       `json:"findings_count"`
-	CreatedAt      time.Time `json:"created_at"`
-}
 
 // AuditHistoryService saves and retrieves audit session history.
 type AuditHistoryService struct {
@@ -52,7 +40,7 @@ func (s *AuditHistoryService) SaveSession(ctx context.Context, userID string, re
 }
 
 // GetHistory returns the last N audit sessions for a user.
-func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, limit int) ([]AuditSession, error) {
+func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, limit int) ([]models.AuditSession, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -71,9 +59,9 @@ func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, lim
 	}
 	defer rows.Close()
 
-	var sessions []AuditSession
+	var sessions []models.AuditSession
 	for rows.Next() {
-		var s AuditSession
+		var s models.AuditSession
 		if err := rows.Scan(&s.ID, &s.UserID, &s.ChallengeTitle, &s.Language, &s.CodeSnippet, &s.FindingsCount, &s.CreatedAt); err != nil {
 			return nil, err
 		}
