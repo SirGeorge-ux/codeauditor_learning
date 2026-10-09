@@ -7,7 +7,11 @@ import { ProgressUseCase } from '../../application/progress.use-case';
 import { HttpProgressRepository } from '../repositories/http-progress.repository';
 import { AuthService } from './auth.service';
 import { LanguageProgress } from '../../domain/models/language-progress';
-import { LearningProfile, Preferencias, EstiloAprendizaje } from '../../domain/models/learning-profile';
+import {
+  LearningProfile,
+  Preferencias,
+  EstiloAprendizaje,
+} from '../../domain/models/learning-profile';
 
 @Injectable({ providedIn: 'root' })
 export class ProgressService {

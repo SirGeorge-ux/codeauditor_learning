@@ -107,9 +107,7 @@ import { ProgressService } from '../../services/progress.service';
                   </div>
                   <div class="text-xs">
                     <span class="text-[#8B949E]">Success rate</span>
-                    <span class="block text-[#C9D1D9] font-semibold">
-                      {{ lang.tasaExito }}%
-                    </span>
+                    <span class="block text-[#C9D1D9] font-semibold"> {{ lang.tasaExito }}% </span>
                   </div>
                   <div class="text-xs">
                     <span class="text-[#8B949E]">Completed</span>
@@ -194,7 +192,11 @@ import { ProgressService } from '../../services/progress.service';
             <div class="mb-4">
               <label class="text-xs text-[#8B949E] block mb-1">
                 Nivel de socratismo: {{ useCase.learningProfile()!.preferencias.nivelSocratismo }}
-                <span class="text-[#8B949E]">({{ socratismoLabel(useCase.learningProfile()!.preferencias.nivelSocratismo) }})</span>
+                <span class="text-[#8B949E]"
+                  >({{
+                    socratismoLabel(useCase.learningProfile()!.preferencias.nivelSocratismo)
+                  }})</span
+                >
               </label>
               <input
                 type="range"
@@ -292,10 +294,7 @@ export class ProfilePageComponent implements OnInit {
     this.saving.set(true);
     const profile = this.useCase.learningProfile();
     if (profile) {
-      await this.useCase.saveLearningProfile(
-        profile.preferencias,
-        profile.estiloAprendizaje,
-      );
+      await this.useCase.saveLearningProfile(profile.preferencias, profile.estiloAprendizaje);
     }
     this.saving.set(false);
   }
