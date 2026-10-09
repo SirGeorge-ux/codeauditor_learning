@@ -52,8 +52,8 @@ const challengeSelectColumnsWithSolution = challengeSelectColumns + `,
 
 // ChallengeSelectColumns exposes the column list for test matching
 // from other packages (handler tests use it to build sqlmock
-// expectations). Mirrors services.ChallengeSelectColumns from the
-// pre-port code.
+// expectations). Mirrors the historical public function that used
+// to live in core/services/challenge_service.go.
 func ChallengeSelectColumns() string {
 	return challengeSelectColumns
 }
