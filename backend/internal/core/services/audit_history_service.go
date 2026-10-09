@@ -2,20 +2,37 @@ package services
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
-// AuditHistoryService saves and retrieves audit session history.
+// AuditHistoryService saves and retrieves audit session history
+// through the AuditHistoryRepository port. The service owns
+// business logic (title derivation, snippet truncation); the port
+// owns the SQL.
 type AuditHistoryService struct {
-	db *sql.DB
+	repo ports.AuditHistoryRepository
 }
 
-// NewAuditHistoryService creates a new AuditHistoryService.
-func NewAuditHistoryService(db *sql.DB) *AuditHistoryService {
-	return &AuditHistoryService{db: db}
+// NewAuditHistoryService creates a new AuditHistoryService backed by
+// the given repository. The repository MUST be non-nil; nil-safe
+// wiring is the wiring layer's job (e.g. cmd/api/wiring_test.go
+// passes nil to verify registry count without invoking any tool).
+func NewAuditHistoryService(repo ports.AuditHistoryRepository) *AuditHistoryService {
+	return &AuditHistoryService{repo: repo}
 }
+
+// defaultHistoryLimit is the default row cap when GetHistory is
+// called with a non-positive limit. Matches the historical
+// "limit <= 0 ⇒ 20" behavior.
+const defaultHistoryLimit = 20
+
+// maxSnippetLen caps the stored code_snippet column at 2000 chars
+// to keep the row size bounded. Mirrors the historical truncation in
+// the *sql.DB version.
+const maxSnippetLen = 2000
 
 // SaveSession persists an audit session after completion.
 func (s *AuditHistoryService) SaveSession(ctx context.Context, userID string, req models.AuditRequest, findingsCount int) error {
@@ -24,58 +41,34 @@ func (s *AuditHistoryService) SaveSession(ctx context.Context, userID string, re
 		title = "Custom Audit"
 	}
 
-	// Truncate code snippet for storage (first 2000 chars)
+	// Truncate code snippet for storage.
 	snippet := req.Code
-	if len(snippet) > 2000 {
-		snippet = snippet[:2000]
+	if len(snippet) > maxSnippetLen {
+		snippet = snippet[:maxSnippetLen]
 	}
 
-	_, err := s.db.ExecContext(
-		ctx,
-		`INSERT INTO public.audit_sessions (user_id, challenge_title, language, code_snippet, findings_count)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		userID, title, req.Language, snippet, findingsCount,
-	)
-	return err
+	return s.repo.Save(ctx, models.AuditSession{
+		UserID:         userID,
+		ChallengeTitle: title,
+		Language:       req.Language,
+		CodeSnippet:    snippet,
+		FindingsCount:  findingsCount,
+	})
 }
 
 // GetHistory returns the last N audit sessions for a user.
 func (s *AuditHistoryService) GetHistory(ctx context.Context, userID string, limit int) ([]models.AuditSession, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = defaultHistoryLimit
 	}
-
-	rows, err := s.db.QueryContext(
-		ctx,
-		`SELECT id, user_id, challenge_title, language, code_snippet, findings_count, created_at
-		 FROM public.audit_sessions
-		 WHERE user_id = $1
-		 ORDER BY created_at DESC
-		 LIMIT $2`,
-		userID, limit,
-	)
+	out, err := s.repo.ListByUser(ctx, userID, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list audit sessions: %w", err)
 	}
-	defer rows.Close()
-
-	var sessions []models.AuditSession
-	for rows.Next() {
-		var s models.AuditSession
-		if err := rows.Scan(&s.ID, &s.UserID, &s.ChallengeTitle, &s.Language, &s.CodeSnippet, &s.FindingsCount, &s.CreatedAt); err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, s)
-	}
-	return sessions, rows.Err()
+	return out, nil
 }
 
 // GetStats returns aggregated stats for a user.
 func (s *AuditHistoryService) GetStats(ctx context.Context, userID string) (totalAudits int, totalFindings int, err error) {
-	err = s.db.QueryRowContext(
-		ctx,
-		`SELECT COUNT(*), COALESCE(SUM(findings_count), 0)
-		 FROM public.audit_sessions WHERE user_id = $1`, userID,
-	).Scan(&totalAudits, &totalFindings)
-	return
+	return s.repo.GetStats(ctx, userID)
 }
