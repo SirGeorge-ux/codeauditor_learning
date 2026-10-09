@@ -1,9 +1,8 @@
 package brave
 
-import "errors"
-
-// errNotImplemented marked the PR 1 stub adapter's methods. The PR 4
-// implementation removed the dependency from each method; the variable
-// is left for any reference inside other code (search-replace guard)
-// but is no longer wired into any control flow.
-var errNotImplemented = errors.New("brave: not implemented in this PR")
+// Package-local error variables live alongside the adapter so callers
+// can branch on adapter-specific failures without importing net/http
+// or any third-party SDK. errMissingAPIKey (in adapter.go) is the
+// canonical sentinel for misconfigured adapters; no sentinel remains
+// for the legacy "not implemented" stub (PR 4 fully wired the
+// HTTP path; the stub placeholder was removed).
