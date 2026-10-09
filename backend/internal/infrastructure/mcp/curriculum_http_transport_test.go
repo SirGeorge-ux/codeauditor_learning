@@ -229,7 +229,7 @@ func TestMCPHTTPTransport_Curriculum_PathTraversal_ReturnsInvalidParams(t *testi
 	// guard must trip before any filesystem read.
 	// Reconfigure the fake to return the path-traversal sentinel so the
 	// transport test exercises the production mapping end-to-end.
-	// The fixture's fakeService is shared; swap its behaviour for this
+	// The fixture's fakeService is shared; swap its behavior for this
 	// single test by replacing the registry: easiest is to build a new
 	// stack with a sentinel-returning fake.
 	mcpReg := mcpkit.NewRegistry()

@@ -329,20 +329,6 @@ func isNotExist(err error) bool {
 
 // --- Markdown parser (intentionally small and tests-friendly) ---
 
-// blockKinds enumerates the structured YAML-ish bullet blocks we recognize
-// inside a topic body. The list is ordered and closed because parseBlock
-// walks them in turn.
-var blockKinds = []string{
-	"slug",
-	"difficulty",
-	"prerequisites",
-	"category",
-	"description",
-	"exercises",
-	"common_mistakes",
-	"resources",
-}
-
 // headingRegex matches a topic heading '### <slug>' (3+ leading #, then
 // the slug). The spec uses exactly '###'; we accept 3..6 to be tolerant.
 var headingRegex = regexp.MustCompile(`(?m)^#{3,6}\s+([A-Za-z0-9_\-.]+)\s*$`)
