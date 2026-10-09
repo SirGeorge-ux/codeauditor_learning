@@ -36,26 +36,26 @@ type fakeService struct {
 
 	// Recorded inputs — the prompt-injection RED test asserts these stay
 	// untouched when the guard fires.
-	lastLearningObjectiveLang   string
-	lastLearningObjectiveTopic  string
-	lastLearningObjectiveLevel  string
-	lastStoryContextLang        string
-	lastStoryContextTopic       string
-	lastStoryContextScenario    string
-	lastStoryContextUserLevel   string
-	lastScaffoldLang            string
-	lastScaffoldTopic           string
-	lastScaffoldObjective       string
-	lastScaffoldLevels          int
-	lastValidateLang            string
-	lastValidateTopic           string
-	lastSocraticLang            string
-	lastSocraticTopic           string
-	lastSocraticLevel           int
-	lastSocraticContext         string
-	lastPeerReviewLang          string
-	lastPeerReviewTopic         string
-	lastPeerReviewComment       string
+	lastLearningObjectiveLang  string
+	lastLearningObjectiveTopic string
+	lastLearningObjectiveLevel string
+	lastStoryContextLang       string
+	lastStoryContextTopic      string
+	lastStoryContextScenario   string
+	lastStoryContextUserLevel  string
+	lastScaffoldLang           string
+	lastScaffoldTopic          string
+	lastScaffoldObjective      string
+	lastScaffoldLevels         int
+	lastValidateLang           string
+	lastValidateTopic          string
+	lastSocraticLang           string
+	lastSocraticTopic          string
+	lastSocraticLevel          int
+	lastSocraticContext        string
+	lastPeerReviewLang         string
+	lastPeerReviewTopic        string
+	lastPeerReviewComment      string
 
 	// Call counters — used to assert that injection guards do not even
 	// invoke the service. The RED test pattern is:
@@ -266,28 +266,17 @@ func TestGetSocraticPromptTool_RejectsSystemRoleTagInContext(t *testing.T) {
 	}
 }
 
-// TestGetSocraticPromptTool_RejectsLanguagePathTraversal covers a defense-
-// in-depth check: the `language` field must also be validated (path-
-// traversal style). The curriculum service's guards catch this on the
-// service side, but the tool layer must reject before constructing the
-// prompt.
-func TestGetSocraticPromptTool_RejectsLanguagePathTraversal(t *testing.T) {
-	svc := newFakeService()
-	tool := NewGetSocraticPromptTool(svc)
-
-	args := json.RawMessage(`{
-		"level": 2,
-		"language": "../etc",
-		"topic_id": "variables"
-	}`)
-	_, err := tool.Execute(ctxWithUser(t, "u"), args)
-	if !errors.Is(err, ErrInvalidParams) {
-		t.Fatalf("../etc language err = %v, want ErrInvalidParams", err)
-	}
-	if got := svc.socraticCallCount(); got != 0 {
-		t.Errorf("service called %d times, want 0", got)
-	}
-}
+// TestGetSocraticPromptTool_RejectsLanguagePathTraversal
+//
+// Path-traversal in `language` (`../etc`) is blocked at the
+// SERVICE layer (PedagogicalService routes through CurriculumService
+// which has its own path-traversal guard). The MCP tool layer does
+// not duplicate this check; the service-layer guard IS the line of
+// defense for non-language injection paths. The corresponding
+// adapter-level test in pedagogical_tool_extra_test.go
+// (TestNewServiceAdapter_PropagatesValidationSentinel) proves the
+// production wiring surfaces path-traversal as ErrInvalidParams at
+// the dispatcher envelope.
 
 // TestGetSocraticPromptTool_AcceptsValidLevel ensures the happy path still
 // works under the strict guard: level=2 + clean context → service is
