@@ -436,7 +436,7 @@ Detalle: `docs/openspec-workflow.md`.
 - **6 handlers HTTP**: audit, auth, challenge, gogs, sse, vault.
 - **5+ páginas Angular**: home, login, register, dashboard, dojo, mcp, vault.
 - **~99 tests Go + 31 tests Angular + 6 tests E2E**.
-- **2 specs activas** (una huérfana, debería archivarse) + 14 archivadas.
-- **Pendiente cerrar:** `mcp-integration` (archivar), `multi-lang-sandbox-oleada1/` en `changes/` (eliminar).
+- **4 specs activas** (`tutor-chat`, `free-practice-mode`, `code-health-dashboard`, `llm-cascade`) + 20 archivadas.
+- **Cerrado 2026-10-10:** `mcp-integration` archivado a `openspec/changes/archive/2026-10-10-mcp-integration/`, `multi-lang-sandbox-oleada1/` eliminado de `changes/` (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`).
 
 Esto es un proyecto **maduro**, no un MVP. Trátalo como tal: con respeto por lo que ya está, y cuidado al añadir.
