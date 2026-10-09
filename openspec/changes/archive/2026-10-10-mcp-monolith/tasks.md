@@ -32,9 +32,9 @@ Chain strategy: feature-branch-chain
 
 ## Phase 2: Sandbox + Challenges (PR 2)
 
-- [ ] 2.1 RED: `mcp-sandbox.run_code` enforces `--cap-drop=ALL --network=none`
-- [ ] 2.2 `mcp/sandbox/` — `run_code`, `list_languages`, `healthcheck`, `get_install_hint`
-- [ ] 2.3 `mcp/challenges/` — `list_challenges`, `get_challenge`, `create_temp_challenge`, `generate_challenge`, `validate_challenge`
+- [x] 2.1 RED: `mcp-sandbox.run_code` enforces `--cap-drop=ALL --network=none`
+- [x] 2.2 `mcp/sandbox/` — `run_code`, `list_languages`, `healthcheck`, `get_install_hint`
+- [x] 2.3 `mcp/challenges/` — `list_challenges`, `get_challenge`, `create_temp_challenge`, `generate_challenge`, `validate_challenge`
 
 ## Phase 3: User + Curriculum (PR 3)
 
@@ -60,7 +60,8 @@ Chain strategy: feature-branch-chain
 
 ### Phase 5 reconciliation (count = 33, not 32)
 
-The spec headline reads "exactly 32 tools across 7 groups"; the
+The spec headline read "exactly 32 tools across 7 groups" at the time
+this note was written; the
 canonical wiring ships 33 across 8 groups. The 33rd is
 `mcp-tutor.tutor_lookup`, registered by the archived
 2026-10-08-dictionary change. Removing it would regress the tutor

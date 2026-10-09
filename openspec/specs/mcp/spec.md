@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the MCP (Model Context Protocol) monolith: a single Go binary exposing 32 tools across 7 groups via HTTP+SSE (JSON-RPC 2.0). Every tool delegates to `core/services/` — zero direct DB/IO. This is the backbone for context-aware tutor chat and Angular frontend via `MCPClientPort`.
+Define the MCP (Model Context Protocol) monolith: a single Go binary exposing 33 tools across 8 groups via HTTP+SSE (JSON-RPC 2.0). Every tool delegates to `core/services/` — zero direct DB/IO. This is the backbone for context-aware tutor chat and Angular frontend via `MCPClientPort`.
 
 ## ADDED Requirements
 
@@ -41,9 +41,9 @@ The system SHALL provide a `Registry` that supports `Register(tool MCPTool)`, `G
 
 #### Scenario: Registry returns all registered tools
 
-- GIVEN 32 tools registered across 7 groups
+- GIVEN 33 tools registered across 8 groups
 - WHEN `List()` is called
-- THEN it returns all 32 tools with valid schemas
+- THEN it returns all 33 tools with valid schemas
 
 #### Scenario: Registry rejects unknown tool name
 
@@ -193,7 +193,7 @@ The Angular frontend SHALL provide `MCPClientAdapter` implementing `MCPClientPor
 
 ### Requirement: S2 Tool Inventory
 
-The system SHALL register exactly 32 tools across 7 groups for S2:
+The system SHALL register exactly 33 tools across 8 groups for S2:
 
 | Group | Tools | Count |
 |-------|-------|-------|
@@ -204,18 +204,21 @@ The system SHALL register exactly 32 tools across 7 groups for S2:
 | `mcp-dictionary` | `search_term`, `get_term`, `add_term`, `list_terms` | 4 |
 | `mcp-pedagogical` | `get_learning_objective`, `generate_story_context`, `create_scaffolded_steps`, `validate_solution`, `get_socratic_prompt`, `peer_review_topic` | 6 |
 | `mcp-external_docs` | `get_library_docs`, `search_documentation`, `get_real_example` | 3 |
+| `mcp-tutor` | `tutor_lookup` | 1 |
 
 #### Scenario: Tool list count matches inventory
 
 - GIVEN the MCP server starts with all S2 tools registered
 - WHEN `GET /mcp/tools/list` is called
-- THEN the response contains exactly 32 tools
+- THEN the response contains exactly 33 tools
 
 #### Scenario: Deferred groups are excluded
 
-- GIVEN the S2 scope excludes `mcp-inspiration` and `mcp-code_health`
+- GIVEN the S2 scope includes all 8 groups (`mcp-sandbox`, `mcp-challenges`, `mcp-user`, `mcp-curriculum`, `mcp-dictionary`, `mcp-pedagogical`, `mcp-external_docs`, `mcp-tutor`) and excludes `mcp-inspiration` and `mcp-code_health`
 - WHEN `GET /mcp/tools/list` is called
 - THEN no tool name starts with `mcp-inspiration` or `mcp-code_health`
+
+> **Note (33rd tool ownership)**: `mcp-tutor.tutor_lookup` is the 8th S2 group (1 tool). It is registered by the archived `2026-10-08-dictionary` change, which owns `TutorLookupService` (see `openspec/changes/archive/2026-10-08-dictionary/`). It is part of the S2 MCP surface: the tutor LLM uses it to ground term-lookup questions in the user's personal glossary. Removing it would regress the tutor LLM; the canonical S2 surface is therefore 33 tools across 8 groups.
 
 ### Requirement: Tool Test Coverage
 

@@ -4,7 +4,7 @@
 
 ## Technical Approach
 
-The MCP Monolith integrates a Model Context Protocol server directly into the CodeAuditor Go backend. Instead of running a separate Node/Python MCP process, we expose HTTP and SSE endpoints from our existing Chi router. This allows the tutor LLM to execute 32 tools across 7 groups by delegating directly to our existing Hexagonal architecture `core/services/` layer without network hops. 
+The MCP Monolith integrates a Model Context Protocol server directly into the CodeAuditor Go backend. Instead of running a separate Node/Python MCP process, we expose HTTP and SSE endpoints from our existing Chi router. This allows the tutor LLM to execute 33 tools across 8 groups by delegating directly to our existing Hexagonal architecture `core/services/` layer without network hops. 
 
 This approach minimizes deployment complexity while strictly preserving Hexagonal purity: MCP tools are driving adapters that translate JSON-RPC 2.0 into Go service method calls. 
 
@@ -14,7 +14,7 @@ This approach minimizes deployment complexity while strictly preserving Hexagona
 
 **Choice**: Extract the MCP runtime (interface, registry, dispatcher, server, rate limiter, auth context keys) into `internal/mcpkit/`, a sibling library that tool groups import. **Shipped** (change `mcpkit`, archived 2026-10-08).
 **Alternatives considered**: Keeping the runtime inside `infrastructure/mcp/` alongside tool groups; splitting each tool group into its own process.
-**Rationale**: A single in-process monolith stays correct for a single-user app (see next decision), but the runtime and the tool groups have different reuse horizons: the runtime is protocol infrastructure that the future Gogs-fork integration and external clients will consume, while tool groups are academy-specific adapters. The library boundary enforces the dependency direction `tool-group → mcpkit → core/services` and prevents tool groups from importing each other's runtime helpers. This is structural (no behavior change): same wire protocol, same 32-tool registry, zero new dependencies.
+**Rationale**: A single in-process monolith stays correct for a single-user app (see next decision), but the runtime and the tool groups have different reuse horizons: the runtime is protocol infrastructure that the future Gogs-fork integration and external clients will consume, while tool groups are academy-specific adapters. The library boundary enforces the dependency direction `tool-group → mcpkit → core/services` and prevents tool groups from importing each other's runtime helpers. This is structural (no behavior change): same wire protocol, same 33-tool registry, zero new dependencies.
 
 ### Decision: In-Process Monolith vs Separate Service
 
@@ -187,7 +187,7 @@ data: {"status": "completed", "result": {...}}
 
 ## Tool-per-Group Design (S2)
 
-The system registers exactly 32 tools across 7 groups. Status at 2026-10-08: `mcp-dictionary` (4 tools) shipped and registered; `tutor lookup` (tutor-chat change) registered; remaining groups pending (PRs 2-4).
+The system registers exactly 33 tools across 8 groups. Status at 2026-10-08: `mcp-dictionary` (4 tools) shipped and registered; `mcp-tutor` (`tutor_lookup`, registered by the archived `2026-10-08-dictionary` change) registered; remaining groups pending (PRs 2-4).
 
 | Group | Tools | Dependencies |
 |-------|-------|-------------|
@@ -198,6 +198,7 @@ The system registers exactly 32 tools across 7 groups. Status at 2026-10-08: `mc
 | `mcp-dictionary` | `search_term`, `get_term`, `add_term`, `list_terms` | `DictionaryService` |
 | `mcp-pedagogical` | `get_learning_objective`, `generate_story_context`, `create_scaffolded_steps`, `validate_solution`, `get_socratic_prompt`, `peer_review_topic` | `PedagogicalService`, `CurriculumService`, `LLMClient` |
 | `mcp-external_docs`| `get_library_docs`, `search_documentation`, `get_real_example` | `ExternalDocsService` (Context7 + Brave) |
+| `mcp-tutor` | `tutor_lookup` | `TutorLookupService` (over `DictionaryService`), `LLMClient` |
 
 #### Why `run_code` depends on `*sandbox.DockerSandbox`, not the `SandboxExecutor` port
 
