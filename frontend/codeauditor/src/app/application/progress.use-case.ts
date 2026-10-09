@@ -9,7 +9,7 @@
 // Uses signals for reactive state. Delegates to ProgressRepository port.
 // Zero framework imports for the logic; uses Angular's signal() for reactivity.
 import { signal, computed } from '@angular/core';
-import { LanguageProgress, AllProgressResponse } from '../domain/models/language-progress';
+import { AllProgressResponse } from '../domain/models/language-progress';
 import {
   LearningProfile,
   Preferencias,
