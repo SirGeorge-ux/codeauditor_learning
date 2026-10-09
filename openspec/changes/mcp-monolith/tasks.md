@@ -38,9 +38,9 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3: User + Curriculum (PR 3)
 
-- [ ] 3.1 RED: `mcp-curriculum.get_topics` rejects `../` path traversal
-- [ ] 3.2 `mcp/user/` — 6 tools (profile, progress, history, learning_profile, audit, update)
-- [ ] 3.3 `mcp/curriculum/` — `get_topics`, `get_topic`, `suggest_topic`, `review_topic`
+- [x] 3.1 RED: `mcp-curriculum.get_topics` rejects `../` path traversal
+- [x] 3.2 `mcp/user/` — 6 tools (profile, progress, history, learning_profile, audit, update)
+- [x] 3.3 `mcp/curriculum/` — `get_topics`, `get_topic`, `suggest_topic`, `review_topic`
 
 ## Phase 4: Dict + Pedagogical + ExtDocs (PR 4)
 
