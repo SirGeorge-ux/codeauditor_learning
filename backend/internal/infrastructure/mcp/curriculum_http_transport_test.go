@@ -206,7 +206,7 @@ func TestMCPHTTPTransport_Curriculum_GetTopics_HappyPath(t *testing.T) {
 	}
 	rspBody, _ := io.ReadAll(rr.Body)
 	var env struct {
-		Error any             `json:"error"`
+		Error  any             `json:"error"`
 		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(rspBody, &env); err != nil {
@@ -288,12 +288,15 @@ type curriculumTraversalFake struct{}
 func (curriculumTraversalFake) GetTopics(_ context.Context, _ services.GetTopicsInput) ([]services.Topic, error) {
 	return nil, services.ErrCurriculumInvalidLanguage
 }
+
 func (curriculumTraversalFake) GetTopic(_ context.Context, _, _ string) (services.TopicDetail, error) {
 	return services.TopicDetail{}, services.ErrCurriculumInvalidLanguage
 }
+
 func (curriculumTraversalFake) SuggestTopic(_ context.Context, _ services.SuggestTopicInput) (services.Topic, error) {
 	return services.Topic{}, services.ErrCurriculumInvalidLanguage
 }
+
 func (curriculumTraversalFake) ReviewTopic(_ context.Context, _ services.ReviewTopicInput) (services.ReviewTopicResult, error) {
 	return services.ReviewTopicResult{}, services.ErrCurriculumInvalidLanguage
 }
