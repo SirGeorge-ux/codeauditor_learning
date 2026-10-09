@@ -1,12 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
 
 import { ChallengeService } from './challenge.service';
 import { ChallengeUseCase } from '../../application/challenge.use-case';
+import { AuthService } from './auth.service';
 import { Challenge } from '../../domain/models/challenge';
 import { ChallengeRepository } from '../../domain/ports/challenge-repository.port';
 
-// Manual DI — no TestBed needed. Uses optional constructor parameter.
-// This is an inline fake for unit testing ChallengeService, NOT the
+// Test seam: after TestBed constructs the service, swap the useCase field
+// for one wrapping the FakeChallengeRepository. Keeps the existing test
+// assertion surface (mockRepo.create / getById / getAll) without forcing
+// the service to accept a useCase constructor parameter.
+type UseCaseHolder = { useCase: ChallengeUseCase };
+
+// Inline fake for unit testing ChallengeService — replaces the
 // deleted MockChallengeRepository schema adapter.
 class FakeChallengeRepository {
   getAll = vi.fn<() => Promise<Challenge[]>>();
@@ -22,7 +29,16 @@ describe('ChallengeService', () => {
     vi.clearAllMocks();
     mockRepo = new FakeChallengeRepository();
     const useCase = new ChallengeUseCase(mockRepo as unknown as ChallengeRepository);
-    service = new ChallengeService(useCase);
+
+    TestBed.configureTestingModule({
+      providers: [
+        ChallengeService,
+        { provide: AuthService, useValue: { getAccessToken: () => 'test-token' } },
+      ],
+    });
+    service = TestBed.inject(ChallengeService);
+    // Test seam: inject the fake-repo-backed useCase.
+    (service as unknown as UseCaseHolder).useCase = useCase;
   });
 
   describe('importChallenge', () => {

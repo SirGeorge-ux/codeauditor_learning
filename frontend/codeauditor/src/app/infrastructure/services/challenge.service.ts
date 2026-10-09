@@ -11,22 +11,18 @@ import { Challenge } from '../../domain/models/challenge';
 
 @Injectable({ providedIn: 'root' })
 export class ChallengeService {
+  private authService = inject(AuthService);
   private useCase: ChallengeUseCase;
 
   challengesSignal = signal<Challenge[]>([]);
   selectedChallengeSignal = signal<Challenge | null>(null);
   loadingSignal = signal(false);
 
-  constructor(useCase?: ChallengeUseCase) {
-    if (useCase) {
-      this.useCase = useCase;
-    } else {
-      const authService = inject(AuthService);
-      const repo = new HttpChallengeRepository({
-        getToken: () => authService.getAccessToken(),
-      });
-      this.useCase = new ChallengeUseCase(repo);
-    }
+  constructor() {
+    const repo = new HttpChallengeRepository({
+      getToken: () => this.authService.getAccessToken(),
+    });
+    this.useCase = new ChallengeUseCase(repo);
   }
 
   async loadChallenges(): Promise<void> {
