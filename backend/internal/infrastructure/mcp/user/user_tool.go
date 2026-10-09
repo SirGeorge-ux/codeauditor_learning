@@ -260,9 +260,10 @@ func (t *getProfileTool) Execute(ctx context.Context, _ json.RawMessage) (any, e
 	}
 	profile, err := t.svc.GetProfile(ctx, userID)
 	if err != nil {
-		if errors.Is(err, ErrUserProfileNotFound) {
-			return nil, fmt.Errorf("user profile not found")
-		}
+		// Preserve the ErrUserProfileNotFound sentinel so callers can
+		// errors.Is against it; the sentinel's own message is already
+		// "user profile not found", so wrapping would just lose the
+		// chain without adding information.
 		return nil, err
 	}
 	return profile, nil

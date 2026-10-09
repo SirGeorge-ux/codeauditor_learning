@@ -144,8 +144,13 @@ func TestGetProfileTool_NotFound_ReturnsStructuredError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !errors.Is(err, services.ErrUserValidation) && !strings_Contains(err.Error(), "not found") {
-		t.Errorf("err should mention 'not found'; got %v", err)
+	// Tight sentinel check (was: loose OR between errors.Is(ErrUserValidation)
+	// and strings.Contains("not found")). The production adapter now
+	// preserves the ErrUserProfileNotFound sentinel end-to-end, so the
+	// tool returns it verbatim — matching the contract asserted in
+	// TestNewServiceAdapter_GetProfile_PropagatesSentinel below.
+	if !errors.Is(err, ErrUserProfileNotFound) {
+		t.Errorf("err = %v, want ErrUserProfileNotFound", err)
 	}
 }
 
@@ -403,11 +408,7 @@ func TestNewServiceAdapter_GetProfile_PropagatesSentinel(t *testing.T) {
 
 // --- helpers ---
 
-func strings_Contains(s, substr string) bool {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
+// (TestGetProfileTool_NotFound_ReturnsStructuredError previously used a
+// local strings_Contains shim because the file did not import "strings".
+// That helper is now dead — the assertion pins the ErrUserProfileNotFound
+// sentinel directly via errors.Is.)
