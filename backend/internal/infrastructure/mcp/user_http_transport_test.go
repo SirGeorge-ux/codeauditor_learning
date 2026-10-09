@@ -22,7 +22,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
-	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	usermcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/user"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
@@ -82,7 +81,7 @@ type userHTTPFakeService struct {
 
 	profileOut  *models.UserProfile
 	progressOut *models.LanguageProgress
-	historyOut  []services.AuditSession
+	historyOut  []models.AuditSession
 	learningOut *models.LearningProfile
 }
 
@@ -96,7 +95,7 @@ func newUserHTTPFakeService() *userHTTPFakeService {
 			UserID: "u-1", Language: "typescript", Rango: "E", Puntos: 100,
 			ChallengesCompletados: 5, ChallengesIntentados: 8, TasaExito: 0.625,
 		},
-		historyOut: []services.AuditSession{
+		historyOut: []models.AuditSession{
 			{ID: "s-1", UserID: "u-1", ChallengeTitle: "ch-xss", Language: "typescript", FindingsCount: 1},
 		},
 		learningOut: models.DefaultLearningProfile("u-1"),
@@ -115,7 +114,7 @@ func (f *userHTTPFakeService) GetLanguageProgress(_ context.Context, _, _ string
 	return f.progressOut, nil
 }
 
-func (f *userHTTPFakeService) GetHistory(_ context.Context, _ string, _ int) ([]services.AuditSession, error) {
+func (f *userHTTPFakeService) GetHistory(_ context.Context, _ string, _ int) ([]models.AuditSession, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.historyOut, nil

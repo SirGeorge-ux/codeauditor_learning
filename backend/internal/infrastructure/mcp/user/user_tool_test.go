@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
-	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -44,7 +43,7 @@ type fakeService struct {
 	profileErr  error
 	progressOut *models.LanguageProgress
 	progressErr error
-	historyOut  []services.AuditSession
+	historyOut  []models.AuditSession
 	historyErr  error
 	learningOut *models.LearningProfile
 	learningErr error
@@ -56,7 +55,7 @@ func newFakeService() *fakeService {
 	return &fakeService{
 		profileOut:  &models.UserProfile{ID: "u-1", Email: "u@example.com"},
 		progressOut: &models.LanguageProgress{UserID: "u-1", Language: "typescript", Rango: "F"},
-		historyOut:  []services.AuditSession{},
+		historyOut:  []models.AuditSession{},
 		learningOut: models.DefaultLearningProfile("u-1"),
 	}
 }
@@ -76,7 +75,7 @@ func (s *fakeService) GetLanguageProgress(_ context.Context, userID, language st
 	return s.progressOut, s.progressErr
 }
 
-func (s *fakeService) GetHistory(_ context.Context, userID string, limit int) ([]services.AuditSession, error) {
+func (s *fakeService) GetHistory(_ context.Context, userID string, limit int) ([]models.AuditSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastGetHistoryUserID = userID
@@ -203,7 +202,7 @@ func TestGetLanguageProgressTool_MissingLanguage_ReturnsInvalidParams(t *testing
 
 func TestGetHistoryTool_HappyPath(t *testing.T) {
 	svc := newFakeService()
-	svc.historyOut = []services.AuditSession{
+	svc.historyOut = []models.AuditSession{
 		{ID: "s-1", UserID: "u-1", ChallengeTitle: "ch-xss", Language: "typescript"},
 		{ID: "s-2", UserID: "u-1", ChallengeTitle: "ch-n1", Language: "python"},
 	}
@@ -215,7 +214,7 @@ func TestGetHistoryTool_HappyPath(t *testing.T) {
 	if svc.lastGetHistoryLimit != 5 {
 		t.Errorf("routed limit=%d, want 5", svc.lastGetHistoryLimit)
 	}
-	arr := got.([]services.AuditSession)
+	arr := got.([]models.AuditSession)
 	if len(arr) != 2 {
 		t.Errorf("len=%d, want 2", len(arr))
 	}

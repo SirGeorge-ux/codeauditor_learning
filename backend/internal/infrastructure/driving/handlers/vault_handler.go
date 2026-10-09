@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 )
@@ -33,7 +34,7 @@ func (h *VaultHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sessions == nil {
-		sessions = []services.AuditSession{}
+		sessions = []models.AuditSession{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

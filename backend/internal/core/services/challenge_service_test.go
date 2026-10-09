@@ -1,293 +1,296 @@
 package services
 
+// Tests for ChallengeService. Mirrors the audit_service_test.go
+// pattern: hand-rolled, deterministic, in-memory fake ports so the
+// service can be exercised end-to-end without a real database. The
+// SQL is verified separately in
+// backend/internal/infrastructure/driven/supabase/challenge_repository_test.go
+// via go-sqlmock against the production adapter.
+
 import (
 	"context"
 	"errors"
-	"regexp"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
-
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
-// Helper to build standard column list for sqlmock matching the service SELECT.
-func challengeColumns() []string {
-	return []string{
-		"id", "title", "description", "difficulty", "category", "language",
-		"repo_url", "code", "code_smell", "status", "created_at", "user_id", "source_repo",
-		"learning_objectives", "hints", "common_mistakes", "estimated_time_minutes",
-		"expected_findings", "test_cases", "linter_rules",
-		"base_points", "bonus_points", "penalty_per_hint", "time_bonus",
-		"origin", "source_path", "generated_by", "created_by",
-	}
+// --- Fakes (deterministic, in-memory) ---
+
+// fakeChallengeRepo is a minimal ports.ChallengeRepository used to
+// drive ChallengeService without a real database. Each method has
+// pre-canned behavior knobs + recorded calls so tests can assert on
+// the exact (ctx, args) tuple the service passes through.
+type fakeChallengeRepo struct {
+	mu sync.Mutex
+
+	// findBySource: when set, the call returns this challenge (and a
+	// nil err) instead of the not-found sentinel.
+	findBySourceOut *models.Challenge
+
+	// findBySourceErr: when non-nil, returned from FindBySourceRepoAndUser
+	// regardless of findBySourceOut.
+	findBySourceErr error
+
+	// findBySourceCalls: every (sourceRepo, userID) tuple the service
+	// passed through the dedup probe.
+	findBySourceCalls []fakeSourceCall
+
+	// insertCalls: every *models.Challenge the service handed to Insert.
+	insertCalls []*models.Challenge
+
+	// insertCreatedAt: the time.Time Insert should return; mirrors the
+	// DB's RETURNING created_at behavior.
+	insertCreatedAt time.Time
+
+	// insertErr: when non-nil, returned from Insert.
+	insertErr error
+
+	// listOut / listErr: response for ListVisibleToUser.
+	listOut []models.Challenge
+	listErr error
+
+	// listCalls: every (ctx, userID) tuple passed to ListVisibleToUser.
+	listCalls []string
+
+	// findByIDOut / findByIDErr: response for FindByIDVisibleToUser.
+	findByIDOut models.Challenge
+	findByIDErr error
+
+	// findByIDCalls: every (ctx, id, userID) tuple.
+	findByIDCalls []fakeIDCall
+
+	// findByIDWithSolutionOut / findByIDWithSolutionErr: same for the
+	// solution-aware lookup.
+	findByIDWithSolutionOut models.Challenge
+	findByIDWithSolutionErr error
+
+	// findByIDWithSolutionCalls: every (ctx, id, userID) tuple.
+	findByIDWithSolutionCalls []fakeIDCall
 }
 
-func challengeColumnsWithSolution() []string {
-	cols := challengeColumns()
-	return append(cols, "solution_code", "solution_explanation")
+type (
+	fakeSourceCall struct{ sourceRepo, userID string }
+	fakeIDCall     struct{ id, userID string }
+)
+
+func (f *fakeChallengeRepo) FindBySourceRepoAndUser(_ context.Context, sourceRepo, userID string) (models.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.findBySourceCalls = append(f.findBySourceCalls, fakeSourceCall{sourceRepo, userID})
+	if f.findBySourceErr != nil {
+		return models.Challenge{}, f.findBySourceErr
+	}
+	if f.findBySourceOut != nil {
+		return *f.findBySourceOut, nil
+	}
+	return models.Challenge{}, ports.ErrChallengeNotFound
 }
 
-var emptyJSONB = []byte("[]")
-
-func TestChallengeService_GetAll_ReturnsChallenges(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
+func (f *fakeChallengeRepo) Insert(_ context.Context, c *models.Challenge) (time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.insertCalls = append(f.insertCalls, c)
+	if f.insertErr != nil {
+		return time.Time{}, f.insertErr
 	}
-	defer db.Close()
+	return f.insertCreatedAt, nil
+}
 
-	userID := "user-1"
+func (f *fakeChallengeRepo) ListVisibleToUser(_ context.Context, userID string) ([]models.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listCalls = append(f.listCalls, userID)
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.listOut, nil
+}
+
+func (f *fakeChallengeRepo) FindByIDVisibleToUser(_ context.Context, id, userID string) (models.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.findByIDCalls = append(f.findByIDCalls, fakeIDCall{id, userID})
+	if f.findByIDErr != nil {
+		return models.Challenge{}, f.findByIDErr
+	}
+	return f.findByIDOut, nil
+}
+
+func (f *fakeChallengeRepo) FindByIDWithSolutionVisibleToUser(_ context.Context, id, userID string) (models.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.findByIDWithSolutionCalls = append(f.findByIDWithSolutionCalls, fakeIDCall{id, userID})
+	if f.findByIDWithSolutionErr != nil {
+		return models.Challenge{}, f.findByIDWithSolutionErr
+	}
+	return f.findByIDWithSolutionOut, nil
+}
+
+// Compile-time guard: fakeChallengeRepo must satisfy the port.
+var _ ports.ChallengeRepository = (*fakeChallengeRepo)(nil)
+
+// --- Tests ---
+
+// TestChallengeService_GetAll_ProxiesToRepo proves the service
+// simply delegates GetAll to the port. The fake returns a 2-row
+// list and the service must hand it back unchanged.
+func TestChallengeService_GetAll_ProxiesToRepo(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
-	cols := challengeColumns()
-	rows := sqlmock.NewRows(cols).
-		AddRow("ch-sqli", "SQL Injection", "desc", "junior", "security", "typescript", "https://example.com", "code", "SQL Injection", "available", now, nil, nil,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil).
-		AddRow("ch-xss", "XSS", "desc2", "junior", "security", "typescript", "https://example.com", "code2", "XSS", "available", now, nil, nil,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil)
+	repo := &fakeChallengeRepo{
+		listOut: []models.Challenge{
+			{ID: "ch-1", Title: "T1", CreatedAt: now},
+			{ID: "ch-2", Title: "T2", CreatedAt: now},
+		},
+	}
+	svc := NewChallengeService(repo)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + challengeSelectColumns + `
-		 FROM public.challenges
-		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
-		 ORDER BY created_at DESC`)).
-		WithArgs(userID).
-		WillReturnRows(rows)
-
-	svc := NewChallengeService(db)
-	challenges, err := svc.GetAll(context.Background(), userID)
+	got, err := svc.GetAll(context.Background(), "user-1")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("GetAll unexpected error: %v", err)
 	}
-	if len(challenges) != 2 {
-		t.Fatalf("expected 2 challenges, got %d", len(challenges))
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2", len(got))
 	}
-	if challenges[0].ID != "ch-sqli" {
-		t.Errorf("expected first challenge ID 'ch-sqli', got %q", challenges[0].ID)
+	if got[0].ID != "ch-1" || got[1].ID != "ch-2" {
+		t.Errorf("ids = (%q, %q), want (ch-1, ch-2)", got[0].ID, got[1].ID)
 	}
-	if challenges[1].ID != "ch-xss" {
-		t.Errorf("expected second challenge ID 'ch-xss', got %q", challenges[1].ID)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.listCalls) != 1 || repo.listCalls[0] != "user-1" {
+		t.Errorf("ListVisibleToUser calls = %v, want [user-1]", repo.listCalls)
 	}
 }
 
 func TestChallengeService_GetAll_EmptyResult(t *testing.T) {
-	db, mock, err := sqlmock.New()
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{listOut: nil}
+	svc := NewChallengeService(repo)
+
+	got, err := svc.GetAll(context.Background(), "user-1")
 	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
+		t.Fatalf("GetAll unexpected error: %v", err)
 	}
-	defer db.Close()
-
-	userID := "user-1"
-	cols := challengeColumns()
-	rows := sqlmock.NewRows(cols)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + challengeSelectColumns + `
-		 FROM public.challenges
-		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
-		 ORDER BY created_at DESC`)).
-		WithArgs(userID).
-		WillReturnRows(rows)
-
-	svc := NewChallengeService(db)
-	challenges, err := svc.GetAll(context.Background(), userID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// Service returns nil when no rows — handler converts nil to empty array
-	if len(challenges) != 0 {
-		t.Fatalf("expected 0 challenges, got %d", len(challenges))
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if len(got) != 0 {
+		t.Errorf("len(got) = %d, want 0 (nil slice is acceptable)", len(got))
 	}
 }
 
-func TestChallengeService_GetByID_ReturnsChallenge(t *testing.T) {
-	db, mock, err := sqlmock.New()
+// TestChallengeService_GetByID_Hit returns the row the port produced.
+func TestChallengeService_GetByID_Hit(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{
+		findByIDOut: models.Challenge{ID: "ch-1", Title: "T1", Difficulty: "junior"},
+	}
+	svc := NewChallengeService(repo)
+
+	got, err := svc.GetByID(context.Background(), "ch-1", "user-1")
 	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
+		t.Fatalf("GetByID unexpected error: %v", err)
 	}
-	defer db.Close()
-
-	userID := "user-1"
-	now := time.Now()
-	cols := challengeColumns()
-	row := sqlmock.NewRows(cols).
-		AddRow("ch-sqli", "SQL Injection", "desc", "junior", "security", "typescript", "https://example.com", "code", "SQL Injection", "available", now, nil, nil,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-sqli", userID).
-		WillReturnRows(row)
-
-	svc := NewChallengeService(db)
-	challenge, err := svc.GetByID(context.Background(), "ch-sqli", userID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if got.ID != "ch-1" {
+		t.Errorf("ID = %q, want ch-1", got.ID)
 	}
-	if challenge.ID != "ch-sqli" {
-		t.Errorf("expected ID 'ch-sqli', got %q", challenge.ID)
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.findByIDCalls) != 1 {
+		t.Fatalf("FindByIDVisibleToUser calls = %d, want 1", len(repo.findByIDCalls))
 	}
-	if challenge.Title != "SQL Injection" {
-		t.Errorf("expected title 'SQL Injection', got %q", challenge.Title)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if c := repo.findByIDCalls[0]; c.id != "ch-1" || c.userID != "user-1" {
+		t.Errorf("FindByIDVisibleToUser call = (%q, %q), want (ch-1, user-1)", c.id, c.userID)
 	}
 }
 
-func TestChallengeService_GetByID_NotFound(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
+// TestChallengeService_GetByID_NotFound_PropagatesPortSentinel proves
+// the service surfaces ports.ErrChallengeNotFound unchanged so HTTP
+// handlers can branch with errors.Is.
+func TestChallengeService_GetByID_NotFound_PropagatesPortSentinel(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{findByIDErr: ports.ErrChallengeNotFound}
+	svc := NewChallengeService(repo)
+
+	_, err := svc.GetByID(context.Background(), "missing", "user-1")
+	if !errors.Is(err, ErrChallengeNotFound) {
+		t.Errorf("err = %v, want ErrChallengeNotFound (which aliases ports.ErrChallengeNotFound)", err)
 	}
-	defer db.Close()
-
-	userID := "user-1"
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-nonexistent", userID).
-		WillReturnRows(sqlmock.NewRows(challengeColumns()))
-
-	svc := NewChallengeService(db)
-	_, err = svc.GetByID(context.Background(), "ch-nonexistent", userID)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err != ErrChallengeNotFound {
-		t.Errorf("expected ErrChallengeNotFound, got %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if !errors.Is(err, ports.ErrChallengeNotFound) {
+		t.Errorf("err = %v, want ports.ErrChallengeNotFound", err)
 	}
 }
 
-func TestChallengeService_GetChallengeWithDetails_ReturnsChallengeWithSolution(t *testing.T) {
-	db, mock, err := sqlmock.New()
+// TestChallengeService_GetChallengeWithDetails_DelegatesToSolutionPort
+// proves the solution-aware lookup goes through a different port
+// method than the solution-stripped GetByID.
+func TestChallengeService_GetChallengeWithDetails_DelegatesToSolutionPort(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{
+		findByIDWithSolutionOut: models.Challenge{
+			ID:                  "ch-1",
+			SolutionCode:        "SELECT * FROM users WHERE...",
+			SolutionExplanation: "Use parameterized queries",
+		},
+	}
+	svc := NewChallengeService(repo)
+
+	got, err := svc.GetChallengeWithDetails(context.Background(), "ch-1", "user-1")
 	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
+		t.Fatalf("GetChallengeWithDetails unexpected error: %v", err)
 	}
-	defer db.Close()
-
-	userID := "user-1"
-	now := time.Now()
-	cols := challengeColumnsWithSolution()
-	row := sqlmock.NewRows(cols).
-		AddRow("ch-sqli", "SQL Injection", "desc", "junior", "security", "typescript", "https://example.com", "code", "SQL Injection", "available", now, nil, nil,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil,
-			"SELECT * FROM users WHERE...", "Use parameterized queries")
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumnsWithSolution+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-sqli", userID).
-		WillReturnRows(row)
-
-	svc := NewChallengeService(db)
-	challenge, err := svc.GetChallengeWithDetails(context.Background(), "ch-sqli", userID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if got.SolutionCode != "SELECT * FROM users WHERE..." {
+		t.Errorf("SolutionCode = %q, want SELECT * FROM users WHERE...", got.SolutionCode)
 	}
-	if challenge.ID != "ch-sqli" {
-		t.Errorf("expected ID 'ch-sqli', got %q", challenge.ID)
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.findByIDWithSolutionCalls) != 1 {
+		t.Fatalf("FindByIDWithSolutionVisibleToUser calls = %d, want 1", len(repo.findByIDWithSolutionCalls))
 	}
-	if challenge.SolutionCode != "SELECT * FROM users WHERE..." {
-		t.Errorf("expected solution_code, got %q", challenge.SolutionCode)
-	}
-	if challenge.SolutionExplanation != "Use parameterized queries" {
-		t.Errorf("expected solution_explanation, got %q", challenge.SolutionExplanation)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if len(repo.findByIDCalls) != 0 {
+		t.Errorf("GetChallengeWithDetails must NOT call FindByIDVisibleToUser; got %d calls", len(repo.findByIDCalls))
 	}
 }
 
 func TestChallengeService_GetChallengeWithDetails_NotFound(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	userID := "user-1"
+	repo := &fakeChallengeRepo{findByIDWithSolutionErr: ports.ErrChallengeNotFound}
+	svc := NewChallengeService(repo)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumnsWithSolution+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-nonexistent", userID).
-		WillReturnRows(sqlmock.NewRows(challengeColumnsWithSolution()))
-
-	svc := NewChallengeService(db)
-	_, err = svc.GetChallengeWithDetails(context.Background(), "ch-nonexistent", userID)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err != ErrChallengeNotFound {
-		t.Errorf("expected ErrChallengeNotFound, got %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	_, err := svc.GetChallengeWithDetails(context.Background(), "missing", "user-1")
+	if !errors.Is(err, ErrChallengeNotFound) {
+		t.Errorf("err = %v, want ErrChallengeNotFound", err)
 	}
 }
 
-func TestChallengeService_GetByID_ExcludesSolutionFields(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+// TestChallengeService_GetByID_OtherUsersPrivate_PropagatesNotFound
+// proves that when the port returns ErrChallengeNotFound (because
+// the row exists but belongs to another user or is not visible), the
+// service surfaces that as ErrChallengeNotFound. Authorization is
+// the adapter's responsibility (it scopes by userID at the SQL
+// layer); the service just translates.
+func TestChallengeService_GetByID_OtherUsersPrivate_PropagatesNotFound(t *testing.T) {
+	t.Parallel()
 
-	userID := "user-1"
-	now := time.Now()
-	cols := challengeColumns()
-	row := sqlmock.NewRows(cols).
-		AddRow("ch-sqli", "SQL Injection", "desc", "junior", "security", "typescript", "https://example.com", "code", "SQL Injection", "available", now, nil, nil,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil)
+	repo := &fakeChallengeRepo{findByIDErr: ports.ErrChallengeNotFound}
+	svc := NewChallengeService(repo)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-sqli", userID).
-		WillReturnRows(row)
-
-	svc := NewChallengeService(db)
-	challenge, err := svc.GetByID(context.Background(), "ch-sqli", userID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if challenge.SolutionCode != "" {
-		t.Errorf("expected empty solution_code in GetByID, got %q", challenge.SolutionCode)
-	}
-	if challenge.SolutionExplanation != "" {
-		t.Errorf("expected empty solution_explanation in GetByID, got %q", challenge.SolutionExplanation)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	_, err := svc.GetByID(context.Background(), "ch-private", "user-1")
+	if !errors.Is(err, ErrChallengeNotFound) {
+		t.Errorf("err = %v, want ErrChallengeNotFound", err)
 	}
 }
 
 // validV2InputFields returns valid v2 fields for a CreateChallengeInput.
-// Tests that exercise the Create method beyond the validation gate need
-// these fields populated so the v2 constraints pass.
+// Tests that exercise the Create method beyond the validation gate
+// need these fields populated so the v2 constraints pass.
 func validV2InputFields() models.CreateChallengeInput {
 	return models.CreateChallengeInput{
 		Title:       "Test Challenge",
@@ -315,355 +318,300 @@ func validV2InputFields() models.CreateChallengeInput {
 	}
 }
 
+// TestChallengeService_Create_NewChallenge proves the happy path:
+// dedup probe returns not-found, UUID is generated, Insert is called
+// with the populated model, and the service returns the persisted
+// shape with the DB-supplied created_at.
 func TestChallengeService_Create_NewChallenge(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	userID := "user-1"
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &fakeChallengeRepo{insertCreatedAt: now}
+	svc := NewChallengeService(repo)
 
-	// Dedup check returns no rows
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`)).
-		WithArgs("owner/repo", userID).
-		WillReturnRows(sqlmock.NewRows(challengeColumns()))
-
-	// INSERT returns created_at — JSONB fields use AnyArg since exact bytes
-	// depend on json.Marshal output.
-	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO public.challenges (
-			id, title, description, difficulty, category, language, repo_url, source_repo, code, code_smell, status, user_id,
-			learning_objectives, hints, common_mistakes, estimated_time_minutes,
-			expected_findings, test_cases, linter_rules,
-			solution_code, solution_explanation,
-			base_points, bonus_points, penalty_per_hint, time_bonus,
-			origin, source_path, generated_by, created_by
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
-		RETURNING created_at`)).
-		WithArgs(
-			sqlmock.AnyArg(), "Test Challenge", "A code snippet that needs review", "junior", "security", "typescript",
-			"https://example.com/repo", "owner/repo", "code", "SQL Injection", "available", userID,
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), 0,
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			"", "",
-			0, 0, 0, false,
-			"", "", "", "",
-		).
-		WillReturnRows(sqlmock.NewRows([]string{"created_at"}).AddRow(time.Now()))
-
-	svc := NewChallengeService(db)
 	input := validV2InputFields()
-	// SourceRepo set by helper to "Owner/Repo" for normalization test
-	input.SourceRepo = "Owner/Repo"
+	input.SourceRepo = "Owner/Repo" // mixed case + whitespace intentional
 
-	challenge, created, err := svc.Create(context.Background(), input, userID)
+	got, created, err := svc.Create(context.Background(), input, "user-1")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Create unexpected error: %v", err)
 	}
 	if !created {
-		t.Error("expected created=true for new challenge")
+		t.Error("created = false, want true for new challenge")
 	}
-	if challenge.Title != "Test Challenge" {
-		t.Errorf("expected title 'Test Challenge', got %q", challenge.Title)
+	if got.Title != "Test Challenge" {
+		t.Errorf("Title = %q, want Test Challenge", got.Title)
 	}
-	if challenge.SourceRepo != "owner/repo" {
-		t.Errorf("expected normalized source_repo 'owner/repo', got %q", challenge.SourceRepo)
+	if got.SourceRepo != "owner/repo" {
+		t.Errorf("SourceRepo = %q, want owner/repo (normalized lowercase + trim)", got.SourceRepo)
 	}
-	if challenge.UserID == nil || *challenge.UserID != userID {
-		t.Errorf("expected userID %q, got %v", userID, challenge.UserID)
+	if got.UserID == nil || *got.UserID != "user-1" {
+		t.Errorf("UserID = %v, want pointer to user-1", got.UserID)
+	}
+	if !got.CreatedAt.Equal(now) {
+		t.Errorf("CreatedAt = %v, want %v (the DB-supplied value)", got.CreatedAt, now)
+	}
+	if got.ID == "" {
+		t.Error("ID is empty; service must generate a UUID before Insert")
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	// Verify the dedup probe ran with the normalized source_repo.
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.findBySourceCalls) != 1 {
+		t.Fatalf("FindBySourceRepoAndUser calls = %d, want 1", len(repo.findBySourceCalls))
+	}
+	if c := repo.findBySourceCalls[0]; c.sourceRepo != "owner/repo" || c.userID != "user-1" {
+		t.Errorf("FindBySourceRepoAndUser call = (%q, %q), want (owner/repo, user-1)", c.sourceRepo, c.userID)
+	}
+
+	// Verify Insert got the populated model.
+	if len(repo.insertCalls) != 1 {
+		t.Fatalf("Insert calls = %d, want 1", len(repo.insertCalls))
+	}
+	ins := repo.insertCalls[0]
+	if ins.ID != got.ID {
+		t.Errorf("Insert model ID = %q, want %q", ins.ID, got.ID)
+	}
+	if ins.SourceRepo != "owner/repo" {
+		t.Errorf("Insert model SourceRepo = %q, want owner/repo (normalized)", ins.SourceRepo)
 	}
 }
 
+// TestChallengeService_Create_DedupReturnsExisting proves the
+// dedup-hit path: when FindBySourceRepoAndUser returns a row, the
+// service returns it unchanged and does NOT call Insert.
 func TestChallengeService_Create_DedupReturnsExisting(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	userID := "user-1"
 	now := time.Now()
-	existingSourceRepo := "ggogsmic/academy-mic"
+	existing := models.Challenge{
+		ID:          "existing-id",
+		Title:       "Existing",
+		Description: "desc",
+		Difficulty:  "junior",
+		Category:    "security",
+		Language:    "typescript",
+		SourceRepo:  "ggogsmic/academy-mic",
+		CreatedAt:   now,
+		UserID:      stringPtr("user-1"),
+	}
+	repo := &fakeChallengeRepo{findBySourceOut: &existing}
+	svc := NewChallengeService(repo)
 
-	cols := challengeColumns()
-	rows := sqlmock.NewRows(cols).
-		AddRow("existing-id", "Existing", "desc", "junior", "security", "typescript", "https://gogs.example.com/repo", "code", "SQL Injection", "available", now, userID, existingSourceRepo,
-			emptyJSONB, emptyJSONB, emptyJSONB, 15, emptyJSONB, emptyJSONB, emptyJSONB,
-			100, 50, 0, false, "curated", nil, nil, nil)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`)).
-		WithArgs("ggogsmic/academy-mic", userID).
-		WillReturnRows(rows)
-
-	svc := NewChallengeService(db)
 	input := validV2InputFields()
 	input.Title = "Existing"
-	input.RepoURL = "https://gogs.example.com/repo"
 	input.SourceRepo = "  GgogsMIC/academy-mic  " // whitespace + mixed case
 	input.Description = "A code snippet for review"
 
-	challenge, created, err := svc.Create(context.Background(), input, userID)
+	got, created, err := svc.Create(context.Background(), input, "user-1")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Create unexpected error: %v", err)
 	}
 	if created {
-		t.Error("expected created=false for dedup hit")
+		t.Error("created = true, want false for dedup hit")
 	}
-	if challenge.ID != "existing-id" {
-		t.Errorf("expected existing challenge ID 'existing-id', got %q", challenge.ID)
+	if got.ID != "existing-id" {
+		t.Errorf("ID = %q, want existing-id (the persisted row)", got.ID)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	// Insert must not have been called.
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.insertCalls) != 0 {
+		t.Errorf("Insert was called %d times, want 0 (dedup hit must not insert)", len(repo.insertCalls))
 	}
 }
 
-func TestChallengeService_Create_InvalidDifficulty(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+// TestChallengeService_Create_DedupErrorPropagates proves that an
+// unexpected error from the dedup probe (NOT ErrChallengeNotFound)
+// surfaces as a wrapped error. Callers branch with errors.Is to
+// distinguish the not-found case from a real DB outage.
+func TestChallengeService_Create_DedupErrorPropagates(t *testing.T) {
+	t.Parallel()
 
-	svc := NewChallengeService(db)
-	input := validV2InputFields()
-	input.Difficulty = "expert" // invalid
+	repo := &fakeChallengeRepo{findBySourceErr: errors.New("db down")}
+	svc := NewChallengeService(repo)
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
+	_, _, err := svc.Create(context.Background(), validV2InputFields(), "user-1")
 	if err == nil {
-		t.Fatal("expected error for invalid difficulty, got nil")
+		t.Fatal("Create returned nil error, want non-nil")
 	}
-	if err != ErrInvalidDifficulty {
-		t.Errorf("expected ErrInvalidDifficulty, got %v", err)
+	if errors.Is(err, ports.ErrChallengeNotFound) {
+		t.Errorf("err wrapped ErrChallengeNotFound, want a generic wrap of the underlying error")
+	}
+}
+
+// TestChallengeService_Create_InsertErrorPropagates proves a
+// real INSERT error (e.g. constraint violation) surfaces wrapped
+// to the caller, with the port's raw error intact for
+// errors.Is checks.
+func TestChallengeService_Create_InsertErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{insertErr: errors.New("constraint violation")}
+	svc := NewChallengeService(repo)
+
+	_, _, err := svc.Create(context.Background(), validV2InputFields(), "user-1")
+	if err == nil {
+		t.Fatal("Create returned nil error, want non-nil")
+	}
+	if !errors.Is(err, repo.insertErr) {
+		t.Errorf("err = %v, want it to wrap %v", err, repo.insertErr)
+	}
+}
+
+// --- Validation gate (pure-Go, no repo interaction) ---
+
+func TestChallengeService_Create_InvalidDifficulty(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
+	input := validV2InputFields()
+	input.Difficulty = "expert" // not in validDifficulties
+
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrInvalidDifficulty) {
+		t.Errorf("err = %v, want ErrInvalidDifficulty", err)
+	}
+	// Validation must short-circuit BEFORE the repo is touched.
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.findBySourceCalls) != 0 {
+		t.Errorf("FindBySourceRepoAndUser calls = %d, want 0 (validation must short-circuit)", len(repo.findBySourceCalls))
 	}
 }
 
 func TestChallengeService_Create_TooFewFindings(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	svc := NewChallengeService(db)
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
 	input := validV2InputFields()
 	input.ExpectedFindings = []models.ExpectedFinding{} // 0 findings
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
-	if err == nil {
-		t.Fatal("expected error for 0 expected_findings, got nil")
-	}
-	if err != ErrInvalidExpectedFindings {
-		t.Errorf("expected ErrInvalidExpectedFindings, got %v", err)
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrInvalidExpectedFindings) {
+		t.Errorf("err = %v, want ErrInvalidExpectedFindings", err)
 	}
 }
 
 func TestChallengeService_Create_TooManyFindings(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	svc := NewChallengeService(db)
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
 	input := validV2InputFields()
 	input.ExpectedFindings = []models.ExpectedFinding{
 		{Severity: "high", Category: "security", Message: "1"},
 		{Severity: "high", Category: "security", Message: "2"},
 		{Severity: "high", Category: "security", Message: "3"},
-		{Severity: "high", Category: "security", Message: "4"}, // exceeds max
+		{Severity: "high", Category: "security", Message: "4"},
 	}
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
-	if err == nil {
-		t.Fatal("expected error for 4 expected_findings, got nil")
-	}
-	if err != ErrInvalidExpectedFindings {
-		t.Errorf("expected ErrInvalidExpectedFindings, got %v", err)
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrInvalidExpectedFindings) {
+		t.Errorf("err = %v, want ErrInvalidExpectedFindings", err)
 	}
 }
 
 func TestChallengeService_Create_TooFewTestCases(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	svc := NewChallengeService(db)
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
 	input := validV2InputFields()
 	input.TestCases = []models.TestCase{
 		{Name: "test1", ExpectedOutput: "ok", Weight: 5}, // only 1
 	}
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
-	if err == nil {
-		t.Fatal("expected error for 1 test_case, got nil")
-	}
-	if err != ErrInvalidTestCases {
-		t.Errorf("expected ErrInvalidTestCases, got %v", err)
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrInvalidTestCases) {
+		t.Errorf("err = %v, want ErrInvalidTestCases", err)
 	}
 }
 
 func TestChallengeService_Create_InvalidHintsCount(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	svc := NewChallengeService(db)
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
 	input := validV2InputFields()
 	input.Hints = []models.Hint{
 		{Level: 1, Content: "hint 1", CostPoints: 0},
 		{Level: 2, Content: "hint 2", CostPoints: 10}, // only 2
 	}
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
-	if err == nil {
-		t.Fatal("expected error for 2 hints, got nil")
-	}
-	if err != ErrInvalidHintsCount {
-		t.Errorf("expected ErrInvalidHintsCount, got %v", err)
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrInvalidHintsCount) {
+		t.Errorf("err = %v, want ErrInvalidHintsCount", err)
 	}
 }
 
 func TestChallengeService_Create_SpoilerInDescription(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+	t.Parallel()
 
-	svc := NewChallengeService(db)
+	repo := &fakeChallengeRepo{}
+	svc := NewChallengeService(repo)
+
 	input := validV2InputFields()
 	input.Description = "This challenge involves SQL Injection in the code."
 
-	_, _, err = svc.Create(context.Background(), input, "user-1")
-	if err == nil {
-		t.Fatal("expected error for spoiler in description, got nil")
-	}
-	if err != ErrSpoilerInDescription {
-		t.Errorf("expected ErrSpoilerInDescription, got %v", err)
+	_, _, err := svc.Create(context.Background(), input, "user-1")
+	if !errors.Is(err, ErrSpoilerInDescription) {
+		t.Errorf("err = %v, want ErrSpoilerInDescription", err)
 	}
 }
 
-func TestChallengeService_Create_ValidV2Challenge(t *testing.T) {
-	db, mock, err := sqlmock.New()
+// TestChallengeService_Create_ValidV2Challenge_EchoesV2Fields
+// proves the v2 fields (ExpectedFindings, TestCases, Hints) are
+// preserved on the response model after a successful create.
+func TestChallengeService_Create_ValidV2Challenge_EchoesV2Fields(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &fakeChallengeRepo{insertCreatedAt: now}
+	svc := NewChallengeService(repo)
+
+	got, created, err := svc.Create(context.Background(), validV2InputFields(), "user-1")
 	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
-
-	userID := "user-1"
-
-	// Dedup check returns no rows
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`)).
-		WithArgs("owner/repo", userID).
-		WillReturnRows(sqlmock.NewRows(challengeColumns()))
-
-	// INSERT returns created_at
-	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO public.challenges (
-			id, title, description, difficulty, category, language, repo_url, source_repo, code, code_smell, status, user_id,
-			learning_objectives, hints, common_mistakes, estimated_time_minutes,
-			expected_findings, test_cases, linter_rules,
-			solution_code, solution_explanation,
-			base_points, bonus_points, penalty_per_hint, time_bonus,
-			origin, source_path, generated_by, created_by
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
-		RETURNING created_at`)).
-		WithArgs(
-			sqlmock.AnyArg(), "Test Challenge", "A code snippet that needs review", "junior", "security", "typescript",
-			"https://example.com/repo", "owner/repo", "code", "SQL Injection", "available", userID,
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), 0,
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			"", "",
-			0, 0, 0, false,
-			"", "", "", "",
-		).
-		WillReturnRows(sqlmock.NewRows([]string{"created_at"}).AddRow(time.Now()))
-
-	svc := NewChallengeService(db)
-	input := validV2InputFields()
-
-	challenge, created, err := svc.Create(context.Background(), input, userID)
-	if err != nil {
-		t.Fatalf("expected success for valid v2 challenge, got error: %v", err)
+		t.Fatalf("Create unexpected error: %v", err)
 	}
 	if !created {
-		t.Error("expected created=true for valid new v2 challenge")
+		t.Error("created = false, want true for new challenge")
 	}
-	if challenge.ID == "" {
-		t.Error("expected non-empty challenge ID")
+	if len(got.ExpectedFindings) != 2 {
+		t.Errorf("ExpectedFindings len = %d, want 2", len(got.ExpectedFindings))
 	}
-	// Verify v2 fields are echoed back
-	if len(challenge.ExpectedFindings) != 2 {
-		t.Errorf("expected 2 expected_findings, got %d", len(challenge.ExpectedFindings))
+	if len(got.TestCases) != 2 {
+		t.Errorf("TestCases len = %d, want 2", len(got.TestCases))
 	}
-	if len(challenge.TestCases) != 2 {
-		t.Errorf("expected 2 test_cases, got %d", len(challenge.TestCases))
-	}
-	if len(challenge.Hints) != 3 {
-		t.Errorf("expected 3 hints, got %d", len(challenge.Hints))
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if len(got.Hints) != 3 {
+		t.Errorf("Hints len = %d, want 3", len(got.Hints))
 	}
 }
 
-func TestChallengeService_GetByID_OtherUsersPrivate(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to open sqlmock: %v", err)
-	}
-	defer db.Close()
+// --- GenerateChallenge stub ---
 
-	// user-1 tries to access user-2's private challenge — should get not found
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`)).
-		WithArgs("ch-private", "user-1").
-		WillReturnRows(sqlmock.NewRows(challengeColumns()))
-
-	svc := NewChallengeService(db)
-	_, err = svc.GetByID(context.Background(), "ch-private", "user-1")
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if err != ErrChallengeNotFound {
-		t.Errorf("expected ErrChallengeNotFound, got %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
-	}
-}
-
-// TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented proves
-// the GenerateChallenge stub lives in core/services, not in the MCP
-// challenges adapter. The S5 LLM cascade will replace this body; the
-// sentinel contract (ErrChallengeGenerateNotImplemented) stays so callers
-// downstream (mcp-challenges.generate_challenge) keep receiving a
-// JSON-RPC -32603 without rewriting their error handling.
+// TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented
+// proves the GenerateChallenge stub lives in core/services, not in
+// the MCP challenges adapter. The S5 LLM cascade will replace this
+// body; the sentinel contract (ErrChallengeGenerateNotImplemented)
+// stays so callers downstream (mcp-challenges.generate_challenge)
+// keep receiving a JSON-RPC -32603 without rewriting their error
+// handling.
 func TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented(t *testing.T) {
-	// The stub never queries the DB, so no sqlmock wiring is required.
-	// A nil *sql.DB is safe here: GenerateChallenge short-circuits on
-	// the sentinel BEFORE reaching the database.
+	t.Parallel()
+
+	// The stub never queries the repo, so no fake wiring is required.
+	// A nil repo is safe here: GenerateChallenge short-circuits on the
+	// sentinel BEFORE reaching the repository.
 	svc := &ChallengeService{}
 	hint := models.GenerateChallengeHint{
 		Language:   "typescript",
@@ -674,18 +622,22 @@ func TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented(t *test
 	if !errors.Is(err, ErrChallengeGenerateNotImplemented) {
 		t.Fatalf("err = %v, want ErrChallengeGenerateNotImplemented", err)
 	}
-	// Stub returns the zero Challenge so callers don't have to nil-guard
-	// on a (c, err) tuple in tests that only assert the error path.
+	// Stub returns the zero Challenge so callers don't have to
+	// nil-guard on a (c, err) tuple in tests that only assert the
+	// error path.
 	if c.ID != "" {
 		t.Errorf("challenge.ID = %q, want empty (stub)", c.ID)
 	}
 }
 
-// TestGenerateChallengeHint_DomainShapeMatchesWire verifies the domain
-// model carries Language/Difficulty/Focus with omitempty — this is the
-// shape the MCP adapter translates GenerateHint into before calling the
-// service, and the shape a future S5 LLM impl will consume.
+// TestGenerateChallengeHint_DomainShapeMatchesWire verifies the
+// domain model carries Language/Difficulty/Focus with omitempty —
+// this is the shape the MCP adapter translates GenerateHint into
+// before calling the service, and the shape a future S5 LLM impl
+// will consume.
 func TestGenerateChallengeHint_DomainShapeMatchesWire(t *testing.T) {
+	t.Parallel()
+
 	hint := models.GenerateChallengeHint{Language: "go", Difficulty: "senior"}
 	if hint.Language != "go" || hint.Difficulty != "senior" {
 		t.Errorf("fields = (%q, %q), want (go, senior)", hint.Language, hint.Difficulty)
@@ -694,3 +646,7 @@ func TestGenerateChallengeHint_DomainShapeMatchesWire(t *testing.T) {
 		t.Errorf("empty Focus = %q, want zero value", hint.Focus)
 	}
 }
+
+// stringPtr returns a pointer to the supplied string. Used in test
+// fixtures that need a *string for Challenge.UserID.
+func stringPtr(s string) *string { return &s }

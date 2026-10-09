@@ -3,18 +3,20 @@ package services
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
-// ErrChallengeNotFound is returned when a challenge lookup fails.
-var ErrChallengeNotFound = errors.New("challenge not found")
+// ErrChallengeNotFound is re-exported here for backward compatibility
+// with callers (HTTP handlers, MCP adapters) that historically
+// branch against services.ErrChallengeNotFound. The canonical
+// definition lives in ports so the driven adapter can return it
+// directly without a translation layer.
+var ErrChallengeNotFound = ports.ErrChallengeNotFound
 
 // ErrInvalidDifficulty is returned when a challenge has an invalid difficulty level.
 var ErrInvalidDifficulty = errors.New("invalid difficulty: must be one of junior, mid, senior, architect")
@@ -91,41 +93,20 @@ func IsValidationError(err error) bool {
 		errors.Is(err, ErrSpoilerInDescription)
 }
 
-// challengeSelectColumns lists the v1 + v2 columns (excluding solution fields).
-const challengeSelectColumns = `id, title, description, difficulty, category, language,
-	repo_url, code, code_smell, status, created_at, user_id, source_repo,
-	learning_objectives, hints, common_mistakes, estimated_time_minutes,
-	expected_findings, test_cases, linter_rules,
-	base_points, bonus_points, penalty_per_hint, time_bonus,
-	origin, source_path, generated_by, created_by`
-
-// challengeSelectColumnsWithSolution adds solution_code and solution_explanation.
-const challengeSelectColumnsWithSolution = challengeSelectColumns + `,
-	solution_code, solution_explanation`
-
-// ChallengeSelectColumns exposes the column list for test matching from other packages.
-func ChallengeSelectColumns() string {
-	return challengeSelectColumns
-}
-
-// ChallengeSelectColumnsWithSolution exposes the column list (with solution) for test matching.
-func ChallengeSelectColumnsWithSolution() string {
-	return challengeSelectColumnsWithSolution
-}
-
-// rowScanner is implemented by *sql.Rows and *sql.Row.
-type rowScanner interface {
-	Scan(dest ...any) error
-}
-
-// ChallengeService retrieves and creates challenges from PostgreSQL.
+// ChallengeService retrieves and creates challenges through the
+// ChallengeRepository port. The service owns business rules
+// (validation, normalization, dedup decision, response shaping);
+// the port owns the SQL.
 type ChallengeService struct {
-	db *sql.DB
+	repo ports.ChallengeRepository
 }
 
-// NewChallengeService creates a new ChallengeService.
-func NewChallengeService(db *sql.DB) *ChallengeService {
-	return &ChallengeService{db: db}
+// NewChallengeService creates a new ChallengeService backed by the
+// given repository. The repository MUST be non-nil; nil-safe wiring
+// is the wiring layer's job (e.g. cmd/api/wiring_test.go passes nil
+// to verify registry count without invoking any tool).
+func NewChallengeService(repo ports.ChallengeRepository) *ChallengeService {
+	return &ChallengeService{repo: repo}
 }
 
 // generateUUID generates a version 4 UUID using crypto/rand.
@@ -140,214 +121,47 @@ func generateUUID() (string, error) {
 		uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:16]), nil
 }
 
-// unmarshalJSONB parses a JSONB column scanned as []byte into the target.
-// Nil or empty bytes leave the target at its zero value.
-func unmarshalJSONB(data []byte, target any) error {
-	if len(data) == 0 {
-		return nil
-	}
-	return json.Unmarshal(data, target)
-}
-
-// marshalJSONB converts a Go value to JSON bytes suitable for JSONB insertion.
-// Nil slices/interfaces are serialized as "[]" to match DB defaults.
-func marshalJSONB(v any) []byte {
-	if v == nil {
-		return []byte("[]")
-	}
-	data, err := json.Marshal(v)
-	if err != nil {
-		return []byte("[]")
-	}
-	// json.Marshal produces "null" for nil slices — convert to "[]" for JSONB
-	if string(data) == "null" {
-		return []byte("[]")
-	}
-	return data
-}
-
-// scanChallenge reads all columns from a sql row into a Challenge struct.
-// When includeSolution is true, solution_code and solution_explanation are
-// also scanned (they must be the last two columns in the SELECT).
-func scanChallenge(row rowScanner, includeSolution bool) (models.Challenge, error) {
-	var c models.Challenge
-
-	var repoURLNull, codeSmellNull, userIDNull, sourceRepoNull sql.NullString
-	var originNull, sourcePathNull, generatedByNull, createdByNull sql.NullString
-	var estimatedTimeMinutes, basePoints, bonusPoints, penaltyPerHint sql.NullInt64
-	var timeBonus sql.NullBool
-
-	var learningObjJSON, hintsJSON, commonMistakesJSON []byte
-	var expectedFindingsJSON, testCasesJSON, linterRulesJSON []byte
-
-	dest := []any{
-		&c.ID, &c.Title, &c.Description, &c.Difficulty, &c.Category, &c.Language,
-		&repoURLNull, &c.Code, &codeSmellNull, &c.Status, &c.CreatedAt,
-		&userIDNull, &sourceRepoNull,
-		&learningObjJSON, &hintsJSON, &commonMistakesJSON, &estimatedTimeMinutes,
-		&expectedFindingsJSON, &testCasesJSON, &linterRulesJSON,
-		&basePoints, &bonusPoints, &penaltyPerHint, &timeBonus,
-		&originNull, &sourcePathNull, &generatedByNull, &createdByNull,
-	}
-
-	var solutionCodeNull, solutionExplanationNull sql.NullString
-	if includeSolution {
-		dest = append(dest, &solutionCodeNull, &solutionExplanationNull)
-	}
-
-	if err := row.Scan(dest...); err != nil {
-		return c, err
-	}
-
-	// Nullable v1 fields
-	if repoURLNull.Valid {
-		c.RepoURL = repoURLNull.String
-	}
-	if codeSmellNull.Valid {
-		c.CodeSmell = codeSmellNull.String
-	}
-	if userIDNull.Valid {
-		uid := userIDNull.String
-		c.UserID = &uid
-	}
-	if sourceRepoNull.Valid {
-		c.SourceRepo = sourceRepoNull.String
-	}
-
-	// Nullable v2 scalar fields
-	if estimatedTimeMinutes.Valid {
-		c.EstimatedTimeMinutes = int(estimatedTimeMinutes.Int64)
-	}
-	if basePoints.Valid {
-		c.BasePoints = int(basePoints.Int64)
-	}
-	if bonusPoints.Valid {
-		c.BonusPoints = int(bonusPoints.Int64)
-	}
-	if penaltyPerHint.Valid {
-		c.PenaltyPerHint = int(penaltyPerHint.Int64)
-	}
-	if timeBonus.Valid {
-		c.TimeBonus = timeBonus.Bool
-	}
-
-	// Nullable v2 text fields
-	if originNull.Valid {
-		c.Origin = originNull.String
-	}
-	if sourcePathNull.Valid {
-		c.SourcePath = sourcePathNull.String
-	}
-	if generatedByNull.Valid {
-		c.GeneratedBy = generatedByNull.String
-	}
-	if createdByNull.Valid {
-		c.CreatedBy = createdByNull.String
-	}
-
-	// Parse JSONB arrays
-	if err := unmarshalJSONB(learningObjJSON, &c.LearningObjectives); err != nil {
-		return c, fmt.Errorf("parsing learning_objectives: %w", err)
-	}
-	if err := unmarshalJSONB(hintsJSON, &c.Hints); err != nil {
-		return c, fmt.Errorf("parsing hints: %w", err)
-	}
-	if err := unmarshalJSONB(commonMistakesJSON, &c.CommonMistakes); err != nil {
-		return c, fmt.Errorf("parsing common_mistakes: %w", err)
-	}
-	if err := unmarshalJSONB(expectedFindingsJSON, &c.ExpectedFindings); err != nil {
-		return c, fmt.Errorf("parsing expected_findings: %w", err)
-	}
-	if err := unmarshalJSONB(testCasesJSON, &c.TestCases); err != nil {
-		return c, fmt.Errorf("parsing test_cases: %w", err)
-	}
-	if err := unmarshalJSONB(linterRulesJSON, &c.LinterRules); err != nil {
-		return c, fmt.Errorf("parsing linter_rules: %w", err)
-	}
-
-	// Solution fields (only when explicitly requested)
-	if includeSolution {
-		if solutionCodeNull.Valid {
-			c.SolutionCode = solutionCodeNull.String
-		}
-		if solutionExplanationNull.Valid {
-			c.SolutionExplanation = solutionExplanationNull.String
-		}
-	}
-
-	return c, nil
-}
-
-// Create inserts a new challenge or returns the existing one if source_repo+user_id already exists.
-// Returns (challenge, created, nil) where created is true for new inserts and false for dedup hits.
+// Create inserts a new challenge or returns the existing one if
+// source_repo+user_id already exists. Returns (challenge, created,
+// nil) where created is true for new inserts and false for dedup
+// hits.
 func (s *ChallengeService) Create(ctx context.Context, input models.CreateChallengeInput, userID string) (*models.Challenge, bool, error) {
 	// Validate difficulty
 	if !validDifficulties[input.Difficulty] {
 		return nil, false, ErrInvalidDifficulty
 	}
 
-	// Validate v2 model constraints (expected_findings, test_cases, hints, no spoilers)
+	// Validate v2 model constraints (expected_findings, test_cases,
+	// hints, no spoilers)
 	if err := validateChallengeV2(input); err != nil {
 		return nil, false, err
 	}
 
-	// Normalize source_repo for dedup
+	// Normalize source_repo for dedup (lowercase + trim whitespace).
 	normalizedRepo := strings.ToLower(strings.TrimSpace(input.SourceRepo))
 
-	// Check for duplicate — selects v2 columns so the returned challenge is complete
-	dedupRow := s.db.QueryRowContext(
-		ctx,
-		`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE LOWER(source_repo) = $1 AND user_id = $2 AND status = 'available'`,
-		normalizedRepo, userID,
-	)
-
-	c, scanErr := scanChallenge(dedupRow, false)
-	if scanErr == nil {
+	// Check for duplicate — the port returns ErrChallengeNotFound on
+	// miss (not sql.ErrNoRows), keeping the SQL detail out of core.
+	existing, err := s.repo.FindBySourceRepoAndUser(ctx, normalizedRepo, userID)
+	if err == nil {
 		// Found existing challenge (dedup hit)
-		return &c, false, nil
+		return &existing, false, nil
 	}
-	if !errors.Is(scanErr, sql.ErrNoRows) {
-		return nil, false, fmt.Errorf("checking for duplicate challenge: %w", scanErr)
+	if !errors.Is(err, ports.ErrChallengeNotFound) {
+		return nil, false, fmt.Errorf("checking for duplicate challenge: %w", err)
 	}
 
-	// No duplicate — insert new challenge with v2 columns
+	// No duplicate — generate UUID, then insert.
 	id, err := generateUUID()
 	if err != nil {
 		return nil, false, fmt.Errorf("generating UUID: %w", err)
 	}
 
 	status := "available"
-	var createdAt time.Time
 
-	err = s.db.QueryRowContext(
-		ctx,
-		`INSERT INTO public.challenges (
-			id, title, description, difficulty, category, language, repo_url, source_repo, code, code_smell, status, user_id,
-			learning_objectives, hints, common_mistakes, estimated_time_minutes,
-			expected_findings, test_cases, linter_rules,
-			solution_code, solution_explanation,
-			base_points, bonus_points, penalty_per_hint, time_bonus,
-			origin, source_path, generated_by, created_by
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
-		RETURNING created_at`,
-		id, input.Title, input.Description, input.Difficulty, input.Category, input.Language,
-		input.RepoURL, normalizedRepo, input.Code, input.CodeSmell, status, userID,
-		marshalJSONB(input.LearningObjectives), marshalJSONB(input.Hints), marshalJSONB(input.CommonMistakes),
-		input.EstimatedTimeMinutes, marshalJSONB(input.ExpectedFindings),
-		marshalJSONB(input.TestCases), marshalJSONB(input.LinterRules),
-		input.SolutionCode, input.SolutionExplanation,
-		input.BasePoints, input.BonusPoints, input.PenaltyPerHint, input.TimeBonus,
-		input.Origin, input.SourcePath, input.GeneratedBy, input.CreatedBy,
-	).Scan(&createdAt)
-	if err != nil {
-		return nil, false, fmt.Errorf("inserting challenge: %w", err)
-	}
-
-	return &models.Challenge{
+	// Build the persisted model. SourceRepo is already normalized;
+	// the adapter stores exactly what we pass.
+	challenge := &models.Challenge{
 		ID:                   id,
 		Title:                input.Title,
 		Description:          input.Description,
@@ -358,7 +172,6 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 		Code:                 input.Code,
 		CodeSmell:            input.CodeSmell,
 		Status:               status,
-		CreatedAt:            createdAt,
 		UserID:               &userID,
 		SourceRepo:           normalizedRepo,
 		LearningObjectives:   input.LearningObjectives,
@@ -378,75 +191,35 @@ func (s *ChallengeService) Create(ctx context.Context, input models.CreateChalle
 		SourcePath:           input.SourcePath,
 		GeneratedBy:          input.GeneratedBy,
 		CreatedBy:            input.CreatedBy,
-	}, true, nil
+	}
+
+	createdAt, err := s.repo.Insert(ctx, challenge)
+	if err != nil {
+		return nil, false, fmt.Errorf("inserting challenge: %w", err)
+	}
+	challenge.CreatedAt = createdAt
+	return challenge, true, nil
 }
 
-// GetAll returns all challenges visible to the given user: seeds (NULL user_id) plus user-owned.
-// Solution fields (solution_code, solution_explanation) are NOT included in the response.
+// GetAll returns all challenges visible to the given user: seeds
+// (NULL user_id) plus user-owned. Solution fields (solution_code,
+// solution_explanation) are NOT included in the response.
 func (s *ChallengeService) GetAll(ctx context.Context, userID string) ([]models.Challenge, error) {
-	rows, err := s.db.QueryContext(
-		ctx,
-		`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE status = 'available' AND (user_id IS NULL OR user_id = $1)
-		 ORDER BY created_at DESC`,
-		userID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var challenges []models.Challenge
-	for rows.Next() {
-		c, err := scanChallenge(rows, false)
-		if err != nil {
-			return nil, err
-		}
-		challenges = append(challenges, c)
-	}
-	return challenges, rows.Err()
+	return s.repo.ListVisibleToUser(ctx, userID)
 }
 
-// GetByID returns a single challenge by ID visible to the given user, or ErrChallengeNotFound.
-// Solution fields are NOT included — use GetChallengeWithDetails for the full challenge.
+// GetByID returns a single challenge by ID visible to the given user,
+// or ErrChallengeNotFound. Solution fields are NOT included — use
+// GetChallengeWithDetails for the full challenge.
 func (s *ChallengeService) GetByID(ctx context.Context, id string, userID string) (models.Challenge, error) {
-	row := s.db.QueryRowContext(
-		ctx,
-		`SELECT `+challengeSelectColumns+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`,
-		id, userID,
-	)
-	c, err := scanChallenge(row, false)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.Challenge{}, ErrChallengeNotFound
-		}
-		return models.Challenge{}, err
-	}
-	return c, nil
+	return s.repo.FindByIDVisibleToUser(ctx, id, userID)
 }
 
 // GetChallengeWithDetails returns a challenge including solution_code and
 // solution_explanation. Use this only when the caller is authorized to see
 // the solution (tutor context or reveal flag).
 func (s *ChallengeService) GetChallengeWithDetails(ctx context.Context, id string, userID string) (models.Challenge, error) {
-	row := s.db.QueryRowContext(
-		ctx,
-		`SELECT `+challengeSelectColumnsWithSolution+`
-		 FROM public.challenges
-		 WHERE id = $1 AND status = 'available' AND (user_id IS NULL OR user_id = $2)`,
-		id, userID,
-	)
-	c, err := scanChallenge(row, true)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return models.Challenge{}, ErrChallengeNotFound
-		}
-		return models.Challenge{}, err
-	}
-	return c, nil
+	return s.repo.FindByIDWithSolutionVisibleToUser(ctx, id, userID)
 }
 
 // ValidateChallenge validates a CreateChallengeInput without persisting it.
@@ -466,6 +239,9 @@ func (s *ChallengeService) ValidateChallenge(input models.CreateChallengeInput) 
 // "not implemented" business decision lives in core/services — not in
 // the transport adapter. Callers branch with errors.Is to surface a
 // stable JSON-RPC -32603 regardless of transport.
+//
+// The stub takes no fields and does not touch the repository, so a
+// nil repo is safe here.
 func (s *ChallengeService) GenerateChallenge(_ context.Context, _ models.GenerateChallengeHint) (models.Challenge, error) {
 	return models.Challenge{}, ErrChallengeGenerateNotImplemented
 }

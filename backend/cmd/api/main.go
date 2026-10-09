@@ -137,13 +137,15 @@ func main() {
 	log.Println("User progress tracking enabled")
 
 	// Initialize audit history service
-	historyService := services.NewAuditHistoryService(db)
+	historyRepo := supabase.NewSupabaseAuditHistoryRepository(db)
+	historyService := services.NewAuditHistoryService(historyRepo)
 	auditService.WithHistory(historyService)
 	vaultHandler := handlers.NewVaultHandler(historyService)
 	log.Println("Audit history tracking enabled")
 
 	// Initialize challenge service
-	challengeService := services.NewChallengeService(db)
+	challengeRepo := supabase.NewSupabaseChallengeRepository(db)
+	challengeService := services.NewChallengeService(challengeRepo)
 	challengeHandler := handlers.NewChallengeHandler(challengeService)
 	auditService.WithChallengeService(challengeService)
 	log.Println("Challenge service initialized")
