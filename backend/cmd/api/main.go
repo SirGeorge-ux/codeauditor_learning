@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/brave"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/context7"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
 	ollama "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
@@ -22,10 +25,6 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/supabase"
 	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
-	challengesmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/challenges"
-	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
-	sandboxmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/sandbox"
-	tutormcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/tutor"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
@@ -164,44 +163,77 @@ func main() {
 	tutorLookupService := services.NewTutorLookupService(dictionaryService)
 	log.Println("Tutor lookup service initialized")
 
-	// MCP tools registry. The dictionary group (search_term, get_term,
-	// add_term, list_terms) AND the tutor group (tutor_lookup) are
-	// registered here AND mounted on the HTTP router under /mcp/tools/*
-	// so external callers (tutor LLM, scripted clients) can invoke them
-	// via the JSON-RPC 2.0 transport the dictionary spec mandates. The
-	// HTTP bridge translates the JWT-derived user_id from auth middleware
-	// into the MCP tool context so user-scoped tools see the same
-	// user_id the REST endpoints use — this is the bridge that preserves
-	// the dictionary spec's Row-Level Security invariant end-to-end.
-	mcpRegistry := mcpkit.NewRegistry()
-	dictMCPSvc := dictionarymcp.NewServiceAdapter(dictionaryService)
-	mcpRegistry.Register(dictionarymcp.NewSearchTermTool(dictMCPSvc))
-	mcpRegistry.Register(dictionarymcp.NewGetTermTool(dictMCPSvc))
-	mcpRegistry.Register(dictionarymcp.NewAddTermTool(dictMCPSvc))
-	mcpRegistry.Register(dictionarymcp.NewListTermsTool(dictMCPSvc))
-	tutorMCPSvc := tutormcp.NewServiceAdapter(tutorLookupService)
-	mcpRegistry.Register(tutormcp.NewTutorLookupTool(tutorMCPSvc))
-	// Sandbox group: 4 tools (run_code, list_languages, healthcheck,
-	// get_install_hint). Wired to the DockerSandbox + ProviderRegistry
-	// so run_code can enforce --cap-drop=ALL/--network=none/--read-only
-	// even when the audit flow has fallen back to LocalSandbox.
-	sandboxMCPSvc := sandboxmcp.NewServiceAdapter(dockerSb, registry)
-	mcpRegistry.Register(sandboxmcp.NewRunCodeTool(sandboxMCPSvc))
-	mcpRegistry.Register(sandboxmcp.NewListLanguagesTool(sandboxMCPSvc))
-	mcpRegistry.Register(sandboxmcp.NewHealthcheckTool(sandboxMCPSvc))
-	mcpRegistry.Register(sandboxmcp.NewGetInstallHintTool(sandboxMCPSvc))
-	// Challenges group: 5 tools (list_challenges, get_challenge,
-	// create_temp_challenge, generate_challenge, validate_challenge).
-	// Wired to the production ChallengeService. generate_challenge is a
-	// stub returning ErrNotImplemented until the S5 LLM cascade lands.
-	challengesMCPSvc := challengesmcp.NewServiceAdapter(challengeService)
-	mcpRegistry.Register(challengesmcp.NewListChallengesTool(challengesMCPSvc))
-	mcpRegistry.Register(challengesmcp.NewGetChallengeTool(challengesMCPSvc))
-	mcpRegistry.Register(challengesmcp.NewCreateTempChallengeTool(challengesMCPSvc))
-	mcpRegistry.Register(challengesmcp.NewGenerateChallengeTool(challengesMCPSvc))
-	mcpRegistry.Register(challengesmcp.NewValidateChallengeTool(challengesMCPSvc))
+	// MCP tools registry. The full S2 inventory (33 tools across 8
+	// groups — see BuildMCPRegistry for the group table) is wired here
+	// and mounted on the HTTP router under /mcp/tools/* so external
+	// callers (tutor LLM, scripted clients) can invoke any tool via
+	// the JSON-RPC 2.0 transport. The HTTP bridge translates the
+	// JWT-derived user_id from auth middleware into the MCP tool
+	// context so user-scoped tools see the same user_id the REST
+	// endpoints use — this is the bridge that preserves the dictionary
+	// spec's Row-Level Security invariant end-to-end.
+	//
+	// 19 tools land in this PR (6 user + 4 curriculum + 6 pedagogical
+	// + 3 external_docs); the other 14 were registered in prior PRs
+	// (4 dictionary + 1 tutor + 4 sandbox + 5 challenges).
+	//
+	// User service — needed by mcp-user.get_profile, the only tool
+	// in that group that reads the `usuarios` row directly. Other
+	// mcp-user tools read through UserProgressService + AuditHistoryService.
+	userProfileRepo := supabase.NewSupabaseUserProfileRepository(db)
+	userService := services.NewUserService(userProfileRepo)
+	log.Println("User profile service initialized")
+
+	// Curriculum service — reads .atl/curricula/<lang>.md per
+	// docs/curricula-format.md. The baseDir is resolved relative to the
+	// current working directory so production (Coolify) and dev
+	// (compose stack) both find the curricula without an env override.
+	// Missing .atl/curricula/ in a fresh checkout causes
+	// get_topics/get_topic to return path-traversal errors at the
+	// tool layer (ErrCurriculumInvalidLanguage → JSON-RPC -32602);
+	// the service stays safe to instantiate.
+	curriculumBaseDir := filepath.Join(".", ".atl", "curricula")
+	curriculumService := services.NewCurriculumService(services.WithBaseDir(curriculumBaseDir))
+	log.Printf("Curriculum service initialized (baseDir=%s)", curriculumService.Curriculum())
+
+	// Pedagogical service — depends on the curriculum service so it
+	// can read topic bodies when constructing learning objectives +
+	// scaffolding steps. No external API yet (S5 wires the LLM
+	// cascade); the Socratic prompt constructor is the deterministic
+	// backbone.
+	pedagogicalService := services.NewPedagogicalService(curriculumService)
+	log.Println("Pedagogical service initialized")
+
+	// External docs service — fuses library-docs (Context7) +
+	// general web search (Brave) via the ports defined in
+	// internal/ports/external_docs.go. API keys live ONLY in
+	// .env / Coolify secrets; the MCP tools see rendered text.
+	context7Client := context7.NewClient(
+		os.Getenv("CONTEXT7_BASE_URL"),
+		os.Getenv("CONTEXT7_API_KEY"),
+	)
+	braveClient := brave.NewClient(
+		os.Getenv("BRAVE_BASE_URL"),
+		os.Getenv("BRAVE_API_KEY"),
+	)
+	externalDocsService := services.NewExternalDocsService(context7Client, braveClient)
+	log.Println("External docs service initialized (Context7 + Brave)")
+
+	mcpRegistry := BuildMCPRegistry(WiringDeps{
+		DockerSandbox:       dockerSb,
+		ProviderRegistry:    registry,
+		DictionaryService:   dictionaryService,
+		ChallengeService:    challengeService,
+		TutorLookupService:  tutorLookupService,
+		UserService:         userService,
+		UserProgressService: progressService,
+		AuditHistoryService: historyService,
+		CurriculumService:   curriculumService,
+		PedagogicalService:  pedagogicalService,
+		ExternalDocsService: externalDocsService,
+	})
 	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
-	log.Printf("MCP dictionary + tutor + sandbox + challenges groups registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
+	log.Printf("MCP monolith registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
 
 	// Initialize progress handler (user language progress + learning profile)
 	progressHandler := handlers.NewProgressHandler(progressService)

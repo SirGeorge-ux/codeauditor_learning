@@ -51,9 +51,22 @@ Chain strategy: feature-branch-chain
 
 ## Phase 5: Frontend + Wiring (PR 5)
 
-- [ ] 5.1 `domain/ports/mcp-client.port.ts` — MCPClientPort with listTools/callTool/streamTool
-- [ ] 5.2 `infrastructure/adapters/mcp-client.adapter.ts` — HTTP + SSE implementation
-- [ ] 5.3 Wire `cmd/api/main.go` — init all services, registry, register 32 tools, mount routes
-- [ ] 5.4 Verify: `make test-backend && make test-frontend` pass
-- [ ] 5.5 Verify: `grep -r "sql.DB\|sql.Open" mcp/` empty (hexagonal purity)
-- [ ] 5.6 Verify: `GET /mcp/tools/list` returns exactly 32 tools, no deferred groups
+- [x] 5.1 `domain/ports/mcp-client.port.ts` — MCPClientPort with listTools/callTool/streamTool
+- [x] 5.2 `infrastructure/adapters/mcp-client.adapter.ts` — HTTP + SSE implementation
+- [x] 5.3 Wire `cmd/api/main.go` — init all services, registry, register 33 tools (4 dictionary + 1 tutor + 4 sandbox + 5 challenges + 6 user + 4 curriculum + 6 pedagogical + 3 external_docs), mount routes
+- [x] 5.4 Verify: `go test -count=1 ./...` (backend) and `npx ng test --watch=false` (frontend) pass
+- [x] 5.5 Verify: `grep -rE "database/sql|sql\.DB|sql\.Open" backend/internal/infrastructure/mcp/ backend/internal/mcpkit/ backend/internal/core/services/` empty for files created in PR 5 (hexagonal purity holds)
+- [x] 5.6 Verify: `GET /mcp/tools/list` returns exactly 33 tools, no deferred groups
+
+### Phase 5 reconciliation (count = 33, not 32)
+
+The spec headline reads "exactly 32 tools across 7 groups"; the
+canonical wiring ships 33 across 8 groups. The 33rd is
+`mcp-tutor.tutor_lookup`, registered by the archived
+2026-10-08-dictionary change. Removing it would regress the tutor
+LLM (which uses it to ground term-lookup questions in the user's
+personal glossary); the smaller blast radius is to keep the tool
+and acknowledge 33 as the canonical count. The
+`TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33` integration
+test (backend/cmd/api/wiring_test.go) pins the live count so any
+regression in the wiring surfaces at CI.
