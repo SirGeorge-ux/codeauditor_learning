@@ -32,17 +32,18 @@ Chain strategy: stacked-to-main
 
 > **Branch:** `feature/free-practice-pr1` (base: `master`)
 > **Stacked-to-main chain, PR 1.** Phases 2 and 3 land in PR 2 and PR 3.
+> **Status (2026-10-10):** ✅ All Phase 1 tasks landed. Branch `feature/free-practice-pr1` ready for `git merge --no-ff feature/free-practice-pr1` after user spot-check.
 
-- [ ] 1.1 Add `Complete`, `CompleteRequest`, `CompleteResponse`, `JSONSchema` to `LLMClientPort` in `backend/internal/ports/tutor.go` (no breaking change to `StreamChat`)
-- [ ] 1.2 Add `DefaultCompleteTimeout = 5 * time.Second` and `ErrLLMCompleteTimeout`
-- [ ] 1.3 Add `Complete(ctx, CompleteRequest) (CompleteResponse, error)` to cascade orchestrator with provider fallthrough Groq → DeepSeek → MiniMax
-- [ ] 1.4 Implement Groq provider `Complete` using `response_format: {type:"json_object"}` (or schema-specific request body shape)
-- [ ] 1.5 Implement DeepSeek provider `Complete` (OpenRouter-compat JSON mode)
-- [ ] 1.6 Implement MiniMax provider `Complete` (text mode + JSON parser; **NOT** a JSON-mode provider)
-- [ ] 1.7 Go unit tests (`ports/tutor_test.go` add): compile-time `Complete` present on `LLMClientPort`
-- [ ] 1.8 Go unit tests (`llm_cascade/complete_test.go`): provider fallthrough + JSON-mode request body shape + MiniMax text fallback + 5s timeout
-- [ ] 1.9 Go quality gates: `go test`, `golangci-lint`, `gofumpt`, `go vet`, `go build` all pass
-- [ ] 1.10 Hexagonal purity check: 0 `database/sql` imports in `backend/internal/core/`
+- [x] 1.1 Add `Complete`, `CompleteRequest`, `CompleteResponse`, `JSONSchema` to `LLMClientPort` in `backend/internal/ports/tutor.go` (no breaking change to `StreamChat`)
+- [x] 1.2 Add `DefaultCompleteTimeout = 5 * time.Second` and `ErrLLMCompleteTimeout`
+- [x] 1.3 Add `Complete(ctx, CompleteRequest) (CompleteResponse, error)` to cascade orchestrator with provider fallthrough Groq → DeepSeek → MiniMax
+- [x] 1.4 Implement Groq provider `Complete` using `response_format: {type:"json_object"}` (or schema-specific request body shape)
+- [x] 1.5 Implement DeepSeek provider `Complete` (OpenRouter-compat JSON mode)
+- [x] 1.6 Implement MiniMax provider `Complete` (text mode + JSON parser; **NOT** a JSON-mode provider)
+- [x] 1.7 Go unit tests (`ports/tutor_test.go` add): compile-time `Complete` present on `LLMClientPort`
+- [x] 1.8 Go unit tests (`llm_cascade/complete_test.go`): provider fallthrough + JSON-mode request body shape + MiniMax text fallback + 5s timeout
+- [x] 1.9 Go quality gates: `go test`, `golangci-lint`, `gofumpt`, `go vet`, `go build` all pass
+- [x] 1.10 Hexagonal purity check: 0 `database/sql` imports in `backend/internal/core/`
 
 ### PR 1 outcome (planned)
 
