@@ -11,6 +11,7 @@ import { VaultPageComponent } from './infrastructure/components/vault/vault-page
 import { ProfilePageComponent } from './infrastructure/components/profile/profile-page.component';
 import { DictionaryPageComponent } from './infrastructure/components/dictionary/dictionary-page.component';
 import { DictionaryDetailComponent } from './infrastructure/components/dictionary/dictionary-detail.component';
+import { PracticePageComponent } from './infrastructure/components/practice/practice-page.component';
 
 export const routes: Routes = [
   {
@@ -33,6 +34,12 @@ export const routes: Routes = [
       { path: 'dashboard', component: DashboardPageComponent },
       { path: 'dojo', component: DojoPageComponent },
       { path: 'dojo/:id', component: DojoPageComponent },
+      // Practice mode is a S3 spec; the page is a stub until
+      // the free-practice-mode change lands. The chat panel is
+      // mounted on it from PR 3 onward so the tutor can
+      // accompany the user during free practice.
+      { path: 'practice', component: PracticePageComponent },
+      { path: 'practice/:language', component: PracticePageComponent },
       { path: 'mcp', component: McpPageComponent },
       { path: 'vault', component: VaultPageComponent },
       { path: 'profile', component: ProfilePageComponent },

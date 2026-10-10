@@ -26,7 +26,7 @@ import { Router } from '@angular/router';
 
 import { TutorChatMessageComponent } from './tutor-chat-message.component';
 import { TutorChatInputComponent } from './tutor-chat-input.component';
-import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
+import { TutorChatService } from '../../services/tutor-chat.service';
 
 @Component({
   selector: 'app-tutor-chat-panel',
@@ -43,15 +43,15 @@ import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
         <div class="flex items-center gap-2">
           <span class="text-dojo-accent text-sm">●</span>
           <span class="text-dojo-text text-sm font-semibold">Tutor</span>
-          <span class="text-dojo-text opacity-60 text-xs">nivel {{ useCase.currentLevel() }}</span>
+          <span class="text-dojo-text opacity-60 text-xs">nivel {{ service.currentLevel() }}</span>
         </div>
-        @if (useCase.lastOfferHint()) {
+        @if (service.lastOfferHint()) {
           <span class="text-amber-400 text-xs">¿Querés una pista?</span>
         }
       </div>
 
       <!-- Error banner (if any) -->
-      @if (useCase.error(); as err) {
+      @if (service.error(); as err) {
         <div class="px-3 py-1 bg-red-950 text-red-300 text-xs">{{ err }}</div>
       }
 
@@ -61,13 +61,13 @@ import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
         class="flex-1 overflow-y-auto p-3 flex flex-col gap-2"
         data-testid="tutor-chat-message-list"
       >
-        @if (useCase.messages().length === 0) {
+        @if (service.messages().length === 0) {
           <div class="text-dojo-text opacity-60 text-xs text-center my-4 leading-relaxed">
             <p>Hola. Soy tu tutor socrático.</p>
-            <p class="mt-2">Nivel actual: {{ useCase.currentLevel() }} · Usá /help para ver los comandos.</p>
+            <p class="mt-2">Nivel actual: {{ service.currentLevel() }} · Usá /help para ver los comandos.</p>
           </div>
         } @else {
-          @for (msg of useCase.messages(); track msg.id) {
+          @for (msg of service.messages(); track msg.id) {
             <app-tutor-chat-message [message]="msg"></app-tutor-chat-message>
           }
         }
@@ -75,7 +75,7 @@ import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
 
       <!-- Input -->
       <app-tutor-chat-input
-        [streaming]="useCase.streaming()"
+        [streaming]="service.streaming()"
         placeholder="Preguntale algo al tutor..."
         (send)="onSend($event)"
         (command)="onCommand($event)"
@@ -84,7 +84,7 @@ import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
   `,
 })
 export class TutorChatPanelComponent {
-  readonly useCase = inject(TutorChatUseCase);
+  readonly service = inject(TutorChatService);
   private readonly router = inject(Router);
 
   // routeContext is set by the parent page so the use case
@@ -116,16 +116,16 @@ export class TutorChatPanelComponent {
     // Wire the navigation hook so /diccionario can route
     // through the page's onNavigate output (and then to
     // router.navigate) without circular dependencies.
-    this.useCase.registerNavigateHook((path: string) => {
+    this.service.registerNavigateHook((path: string) => {
       this.onNavigate.emit(path);
     });
   }
 
   onSend(text: string): void {
-    void this.useCase.sendMessage(text, this.routeContext());
+    void this.service.sendMessage(text, this.routeContext());
   }
 
   onCommand(command: string): void {
-    void this.useCase.handleCommand(command);
+    void this.service.handleCommand(command);
   }
 }

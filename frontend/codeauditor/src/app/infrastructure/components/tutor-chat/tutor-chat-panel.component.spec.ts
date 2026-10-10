@@ -1,37 +1,29 @@
 // tutor-chat-panel.component.spec.ts — smart component tests for
-// the tutor chat panel. The panel is the orchestrator: it owns
-// the FAB/sidebar visibility state, exposes the message list
-// through the use case, and dispatches user input to either
-// sendMessage (regular text) or handleCommand (slash commands).
+// the tutor chat panel. The panel wires a TutorChatService
+// (injectable) and forwards input events to the use case.
 //
 // Test strategy:
-//   - Wire a fake TutorChatUseCase (the panel depends on the
-//     class, not the port) so we can assert view rendering
-//     without bootstrapping the use case's full port + MCP.
-//   - Assert the input field shows / doesn't show based on
-//     the streaming signal.
-//   - Assert the panel calls useCase.sendMessage or
-//     useCase.handleCommand when the user types and submits.
+//   - Stub TutorChatService with a fake that exposes the same
+//     public surface (signals + sendMessage + handleCommand).
+//   - Assert the panel renders without crashing and that the
+//     (send) output routes to the service.sendMessage method.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { Component, signal, input, ChangeDetectionStrategy } from '@angular/core';
-import { signal as ngSignal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { signal } from '@angular/core';
 
 import { TutorChatPanelComponent } from './tutor-chat-panel.component';
-import { TutorChatUseCase } from '../../../application/tutor-chat.use-case';
+import { TutorChatService } from '../../services/tutor-chat.service';
 import { ChatMessage, SocraticLevel } from '../../../domain/models/chat';
 
-// Minimal stub of the use case: only the public surface the
-// panel + its child components consume. The real use case is
-// exercised in tutor-chat.use-case.spec.ts.
-function makeFakeUseCase(): TutorChatUseCase {
-  const messages = ngSignal<ChatMessage[]>([]);
-  const currentLevel = ngSignal<SocraticLevel>(2);
-  const streaming = ngSignal<boolean>(false);
-  const error = ngSignal<string | null>(null);
-  const lastOfferHint = ngSignal<boolean>(false);
-  const stub: Partial<TutorChatUseCase> = {
+// Minimal stub of TutorChatService. Mirrors the public surface
+// the panel + template consume.
+function makeFakeService(): TutorChatService {
+  const messages = signal<ChatMessage[]>([]);
+  const currentLevel = signal<SocraticLevel>(2);
+  const streaming = signal<boolean>(false);
+  const error = signal<string | null>(null);
+  const lastOfferHint = signal<boolean>(false);
+  const stub: Partial<TutorChatService> = {
     messages: messages.asReadonly(),
     currentLevel: currentLevel.asReadonly(),
     streaming: streaming.asReadonly(),
@@ -41,61 +33,71 @@ function makeFakeUseCase(): TutorChatUseCase {
     handleCommand: vi.fn(async () => undefined),
     registerNavigateHook: vi.fn(),
   };
-  // The panel imports TutorChatUseCase as a class, so the stub
-  // must satisfy the constructor signature; we cast through
-  // unknown to skip implementing the (private) port + mcp
-  // dependencies.
-  return stub as unknown as TutorChatUseCase;
+  return stub as unknown as TutorChatService;
 }
 
 describe('TutorChatPanelComponent', () => {
-  let fakeUseCase: TutorChatUseCase;
+  let fakeService: TutorChatService;
   let fixture: import('@angular/core/testing').ComponentFixture<TutorChatPanelComponent>;
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
-    fakeUseCase = makeFakeUseCase();
+    fakeService = makeFakeService();
     await TestBed.configureTestingModule({
       imports: [TutorChatPanelComponent],
-      providers: [{ provide: TutorChatUseCase, useValue: fakeUseCase }],
+      providers: [{ provide: TutorChatService, useValue: fakeService }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TutorChatPanelComponent);
+    fixture.componentRef.setInput('routeContext', { route: '/dojo/ch-x', challengeId: 'ch-x' });
     fixture.detectChanges();
   });
 
-  it('renders the chat panel with the use case messages', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    // The panel is mounted by default (visible). The use case's
-    // empty messages array means the welcome state renders.
-    expect(compiled.querySelector('app-tutor-chat-panel, .tutor-chat-panel, [data-testid="tutor-chat-panel"]')).toBeTruthy();
+  it('renders the panel shell', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('[data-testid="tutor-chat-panel"]')).toBeTruthy();
+    expect(root.textContent).toContain('Tutor');
   });
 
-  it('dispatches to useCase.sendMessage on submit', async () => {
-    const sendSpy = vi.spyOn(fakeUseCase, 'sendMessage');
-    // The panel is a smart component: it composes a child
-    // tutor-chat-input that emits (send) events. We can find
-    // the input by data-testid and dispatch a fake event.
-    const inputEl = fixture.nativeElement.querySelector(
-      '[data-testid="tutor-chat-input-textarea"]',
-    ) as HTMLTextAreaElement | null;
-    if (inputEl) {
-      inputEl.value = 'hola';
-      inputEl.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
-      const form = fixture.nativeElement.querySelector('form') as HTMLFormElement | null;
-      form?.dispatchEvent(new Event('submit'));
-      await fixture.whenStable();
-      expect(sendSpy).toHaveBeenCalled();
-    } else {
-      // The component template may not yet have a test id. In
-      // that case we just assert the stub is wired.
-      expect(sendSpy).not.toHaveBeenCalled();
-    }
+  it('shows the welcome state when messages is empty', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Soy tu tutor socrático');
   });
 
-  it('exposes the streaming signal to the input child', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled).toBeTruthy();
+  it('passes the streaming signal to the input child', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    const textarea: HTMLTextAreaElement | null = root.querySelector('textarea');
+    expect(textarea).toBeTruthy();
+    // streaming defaults to false so the input is enabled.
+    expect(textarea?.disabled).toBe(false);
+  });
+
+  it('calls service.sendMessage when the input child emits (send)', () => {
+    const sendSpy = vi.spyOn(fakeService, 'sendMessage');
+    // The panel is a smart orchestrator; it forwards (send) from
+    // tutor-chat-input to service.sendMessage. We invoke the
+    // public onSend method directly to assert the wiring.
+    const component = fixture.componentInstance;
+    component.onSend('hola');
+    expect(sendSpy).toHaveBeenCalledWith(
+      'hola',
+      expect.objectContaining({ route: '/dojo/ch-x', challengeId: 'ch-x' }),
+    );
+  });
+
+  it('calls service.handleCommand when the input child emits (command)', () => {
+    const cmdSpy = vi.spyOn(fakeService, 'handleCommand');
+    const component = fixture.componentInstance;
+    component.onCommand('/help');
+    expect(cmdSpy).toHaveBeenCalledWith('/help');
+  });
+
+  it('hides the panel host element when hidden input is true', () => {
+    fixture.componentRef.setInput('hidden', true);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    // The host element (the <app-tutor-chat-panel> itself)
+    // has the .hidden class binding.
+    expect(root.classList.contains('hidden')).toBe(true);
   });
 });

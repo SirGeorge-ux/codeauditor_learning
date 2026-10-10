@@ -5,6 +5,7 @@ import { ContextPanelComponent } from '../shared/context-panel.component';
 import { CodePanelComponent } from '../shared/code-panel.component';
 import { TerminalPanelComponent } from '../shared/terminal-panel.component';
 import { ResizeDirective } from '../shared/resize.directive';
+import { TutorChatPanelComponent } from '../tutor-chat/tutor-chat-panel.component';
 import { AuditService } from '../../services/audit.service';
 import { ChallengeService } from '../../services/challenge.service';
 import { Challenge, Hint } from '../../../domain/models/challenge';
@@ -19,6 +20,7 @@ import { ScoreBreakdown } from '../../../domain/models/score-breakdown';
     CodePanelComponent,
     TerminalPanelComponent,
     ResizeDirective,
+    TutorChatPanelComponent,
   ],
   template: `
     <!-- Top bar -->
@@ -146,6 +148,18 @@ import { ScoreBreakdown } from '../../../domain/models/score-breakdown';
           <div class="h-48 overflow-hidden">
             <app-terminal-panel #termPanel></app-terminal-panel>
           </div>
+        </div>
+
+        <!-- Rightmost: Socratic Tutor Chat Panel -->
+        <div class="w-80 flex-shrink-0">
+          <app-tutor-chat-panel
+            [routeContext]="{
+              route: '/dojo/' + (challengeService.selectedChallengeSignal()?.id ?? ''),
+              challengeId: challengeService.selectedChallengeSignal()?.id,
+              codeSnippet: challengeService.selectedChallengeSignal()?.code,
+            }"
+            (onNavigate)="onTutorNavigate($event)"
+          ></app-tutor-chat-panel>
         </div>
       }
     </div>
@@ -365,6 +379,14 @@ export class DojoPageComponent implements OnInit {
 
   dismissScoreBreakdown(): void {
     this.scoreBreakdown.set(null);
+  }
+
+  // onTutorNavigate handles the /diccionario command's
+  // navigation request. The chat panel emits the path
+  // through (onNavigate) so it doesn't need to import the
+  // router directly. We forward to Angular's router.
+  onTutorNavigate(path: string): void {
+    void this.router.navigateByUrl(path);
   }
 
   // Compute what we can from local state. Test, lint, and findings
