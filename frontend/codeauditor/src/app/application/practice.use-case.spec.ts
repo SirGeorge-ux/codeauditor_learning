@@ -23,15 +23,13 @@
 //
 // RED state at HEAD~1: this file imports `PracticeUseCase` from a
 // non-existent module, so vitest fails to load the suite.
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { of, throwError } from 'rxjs';
 
 import { PracticeUseCase } from './practice.use-case';
 import { MCPClientPort, MCPTool } from '../domain/ports/mcp-client.port';
-import { AuthPort } from '../domain/ports/auth.port';
 import { Challenge } from '../domain/models/challenge';
 import { CurriculumTopic } from '../domain/models/curriculum';
-import { User } from '../domain/models/user';
 
 // -- Test doubles ------------------------------------------------------------
 
@@ -95,31 +93,6 @@ class FakeMcp implements MCPClientPort {
   streamTool<T = unknown>(_name: string, _args: unknown) {
     return of({} as T);
   }
-}
-
-class FakeAuth implements AuthPort {
-  constructor(public readonly user: User | null = makeUserFixture()) {}
-  getCurrentUser(): Promise<User | null> {
-    return Promise.resolve(this.user);
-  }
-  signIn(): Promise<User> {
-    return Promise.reject(new Error('not used'));
-  }
-  signOut(): Promise<void> {
-    return Promise.resolve();
-  }
-  onAuthStateChange(): () => void {
-    return () => undefined;
-  }
-}
-
-function makeUserFixture(): User {
-  return {
-    id: 'user-1',
-    email: 'test@example.com',
-    displayName: 'Tester',
-    createdAt: new Date('2026-01-01'),
-  };
 }
 
 function makeChallengeFixture(): Challenge {
@@ -191,17 +164,14 @@ function utcDate(d: Date): string {
 
 describe('PracticeUseCase', () => {
   let mcp: FakeMcp;
-  let auth: FakeAuth;
   let storage: FakeStorage;
   let useCase: PracticeUseCase;
 
   beforeEach(() => {
     mcp = new FakeMcp();
-    auth = new FakeAuth();
     storage = new FakeStorage();
     useCase = new PracticeUseCase({
       mcp,
-      auth,
       storage,
       // Pin "now" to a fixed UTC instant so the cap math is reproducible.
       now: () => new Date('2026-10-10T12:00:00Z'),
@@ -254,9 +224,7 @@ describe('PracticeUseCase', () => {
       useCase.setTopic('inheritance');
       useCase.setLevel('D');
       await useCase.generateChallenge();
-      const genCall = mcp.captured.find(
-        (c) => c.name === 'mcp-challenges.generate_challenge',
-      );
+      const genCall = mcp.captured.find((c) => c.name === 'mcp-challenges.generate_challenge');
       expect(genCall).toBeDefined();
       expect(genCall?.args).toEqual({
         language: 'typescript',
@@ -313,29 +281,17 @@ describe('PracticeUseCase', () => {
     });
 
     it('rejects when level is not in the F..S band', async () => {
-      useCase.setLanguage('typescript');
-      useCase.setTopic('inheritance');
-      // Bypass the public guard to inject a non-F..S value.
-      // We use a typed setter and an invalid setter via a debug method
-      // is not exposed; instead we mutate via the typed signal setter
-      // by reaching into the use case via a small escape hatch:
-      // re-construct a use case with an override.
-      const bad = new PracticeUseCase({
-        mcp,
-        auth,
-        storage,
-        now: () => new Date('2026-10-10T12:00:00Z'),
-      });
-      bad.setLanguage('typescript');
-      bad.setTopic('inheritance');
-      // Inject an invalid level via the private-friendly escape:
-      // the setter rejects it (see ignore test). Use a fresh
-      // instance where we directly write to the signal — this is
-      // what the spec says we MUST guard at the use case level.
-      // We assert via the public setter only.
-      await bad.generateChallenge();
-      expect(bad.error()).toMatch(/level/i);
-      expect(mcp.captured).toHaveLength(0);
+      // The public setter already filters invalid F..S values, so the
+      // level signal stays at the default ('F') when an invalid value
+      // is passed. The validateArgs() guard is then a defense-in-depth
+      // check; we assert the setter's gate here.
+      useCase.setLevel('Z');
+      expect(useCase.level()).toBe('F');
+      useCase.setLevel('1');
+      expect(useCase.level()).toBe('F');
+      // And a valid level is accepted.
+      useCase.setLevel('D');
+      expect(useCase.level()).toBe('D');
     });
   });
 
@@ -348,7 +304,6 @@ describe('PracticeUseCase', () => {
       // so build one that does so against this storage.
       const capped = new PracticeUseCase({
         mcp,
-        auth,
         storage,
         now: () => new Date('2026-10-10T12:00:00Z'),
       });
@@ -359,7 +314,9 @@ describe('PracticeUseCase', () => {
       await capped.generateChallenge();
       expect(capped.error()).toMatch(/Daily limit/i);
       expect(capped.generatedChallenge()).toBeNull();
-      expect(mcp.captured.find((c) => c.name === 'mcp-challenges.generate_challenge')).toBeUndefined();
+      expect(
+        mcp.captured.find((c) => c.name === 'mcp-challenges.generate_challenge'),
+      ).toBeUndefined();
     });
 
     it('surfaces the daily cap via remainingToday signal', () => {
@@ -367,7 +324,6 @@ describe('PracticeUseCase', () => {
       storage.setItem(key, '15');
       const uc = new PracticeUseCase({
         mcp,
-        auth,
         storage,
         now: () => new Date('2026-10-10T12:00:00Z'),
       });
@@ -382,7 +338,6 @@ describe('PracticeUseCase', () => {
       storage.setItem(`practice.dailyCount.${yesterday}`, '20');
       const uc = new PracticeUseCase({
         mcp,
-        auth,
         storage,
         now: () => new Date('2026-10-10T00:00:01Z'),
       });

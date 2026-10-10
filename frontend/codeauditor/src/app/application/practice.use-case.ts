@@ -35,7 +35,6 @@ import {
   isF_SLevel,
 } from '../domain/models/curriculum';
 import { MCPClientPort } from '../domain/ports/mcp-client.port';
-import { AuthPort } from '../domain/ports/auth.port';
 
 // MCP tool names — the only place in the frontend that hard-codes
 // them. Keep these in lockstep with
@@ -55,15 +54,16 @@ export const DAILY_COUNT_KEY_PREFIX = 'practice.dailyCount.';
 
 // PracticeUseCaseOptions lets the constructor wire real adapters in
 // production and fakes in tests. `storage` defaults to
-// window.localStorage; `now` defaults to `() => new Date()`. The
-// `userId` field is reserved for an offline-mode override (tests may
-// pre-stamp it without calling AuthPort.getCurrentUser()).
+// window.localStorage; `now` defaults to `() => new Date()`.
+//
+// Note: the spec scenario "Per-User Daily Generation Cap" is satisfied
+// by the single-user app model (AGENTS.md §0 — `ggogsmic`). When the
+// app moves to multi-tenant, prefix the localStorage key with the
+// user id; the use case will need to receive an identity provider.
 export interface PracticeUseCaseOptions {
   readonly mcp: MCPClientPort;
-  readonly auth: AuthPort;
   readonly storage?: Storage;
   readonly now?: () => Date;
-  readonly userIdOverride?: string;
 }
 
 /**
@@ -109,8 +109,8 @@ export class PracticeUseCase {
   readonly error = this._error.asReadonly();
   readonly generatedChallenge = this._generatedChallenge.asReadonly();
   readonly dailyCount = this._dailyCount.asReadonly();
-  readonly remainingToday = computed<number>(
-    () => Math.max(0, PRACTICE_DAILY_CAP - this._dailyCount()),
+  readonly remainingToday = computed<number>(() =>
+    Math.max(0, PRACTICE_DAILY_CAP - this._dailyCount()),
   );
   readonly canGenerate = computed<boolean>(
     () =>
@@ -125,9 +125,7 @@ export class PracticeUseCase {
   // constructor site. Storage + clock have safe defaults so the
   // production injection (infrastructure/practice.service.ts) can
   // omit them.
-  constructor(
-    private readonly opts: PracticeUseCaseOptions,
-  ) {
+  constructor(private readonly opts: PracticeUseCaseOptions) {
     this.storage = opts.storage ?? defaultStorage();
     this.now = opts.now ?? (() => new Date());
     this._dailyCount.set(this.readPersistedCount());
