@@ -61,13 +61,105 @@ func (g *Groq) chatCompletionURL() string {
 	return g.baseURL + "/chat/completions"
 }
 
+// Complete is the structured-JSON-mode entry point used by
+// LLMClientPort.Complete (S3 PR 1). When req.JSONSchema is set, the
+// request body carries `response_format: {type:"json_object"}` so
+// Groq enforces a parseable JSON object back; when nil, we omit the
+// flag (free text).
+//
+// The wire shape mirrors StreamChat (OpenAI-compatible) but with
+// stream=false and the response_format toggle. The returned
+// CompleteResponse carries the parseable JSON content (or the raw
+// text body in text mode) plus the canonical provider name and
+// observed latency.
+func (g *Groq) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	if g.IsDisabled() {
+		return ports.CompleteResponse{}, ErrProviderDisabled
+	}
+	type groqResponseFormat struct {
+		Type string `json:"type"`
+	}
+	type groqRequest struct {
+		Model          string                 `json:"model"`
+		Messages       []openAIRequestMessage `json:"messages"`
+		Stream         bool                   `json:"stream,omitempty"`
+		ResponseFormat *groqResponseFormat    `json:"response_format,omitempty"`
+	}
+	msgs := []openAIRequestMessage{
+		{Role: "system", Content: req.System},
+		{Role: "user", Content: req.Prompt},
+	}
+	body, err := json.Marshal(groqRequest{
+		Model:    g.model,
+		Messages: msgs,
+		Stream:   false,
+	})
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("groq: marshal: %w", err)
+	}
+	if req.JSONSchema != nil {
+		// Re-marshal with response_format included. Done in two
+		// steps to keep the struct concise (the body is the
+		// same as StreamChat's plus one optional field).
+		body, err = json.Marshal(groqRequest{
+			Model:          g.model,
+			Messages:       msgs,
+			Stream:         false,
+			ResponseFormat: &groqResponseFormat{Type: "json_object"},
+		})
+		if err != nil {
+			return ports.CompleteResponse{}, fmt.Errorf("groq: marshal json mode: %w", err)
+		}
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, g.chatCompletionURL(), bytes.NewReader(body))
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("groq: new req: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+g.apiKey)
+
+	start := time.Now()
+	resp, err := g.http.Do(httpReq)
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("groq: do: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		limited := io.LimitReader(resp.Body, 1024)
+		msg, _ := io.ReadAll(limited)
+		return ports.CompleteResponse{}, fmt.Errorf("groq: status %d: %s", resp.StatusCode, string(msg))
+	}
+	var parsed struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("groq: decode: %w", err)
+	}
+	if len(parsed.Choices) == 0 {
+		return ports.CompleteResponse{}, fmt.Errorf("groq: no choices in response")
+	}
+	return ports.CompleteResponse{
+		Content:  parsed.Choices[0].Message.Content,
+		Provider: g.Name(),
+		Latency:  time.Since(start),
+	}, nil
+}
+
 // openAIRequest is the body shape Groq's OpenAI-compatible endpoint
 // expects. Defined locally so the adapter doesn't import an OpenAI
 // SDK (PR 2 keeps the dependency surface stdlib-only).
+//
+// Stream uses `omitempty` so non-streaming Complete requests omit
+// the key entirely (OpenAI defaults to non-streaming); streaming
+// requests emit `"stream":true`.
 type openAIRequest struct {
 	Model     string                 `json:"model"`
 	Messages  []openAIRequestMessage `json:"messages"`
-	Stream    bool                   `json:"stream"`
+	Stream    bool                   `json:"stream,omitempty"`
 	MaxTokens int                    `json:"max_tokens,omitempty"`
 }
 

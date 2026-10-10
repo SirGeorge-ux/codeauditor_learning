@@ -47,6 +47,12 @@ type stubProvider struct {
 	called      int
 	mu          sync.Mutex
 	streamFn    func(ctx context.Context, msgs []models.ChatMessage, opts ports.StreamChatOptions, onEvent func(ports.LLMStreamEvent) error) error
+	// Complete-side hooks for the S3 PR 1 cascade. The default
+	// returns ErrProviderDisabled; tests that want a different
+	// behavior supply completeFn.
+	completeFn     func(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error)
+	gotComplete    ports.CompleteRequest
+	completeCalled int
 }
 
 func (s *stubProvider) StreamChat(ctx context.Context, msgs []models.ChatMessage, opts ports.StreamChatOptions, onEvent func(ports.LLMStreamEvent) error) error {
@@ -87,6 +93,18 @@ func (s *stubProvider) StreamChat(ctx context.Context, msgs []models.ChatMessage
 		_ = onEvent(ports.LLMStreamEvent{Type: "done"})
 	}
 	return nil
+}
+
+func (s *stubProvider) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	s.mu.Lock()
+	s.gotComplete = req
+	s.completeCalled++
+	cb := s.completeFn
+	s.mu.Unlock()
+	if cb != nil {
+		return cb(ctx, req)
+	}
+	return ports.CompleteResponse{}, ErrProviderDisabled
 }
 
 func (s *stubProvider) Name() string { return s.name }

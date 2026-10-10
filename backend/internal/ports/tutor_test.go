@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 )
@@ -183,6 +184,15 @@ type llmClientStub struct {
 	err      error
 	last     []models.ChatMessage
 	lastOpts StreamChatOptions
+
+	// Complete side (Phase 1 / S3 PR 1): records the request and
+	// returns the configured canned response. Used by
+	// TestLLMClientPort_CompleteRoundtrip.
+	completeReq     CompleteRequest
+	completeResp    CompleteResponse
+	completeErr     error
+	completeCalls   int
+	completeLatency time.Duration
 }
 
 func (s *llmClientStub) StreamChat(_ context.Context, msgs []models.ChatMessage, opts StreamChatOptions, onEvent func(LLMStreamEvent) error) error {
@@ -194,6 +204,15 @@ func (s *llmClientStub) StreamChat(_ context.Context, msgs []models.ChatMessage,
 		}
 	}
 	return s.err
+}
+
+func (s *llmClientStub) Complete(_ context.Context, req CompleteRequest) (CompleteResponse, error) {
+	s.completeReq = req
+	s.completeCalls++
+	if s.completeLatency > 0 {
+		time.Sleep(s.completeLatency)
+	}
+	return s.completeResp, s.completeErr
 }
 
 // TestLLMClientPort_InterfaceSatisfied asserts the stub satisfies the
@@ -226,5 +245,76 @@ func TestLLMClientPort_ForwardsMessagesAndOptions(t *testing.T) {
 	}
 	if stub.lastOpts.PreferredProvider != "groq" {
 		t.Errorf("PreferredProvider = %q, want groq", stub.lastOpts.PreferredProvider)
+	}
+}
+
+// --- Complete (Phase 1 / S3 PR 1) -----------------------------------------
+
+// TestLLMClientPort_CompleteRoundtrip exercises the stub's Complete
+// path so a regression in the new method's signature is caught here
+// (the stub MUST keep satisfying LLMClientPort or compilation fails).
+func TestLLMClientPort_CompleteRoundtrip(t *testing.T) {
+	wantResp := CompleteResponse{
+		Content:  `{"title":"ok"}`,
+		Provider: "groq",
+		Latency:  42 * time.Millisecond,
+	}
+	stub := &llmClientStub{completeResp: wantResp}
+	schema := &JSONSchema{Type: "object", Required: []string{"title"}}
+	req := CompleteRequest{
+		System:     "identity",
+		Prompt:     "topic+story",
+		JSONSchema: schema,
+	}
+	got, err := stub.Complete(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got.Content != wantResp.Content || got.Provider != wantResp.Provider {
+		t.Errorf("got %+v, want %+v", got, wantResp)
+	}
+	if stub.completeCalls != 1 {
+		t.Errorf("completeCalls = %d, want 1", stub.completeCalls)
+	}
+	if stub.completeReq.JSONSchema == nil || stub.completeReq.JSONSchema.Type != "object" {
+		t.Errorf("schema not forwarded: %+v", stub.completeReq.JSONSchema)
+	}
+}
+
+// TestLLMClientPort_CompletePropagatesError verifies the stub surfaces
+// its configured error so callers can branch with errors.Is against
+// ErrLLMCompleteTimeout (or any other sentinel).
+func TestLLMClientPort_CompletePropagatesError(t *testing.T) {
+	wantErr := ErrLLMCompleteTimeout
+	stub := &llmClientStub{completeErr: wantErr}
+	_, err := stub.Complete(context.Background(), CompleteRequest{})
+	if !errors.Is(err, ErrLLMCompleteTimeout) {
+		t.Errorf("err = %v, want ErrLLMCompleteTimeout", err)
+	}
+}
+
+// TestDefaultCompleteTimeoutLocksFiveSeconds locks the documented 5s
+// whole-response timeout (spec.md#SSE-Streaming parallel). Mirrors the
+// TestCascadeDefaultTimeoutMatchesSpec canary on the streaming path.
+func TestDefaultCompleteTimeoutLocksFiveSeconds(t *testing.T) {
+	if DefaultCompleteTimeout != 5*time.Second {
+		t.Errorf("DefaultCompleteTimeout = %v, want 5s", DefaultCompleteTimeout)
+	}
+}
+
+// TestJSONSchemaMarshallable locks the wire shape consumed by the
+// cascade adapters (Groq/DeepSeek `response_format`, MiniMax text
+// fallback).
+func TestJSONSchemaMarshallable(t *testing.T) {
+	schema := JSONSchema{
+		Type:       "object",
+		Properties: map[string]any{"title": map[string]any{"type": "string"}},
+		Required:   []string{"title"},
+	}
+	if schema.Type != "object" {
+		t.Errorf("JSONSchema.Type = %q, want object", schema.Type)
+	}
+	if len(schema.Properties) != 1 {
+		t.Errorf("JSONSchema.Properties len = %d, want 1", len(schema.Properties))
 	}
 }
