@@ -97,10 +97,15 @@ type Challenge struct {
 
 // GenerateChallengeHint is the domain input for ChallengeService.GenerateChallenge.
 // The MCP mcp-challenges.generate_challenge tool surfaces a JSON shape with
-// these three optional fields; the adapter translates the wire form into
+// these optional fields; the adapter translates the wire form into
 // this struct before calling the service. Keeping the type in domain
 // (instead of buried in the MCP layer) lets the S5 LLM cascade own the
 // canonical input shape regardless of transport.
+//
+// S3 PR 2 extended the shape with TopicID + Level so the un-stubbed
+// GenerateChallenge can drive curriculum + pedagogical lookups without
+// changing the public transport contract for callers that omit them
+// (existing v1 hints keep compiling + behaving as before).
 type GenerateChallengeHint struct {
 	// Language biases the produced challenge to a target language
 	// (typescript, python, go, ...). Empty means "no preference".
@@ -111,6 +116,17 @@ type GenerateChallengeHint struct {
 	// Focus biases the produced challenge to a code-smell category
 	// (n+1, callback hell, ...). Empty means "no preference".
 	Focus string `json:"focus,omitempty"`
+	// TopicID is the curriculum topic slug the user selected on
+	// /practice/free (e.g. "inheritance"). The service reads
+	// `.atl/curricula/<language>.md` to source the topic body. Empty
+	// means "no curriculum-driven generation".
+	TopicID string `json:"topicId,omitempty"`
+	// Level is the F..S rank the user picked from the language
+	// progress model. The service maps Level to the persisted
+	// `Challenge.Difficulty` field (F,E→junior, D,C→mid,
+	// B,A→senior, S→architect). Empty means "use Hint.Difficulty
+	// as a fallback".
+	Level string `json:"level,omitempty"`
 }
 
 // CreateChallengeInput is the request body for creating a challenge.
