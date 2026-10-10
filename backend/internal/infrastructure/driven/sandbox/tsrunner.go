@@ -139,7 +139,7 @@ func parseTestDriverOutput(stdout []byte) []ports.TestOutcome {
 		if err := json.Unmarshal(line, &obj); err != nil {
 			continue
 		}
-		if _, ok := obj["__summary__"]; ok {
+		if isSummary, ok := obj["__summary__"].(bool); ok && isSummary {
 			continue
 		}
 		name, _ := obj["name"].(string)
