@@ -77,8 +77,8 @@ func TestSessionCache_RingBufferCap(t *testing.T) {
 
 // TestSessionCache_SnapshotIsInsertionOrder garantiza que el snapshot
 // itera del mas viejo al mas nuevo (orden cronologico). El LLM y los
-// tests downstream asumen este orden; invertirlo rompe el contexto
-// conversacional.
+// tests downstream asumen este orden; invertirlo rompe la coherencia
+// del historial de la charla.
 func TestSessionCache_SnapshotIsInsertionOrder(t *testing.T) {
 	cache := NewSessionCache()
 	ctx := context.Background()
@@ -186,7 +186,7 @@ func TestSessionCache_MultipleSessionsIsolated(t *testing.T) {
 }
 
 // TestSessionCache_SatisfiesCachePort es el compile-time check que la
-// implementacion satisface el puerto. Si la firma del puerto cambia,
+// concrecion satisface el puerto. Si la firma del puerto cambia,
 // este test rompe antes de que un adapter adopte la nueva firma
 // silenciosamente.
 func TestSessionCache_SatisfiesCachePort(t *testing.T) {

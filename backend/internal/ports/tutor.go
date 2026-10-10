@@ -29,7 +29,7 @@ type TutorServicePort interface {
 	// StreamChat returns a channel of SSE-shaped events. Events are
 	// {Type, Content, Level?} with Type in {"token","status","done","error"}.
 	// The channel is closed by the implementation when the stream ends
-	// or ctx is cancelled.
+	// or ctx is canceled.
 	StreamChat(ctx context.Context, req StreamChatRequest) (<-chan StreamChatEvent, error)
 
 	// ProcessCommand handles a slash command (eg. "/nivel 0",
@@ -69,8 +69,8 @@ type StreamChatRequest struct {
 //	"done"   — terminal event; stream complete
 //	"error"  — terminal event; cascade failed or validation rejected
 type StreamChatEvent struct {
-	Type    string              // "token" | "status" | "done" | "error"
-	Content string              // token text or status label
+	Type    string                // "token" | "status" | "done" | "error"
+	Content string                // token text or status label
 	Level   *models.SocraticLevel // only set on "status" events
 }
 
@@ -127,7 +127,7 @@ type StreamChatOptions struct {
 // layer can forward events 1:1 onto the SSE channel without
 // re-shaping.
 type LLMStreamEvent struct {
-	Type    string              // "token" | "status" | "done" | "error"
+	Type    string // "token" | "status" | "done" | "error"
 	Content string
 	Level   *models.SocraticLevel
 }

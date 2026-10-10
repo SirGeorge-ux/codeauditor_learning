@@ -63,7 +63,7 @@ func TestTutorServicePort_StreamChatRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamChat returned error: %v", err)
 	}
-	var got []StreamChatEvent
+	got := make([]StreamChatEvent, 0, len(stub.streamEvents))
 	for ev := range ch {
 		got = append(got, ev)
 	}
@@ -179,9 +179,9 @@ func TestCachePort_StubOperations(t *testing.T) {
 // options it was called with and yields the configured events to the
 // callback so a future test can assert the production wire shape.
 type llmClientStub struct {
-	events []LLMStreamEvent
-	err    error
-	last   []models.ChatMessage
+	events   []LLMStreamEvent
+	err      error
+	last     []models.ChatMessage
 	lastOpts StreamChatOptions
 }
 

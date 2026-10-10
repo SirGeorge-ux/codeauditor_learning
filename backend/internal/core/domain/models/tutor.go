@@ -123,7 +123,7 @@ type ChallengeLocationState struct {
 // nil when the chat is opened outside a challenge (eg. on the
 // dashboard).
 type ChatLocationContext struct {
-	Route     string                 `json:"route"`
+	Route     string                  `json:"route"`
 	Challenge *ChallengeLocationState `json:"challenge,omitempty"`
 }
 

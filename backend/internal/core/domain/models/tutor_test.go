@@ -159,7 +159,7 @@ func TestChatMessage_JSONRoundtrip(t *testing.T) {
 
 // TestChatMessage_OmitsLevelWhenZero confirma el contrato opcional del
 // campo Level: solo mensajes del tutor lo setean, mensajes del user no.
-// Un JSON que incluye `"level": 0` en mensajes user es informacion
+// Un JSON que incluye `"level": 0` en mensajes user es información
 // redundante que contamina el LLM prompt.
 func TestChatMessage_OmitsLevelWhenZero(t *testing.T) {
 	msg := ChatMessage{
@@ -205,7 +205,7 @@ func TestChatContext_ZeroValueIsPublishable(t *testing.T) {
 
 // TestChatContext_FullPayloadRoundtrip verifica que un ChatContext
 // completamente poblado sobrevive un Marshal/Unmarshal sin perder
-// informacion. Esto es el contrato que el backend y el frontend usan
+// información. Esto es el contrato que el backend y el frontend usan
 // para reconstruir el estado cuando el SSE streamer manda el
 // contexto al cliente (PR 2 feature).
 func TestChatContext_FullPayloadRoundtrip(t *testing.T) {
