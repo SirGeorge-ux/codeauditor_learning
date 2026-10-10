@@ -200,14 +200,16 @@ func (s *TutorService) SummarizeSession(ctx context.Context, userID, sessionID s
 // without going through the SSE handler.
 func trimSlash(command string) string {
 	out := command
-	if len(out) > 0 && out[0] == '/' {
-		out = out[1:]
-	}
-	// Light trim without importing strings — keeps the helper
-	// allocation-free for the hot path.
+	// Trim leading whitespace. Doing this before the slash strip
+	// keeps "   /nivel" working the same as "/nivel".
 	for len(out) > 0 && (out[0] == ' ' || out[0] == '\t') {
 		out = out[1:]
 	}
+	// Strip a single leading "/" if present.
+	if len(out) > 0 && out[0] == '/' {
+		out = out[1:]
+	}
+	// Trim trailing whitespace (rare on chat input, but cheap).
 	for len(out) > 0 && (out[len(out)-1] == ' ' || out[len(out)-1] == '\t' || out[len(out)-1] == '\n' || out[len(out)-1] == '\r') {
 		out = out[:len(out)-1]
 	}
