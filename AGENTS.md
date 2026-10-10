@@ -2,7 +2,7 @@
 
 > **System prompt & contexto para agentes IA que trabajen en este repo.**
 >
-> **Última actualización:** 2026-10-10 (chore de limpieza post-mcp-monolith)
+> **Última actualización:** 2026-10-10 (cierre de S2: tutor-chat archivado)
 > **Repo:** `github.com/SirGeorge-ux/codeauditor_learning` = `gogs.madeincode.online/GgogsMIC/academy-mic`
 
 ---
@@ -124,7 +124,8 @@ academy-mic/
 │       │   ├── challenge.use-case.ts
 │       │   ├── dictionary.use-case.ts        # ⭐ NUEVO: S2
 │       │   ├── progress.use-case.ts
-│       │   └── ...                            # pendientes: tutor-chat (S2), code-health (S4) — spec stage
+│       │   ├── tutor-chat.use-case.ts      # ⭐ NUEVO: S2 (archivado 2026-10-10)
+│       │   └── ...                            # pendiente: code-health (S4) — spec stage
 │       └── infrastructure/           # Angular
 │           ├── components/           # Standalone
 │           │   ├── dashboard/       # home del usuario logueado
@@ -136,14 +137,14 @@ academy-mic/
 │           │   ├── layout/          # shell + auth guard
 │           │   └── shared/          # context-panel, code-panel, terminal-panel, resize
 │           │   + login + register (top-level standalone components)
-│           │   # pendientes (spec stage, no componentes aún): practice/ (S3), code-health/ (S4), tutor-chat/ (S2)
+│           │   + tutor-chat/      # ⭐ NUEVO: panel + message + input (S2, archivado 2026-10-10)
+│           │   # pendientes (spec stage, no componentes aún): practice/ (S3), code-health/ (S4)
 │           ├── guards/
 │           ├── repositories/
 │           ├── services/
 │           └── adapters/             # ⭐ NUEVO: MCP client adapter
 ├── openspec/                         # Spec-Driven Development
-│   ├── changes/                      # Cambios en curso (4 activos al 2026-10-10)
-│   │   ├── tutor-chat/               # ⭐ S2 (activo, blocker: MCP_TOKEN_PROVIDER en app.config.ts)
+│   ├── changes/                      # Cambios en curso (3 activos al 2026-10-10)
 │   │   ├── free-practice-mode/       # ⭐ S3 (scaffold vacío)
 │   │   ├── code-health-dashboard/    # ⭐ S4 (scaffold vacío)
 │   │   └── llm-cascade/              # ⭐ S5 (scaffold vacío)
@@ -318,9 +319,9 @@ Detalle: `docs/openspec-workflow.md`.
 | `challenge-rebuild` | S1 | ✅ archivado 2026-07-22 |
 | `language-progress` | S1 | ✅ archivado 2026-07-22 |
 | `dictionary` | S2 | ✅ archivado 2026-10-08 |
-| `mcp-monolith` | S2 | ✅ archivado 2026-10-10 (33 tools / 8 grupos registrados) |
 | `mcpkit` | S2 | ✅ archivado 2026-10-08 (extraído de `mcp-monolith`) |
-| `tutor-chat` | S2 | 🔄 activo (blocker: `MCP_TOKEN_PROVIDER` en `app.config.ts`) |
+| `mcp-monolith` | S2 | ✅ archivado 2026-10-10 (33 tools / 8 grupos registrados) |
+| `tutor-chat` | S2 | ✅ archivado 2026-10-10 (3 PRs stacked-to-main; backend cascade Groq→DeepSeek→MiniMax; frontend con 5 signals + 7 slash commands + SSE; cierra el S2 entero) |
 | `free-practice-mode` | S3 | 🔄 activo, scaffold vacío |
 | `code-health-dashboard` | S4 | 🔄 activo, scaffold vacío |
 | `llm-cascade` | S5 | 🔄 activo, scaffold vacío |
@@ -418,7 +419,7 @@ Detalle: `docs/openspec-workflow.md`.
 |---|---|---|---|
 | **S0** | Debate + docs + specs vacías | Docs/skills/harnesses actualizados + 8 specs nuevas creadas | ✅ done |
 | **S1** | Challenge rebuild + Language Progress | 8 challenges nuevos + LanguageProgress + rango mixto | ✅ done (challenge-rebuild + language-progress archivados 2026-07-22) |
-| **S2** | Dictionary + Tutor Chat v1 + MCP base | Diccionario + chat con context awareness + MCP monolítico completo | 🔄 parcial (Dictionary ✅ archivado 2026-10-08; MCP base ✅ archivado 2026-10-10; Tutor Chat 🔄 activo) |
+| **S2** | Dictionary + Tutor Chat v1 + MCP base | Diccionario + chat con context awareness + MCP monolítico completo | ✅ done (Dictionary ✅ 2026-10-08; MCP base ✅ 2026-10-10; Tutor Chat ✅ 2026-10-10) |
 | **S3** | Free Practice Mode | Generador de challenges + currículas + validación + Exercism wrapper | 🔲 scaffold listo |
 | **S4** | Code Health Dashboard | Análisis de repo + caché + ranking de issues + DeepWiki | 🔲 scaffold listo |
 | **S5** | LLM Cascade completo | OpenRouter cascade + Ollama local + M3 opt-in | 🔲 scaffold listo |
@@ -431,11 +432,12 @@ Detalle: `docs/openspec-workflow.md`.
 - **50+ lenguajes** en el sandbox.
 - **8 handlers HTTP**: audit, auth, challenge, dictionary, gogs, progress, sse, vault.
 - **8 páginas Angular**: dashboard, dictionary, dojo, mcp, profile, vault + login + register (más `layout/` y `shared/` como infrastructure).
-- **890 tests Go** (21 paquetes) + **145 tests Angular** (13 archivos) + Playwright E2E instalado.
-- **4 specs activas** (`tutor-chat`, `free-practice-mode`, `code-health-dashboard`, `llm-cascade`) + 20 archivadas.
+- **~1,070 tests Go** (24 paquetes) + **207 tests Angular** (23 archivos) + Playwright E2E instalado (conteos al 2026-10-10 post-tutor-chat).
+- **3 specs activas** (`free-practice-mode`, `code-health-dashboard`, `llm-cascade`) + 21 archivadas.
 - **MCP monolítico**: 33 tools / 8 grupos registrados en `cmd/api/wiring.go` (verificado vía `GET /mcp/tools/list`).
-- **Frontend MCPClientAdapter**: 100% hexagonal — port puro en `domain/ports/mcp-client.port.ts`, adapter en `infrastructure/adapters/mcp-client.adapter.ts`.
+- **Frontend MCPClientAdapter**: 100% hexagonal — port puro en `domain/ports/mcp-client.port.ts`, adapter en `infrastructure/adapters/mcp-client.adapter.ts`; `MCP_TOKEN_PROVIDER` registrado en `app.config.ts` (cierra el blocker de mcp-monolith PR 5 verify).
 - **Hexagonal purity**: 0 `database/sql` imports en `backend/internal/core/` (verificado vía grep); ports + driven adapters respetan la dirección de imports.
-- **Cerrado 2026-10-10:** `mcp-integration` archivado a `openspec/changes/archive/2026-10-10-mcp-integration/`, `multi-lang-sandbox-oleada1/` eliminado de `changes/` (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`); 15 branches stale borradas (12 locales + 10 remotas en `github` + 3 locales follow-up).
+- **Tutor Chat (S2)**: 33a entrega — 3 PRs stacked-to-main (`feature/tutor-chat-pr1` + `-pr2` + `-pr3`); backend cascade (Groq → DeepSeek → MiniMax opt-in, 5s first-token timeout); frontend con 5 signals + 7 slash commands (`/nivel`, `/pista`, `/solucion`, `/reset`, `/perfil`, `/diccionario`, `/help`) + SSE consumer; `POST /api/v1/tutor/chat` con auto-escalation state machine.
+- **Cerrado 2026-10-10:** `mcp-integration` archivado, `multi-lang-sandbox-oleada1/` eliminado (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`); 15 branches stale borradas (12 locales + 10 remotas en `github` + 3 locales follow-up); `tutor-chat` archivado a `archive/2026-10-10-tutor-chat/` (S2 cerrado, 27 tasks completos, 0 spec reconciliation).
 
 Esto es un proyecto **maduro**, no un MVP. Trátalo como tal: con respeto por lo que ya está, y cuidado al añadir.
