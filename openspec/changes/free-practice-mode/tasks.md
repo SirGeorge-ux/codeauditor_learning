@@ -78,16 +78,17 @@ Phase 2 delivered as **stacked-to-main** chain, PR 2 of 3. Branch `feature/free-
 
 > **Branch:** `feature/free-practice-pr3` (base: `master` after PR 2 merged)
 > **Depends on:** PR 2 (`mcp-challenges.generate_challenge` end-to-end)
+> **Status (2026-10-10):** All Phase 3 tasks landed. Branch `feature/free-practice-pr3` ready for `git merge --no-ff feature/free-practice-pr3` after user spot-check.
 
-- [ ] 3.1 Create `domain/models/curriculum.ts` — `CurriculumTopic`, `GenerateChallengeArgs` types
-- [ ] 3.2 Create `application/practice.use-case.ts` — signals for `language`, `topic`, `level`, `loading`, `error`, `remainingToday`; `generateChallenge()` command flow; daily-cap enforcement (≥20 rejected); localStorage persistence of daily count
-- [ ] 3.3 Implement localStorage daily count key (`practice.dailyCount.<UTC-date>`) with UTC-midnight reset
-- [ ] 3.4 Create 4 dumb standalone components: `language-selector`, `level-selector` (F–S), `topic-list` (filtered by language), `generated-challenge` (renders the result + opens dojo route)
-- [ ] 3.5 Replace `practice-page.component.ts` STUB with real selector + generated-challenge layout (uses new control flow `@if`/`@for`; **no** `*ngIf`/`*ngFor`)
-- [ ] 3.6 Angular tests (`practice.use-case.spec.ts`): signal transitions, daily cap enforcement, localStorage reset
-- [ ] 3.7 Angular tests (4 component specs): `input.required` + `output` emit behaviors + render
-- [ ] 3.8 Frontend quality gates: `pnpm lint`, `pnpm prettier --check`, `npx ng test --watch=false`, `npx ng build`
-- [ ] 3.9 Hexagonal purity: 0 `@angular/*` imports in `frontend/.../domain/`
+- [x] 3.1 Create `domain/models/curriculum.ts` — `CurriculumTopic`, `GenerateChallengeArgs` types
+- [x] 3.2 Create `application/practice.use-case.ts` — signals for `language`, `topic`, `level`, `loading`, `error`, `remainingToday`; `generateChallenge()` command flow; daily-cap enforcement (≥20 rejected); localStorage persistence of daily count
+- [x] 3.3 Implement localStorage daily count key (`practice.dailyCount.<UTC-date>`) with UTC-midnight reset
+- [x] 3.4 Create 4 dumb standalone components: `language-selector`, `level-selector` (F–S), `topic-list` (filtered by language), `generated-challenge` (renders the result + opens dojo route)
+- [x] 3.5 Replace `practice-page.component.ts` STUB with real selector + generated-challenge layout (uses new control flow `@if`/`@for`; **no** `*ngIf`/`*ngFor`)
+- [x] 3.6 Angular tests (`practice.use-case.spec.ts`): signal transitions, daily cap enforcement, localStorage reset
+- [x] 3.7 Angular tests (4 component specs): `input.required` + `output` emit behaviors + render
+- [x] 3.8 Frontend quality gates: `pnpm lint`, `pnpm prettier --check`, `npx ng test --watch=false`, `npx ng build`
+- [x] 3.9 Hexagonal purity: 0 `@angular/*` imports in `frontend/.../domain/`
 
 ### PR 3 outcome (planned)
 

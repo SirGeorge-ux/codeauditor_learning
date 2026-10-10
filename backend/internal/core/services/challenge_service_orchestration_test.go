@@ -194,12 +194,12 @@ const minimalTypeScriptFixture = `# TypeScript Curriculum
 // against a fixture file plus fakes for LLM/sandbox/repo. Returns the
 // wired ChallengeService + the fakes a test needs to assert on.
 type fixtureBundle struct {
-	svc    *ChallengeService
-	repo   *genFakeRepoForGenerate
-	llm    *genFakeLLMClient
-	sandbox *genFakeSandbox
-	curricula *CurriculumService
-	pedagogy  *PedagogicalService
+	svc             *ChallengeService
+	repo            *genFakeRepoForGenerate
+	llm             *genFakeLLMClient
+	sandbox         *genFakeSandbox
+	curricula       *CurriculumService
+	pedagogy        *PedagogicalService
 	insertCreatedAt time.Time
 }
 
@@ -220,19 +220,20 @@ func newFixtureBundle(t *testing.T) *fixtureBundle {
 	sandbox := &genFakeSandbox{}
 	repo := &genFakeRepoForGenerate{insertOut: time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)}
 
-	svc := NewChallengeService(repo,
+	svc := NewChallengeService(
+		repo,
 		WithCurriculumService(curricula),
 		WithPedagogicalService(pedagogy),
 		WithLLMClient(llm),
 		WithSandboxExecutor(sandbox),
 	)
 	return &fixtureBundle{
-		svc:    svc,
-		repo:   repo,
-		llm:    llm,
-		sandbox: sandbox,
-		curricula: curricula,
-		pedagogy:  pedagogy,
+		svc:             svc,
+		repo:            repo,
+		llm:             llm,
+		sandbox:         sandbox,
+		curricula:       curricula,
+		pedagogy:        pedagogy,
 		insertCreatedAt: repo.insertOut,
 	}
 }
