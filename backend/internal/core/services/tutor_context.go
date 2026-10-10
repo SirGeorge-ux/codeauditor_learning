@@ -20,11 +20,11 @@ const maxChatContextCodeBytes = 2048
 // stitches together the 5-system-message ChatContext that TutorService
 // passes to LLMClientPort.StreamChat. The shape mirrors design.md §3:
 //
-//	1. Identity    — tutor-system.md
-//	2. Socratic    — tutor-socratic-{N}.md, N = active level
-//	3. UserSummary — last LearningProfile.Preferencias.Resumen (or empty)
-//	4. Location    — active route, challenge, truncated code, output
-//	5. History     — last 10 cache messages + idioma + max msg length
+//  1. Identity    — tutor-system.md
+//  2. Socratic    — tutor-socratic-{N}.md, N = active level
+//  3. UserSummary — last LearningProfile.Preferencias.Resumen (or empty)
+//  4. Location    — active route, challenge, truncated code, output
+//  5. History     — last 10 cache messages + idioma + max msg length
 //
 // The fifth message also carries the user's idioma preference so the
 // LLM respects spec scenario "Response respects language preference"

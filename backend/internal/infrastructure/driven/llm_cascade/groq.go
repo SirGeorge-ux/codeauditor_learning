@@ -65,9 +65,9 @@ func (g *Groq) chatCompletionURL() string {
 // expects. Defined locally so the adapter doesn't import an OpenAI
 // SDK (PR 2 keeps the dependency surface stdlib-only).
 type openAIRequest struct {
-	Model    string                  `json:"model"`
-	Messages []openAIRequestMessage  `json:"messages"`
-	Stream   bool                    `json:"stream"`
+	Model     string                 `json:"model"`
+	Messages  []openAIRequestMessage `json:"messages"`
+	Stream    bool                   `json:"stream"`
 	MaxTokens int                    `json:"max_tokens,omitempty"`
 }
 
@@ -110,9 +110,9 @@ func (g *Groq) StreamChat(
 		})
 	}
 	body, err := json.Marshal(openAIRequest{
-		Model:    g.model,
-		Messages: reqMsgs,
-		Stream:   true,
+		Model:     g.model,
+		Messages:  reqMsgs,
+		Stream:    true,
 		MaxTokens: opts.MaxTokens,
 	})
 	if err != nil {

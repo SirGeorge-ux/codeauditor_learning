@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
+	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -24,14 +24,14 @@ import (
 // exercise the SSE wire format without spinning up an LLM cascade.
 // It implements ports.TutorServicePort deterministically.
 type fakeTutorService struct {
-	events []ports.StreamChatEvent
-	err    error
-	cmdErr error
-	sessErr error
-	cmdLast string
-	cmdUser string
+	events      []ports.StreamChatEvent
+	err         error
+	cmdErr      error
+	sessErr     error
+	cmdLast     string
+	cmdUser     string
 	streamCalls int
-	mu     sync.Mutex
+	mu          sync.Mutex
 }
 
 func (f *fakeTutorService) StreamChat(ctx context.Context, req ports.StreamChatRequest) (<-chan ports.StreamChatEvent, error) {

@@ -195,15 +195,19 @@ type failingProfileRepo struct{}
 func (*failingProfileRepo) GetLanguageProgress(_ context.Context, _, _ string) (*models.LanguageProgress, error) {
 	return nil, errBoom
 }
+
 func (*failingProfileRepo) UpdateLanguageProgress(_ context.Context, _ *models.LanguageProgress) error {
 	return nil
 }
+
 func (*failingProfileRepo) GetAllLanguageProgress(_ context.Context, _ string) ([]*models.LanguageProgress, error) {
 	return nil, nil
 }
+
 func (*failingProfileRepo) GetLearningProfile(_ context.Context, _ string) (*models.LearningProfile, error) {
 	return nil, errBoom
 }
+
 func (*failingProfileRepo) UpdateLearningProfile(_ context.Context, _ *models.LearningProfile) error {
 	return nil
 }

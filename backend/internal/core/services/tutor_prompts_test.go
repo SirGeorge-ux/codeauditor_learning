@@ -26,11 +26,11 @@ var tpsSocratic = []string{"level 0", "level 1", "level 2", "level 3"}
 func newFSYSPrompts(t *testing.T) fs.FS {
 	t.Helper()
 	return fstest.MapFS{
-		"tutor-system.md":       &fstest.MapFile{Data: []byte(tpsSystem)},
-		"tutor-socratic-0.md":   &fstest.MapFile{Data: []byte(tpsSocratic[0])},
-		"tutor-socratic-1.md":   &fstest.MapFile{Data: []byte(tpsSocratic[1])},
-		"tutor-socratic-2.md":   &fstest.MapFile{Data: []byte(tpsSocratic[2])},
-		"tutor-socratic-3.md":   &fstest.MapFile{Data: []byte(tpsSocratic[3])},
+		"tutor-system.md":     &fstest.MapFile{Data: []byte(tpsSystem)},
+		"tutor-socratic-0.md": &fstest.MapFile{Data: []byte(tpsSocratic[0])},
+		"tutor-socratic-1.md": &fstest.MapFile{Data: []byte(tpsSocratic[1])},
+		"tutor-socratic-2.md": &fstest.MapFile{Data: []byte(tpsSocratic[2])},
+		"tutor-socratic-3.md": &fstest.MapFile{Data: []byte(tpsSocratic[3])},
 	}
 }
 
@@ -140,8 +140,8 @@ func TestSocraticPromptFor_ClampsToValidRange(t *testing.T) {
 		{models.SocraticGuided, "level 1"},
 		{models.SocraticPure, "level 2"},
 		{models.SocraticDiscovery, "level 3"},
-		{models.SocraticLevel(-1), "level 0"},  // clamp down
-		{models.SocraticLevel(99), "level 3"},  // clamp up
+		{models.SocraticLevel(-1), "level 0"}, // clamp down
+		{models.SocraticLevel(99), "level 3"}, // clamp up
 	}
 	for _, c := range cases {
 		t.Run(c.in.String(), func(t *testing.T) {

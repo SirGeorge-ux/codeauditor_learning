@@ -6,8 +6,8 @@
 //  1. Groq (llama-3.3-70b-versatile) — primary; $0 free tier, fast.
 //  2. DeepSeek V3 via OpenRouter     — fallback; $0 free tier, long.
 //  3. MiniMax M3                     — opt-in only when the user sets
-//                                    use_minimax=true or
-//                                    PreferredProvider=="minimax".
+//     use_minimax=true or
+//     PreferredProvider=="minimax".
 //
 // Per the spec (spec.md#SSE-Streaming "Fallback on timeout"), the
 // cascade enforces a 5s first-token timeout. On timeout/error from a
@@ -22,7 +22,6 @@ package llmcascade
 import (
 	"context"
 	"errors"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -114,10 +113,8 @@ func TestCascade_PrimaryEmitsAllTokensHappyPath(t *testing.T) {
 	}
 
 	// Drain the events.
-	var collected []ports.LLMStreamEvent
-	for _, e := range got {
-		collected = append(collected, e)
-	}
+	collected := make([]ports.LLMStreamEvent, 0, len(got))
+	collected = append(collected, got...)
 	wantTokens := []string{"hello", " ", "world"}
 	for i, want := range wantTokens {
 		if i >= len(collected) || collected[i].Type != "token" || collected[i].Content != want {
@@ -401,8 +398,4 @@ func TestGroqProvider_BuildChatCompletionURL(t *testing.T) {
 	if !strings.Contains(got, "/chat/completions") {
 		t.Errorf("URL %q missing /chat/completions", got)
 	}
-	if strings.HasSuffix(strings.TrimSuffix(strings.TrimPrefix(got, "https://api.groq.com/openai/v1/"), "/"), "m") {
-		// crude — body model is fine; we don't introspect internals
-	}
-	_ = strconv.Itoa // suppress unused if a future refactor drops strconv
 }

@@ -22,13 +22,13 @@ var ErrTutorPromptsMissing = errors.New("tutor prompts missing")
 // these into the ChatContext as a chain of system messages per
 // design.md §3 ("Assembly"):
 //
-//   1. System       — tutor-system.md (identity + command rules).
-//   2. Socratic     — tutor-socratic-{N}.md picked by the live level.
-//   3. UserSummary  — last LearningProfile.Preferencias.Resumen (built
-//                     at call time, not stored on TutorPrompts).
-//   4. Location     — current challenge_id/language/code (call time).
-//   5. History      — last 10 cache messages + preferred_language
-//                     (call time).
+//  1. System       — tutor-system.md (identity + command rules).
+//  2. Socratic     — tutor-socratic-{N}.md picked by the live level.
+//  3. UserSummary  — last LearningProfile.Preferencias.Resumen (built
+//     at call time, not stored on TutorPrompts).
+//  4. Location     — current challenge_id/language/code (call time).
+//  5. History      — last 10 cache messages + preferred_language
+//     (call time).
 //
 // Fields 3–5 are NOT cached in TutorPrompts because they vary per
 // request; they are owned by the assembleChatContext helper.

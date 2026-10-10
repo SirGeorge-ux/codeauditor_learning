@@ -179,7 +179,7 @@ func TestEscalateIfNeeded_Priority(t *testing.T) {
 	res := EscalateIfNeeded(
 		models.SocraticDiscovery, // empezamos arriba
 		EscalationMetrics{
-			Failures:    2,
+			Failures:     2,
 			GiveUpCounts: 5,
 		},
 		now,

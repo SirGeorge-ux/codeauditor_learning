@@ -232,7 +232,7 @@ func (s *TutorService) StreamChat(ctx context.Context, req ports.StreamChatReque
 		// we propagate to stop the cascade cleanly.
 		opts := ports.StreamChatOptions{
 			PreferredProvider: req.PreferredProvider,
-			Timeout:          5 * time.Second,
+			Timeout:           5 * time.Second,
 		}
 		llmErr := s.llmClient.StreamChat(ctx, messages, opts, func(ev ports.LLMStreamEvent) error {
 			select {

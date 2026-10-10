@@ -58,16 +58,18 @@ func (s *stubCacheAdapter) Get(_ context.Context, _ string) (models.ChatMessage,
 	}
 	return s.ring[len(s.ring)-1], true
 }
+
 func (s *stubCacheAdapter) Set(_ context.Context, _ string, msg models.ChatMessage) {
 	s.ring = append(s.ring, msg)
 	if len(s.ring) > 10 {
 		s.ring = s.ring[len(s.ring)-10:]
 	}
 }
+
 func (s *stubCacheAdapter) Snapshot(_ context.Context, _ string) []models.ChatMessage {
 	return append([]models.ChatMessage(nil), s.ring...)
 }
-func (s *stubCacheAdapter) Keys(_ context.Context) []string { return nil }
+func (s *stubCacheAdapter) Keys(_ context.Context) []string   { return nil }
 func (s *stubCacheAdapter) Reset(_ context.Context, _ string) { s.ring = nil }
 
 // Compile-time guard so the stub stays aligned with the port.
@@ -104,7 +106,7 @@ func TestTutorService_StreamChat_EmptyMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamChat err: %v", err)
 	}
-	var got []ports.StreamChatEvent
+	got := make([]ports.StreamChatEvent, 0, 8)
 	for ev := range ch {
 		got = append(got, ev)
 	}
@@ -144,7 +146,7 @@ func TestTutorService_StreamChat_EmitsStatusTokenDoneEventOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamChat err: %v", err)
 	}
-	var got []ports.StreamChatEvent
+	got := make([]ports.StreamChatEvent, 0, 8)
 	for ev := range ch {
 		got = append(got, ev)
 	}
@@ -181,7 +183,7 @@ func TestTutorService_StreamChat_ErrorEventSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamChat err: %v", err)
 	}
-	var got []ports.StreamChatEvent
+	got := make([]ports.StreamChatEvent, 0, 8)
 	for ev := range ch {
 		got = append(got, ev)
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/llm_cascade"
+	llmcascade "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/llm_cascade"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
@@ -22,15 +22,19 @@ type stubProfileRepo struct{}
 func (*stubProfileRepo) GetLanguageProgress(_ context.Context, _, _ string) (*models.LanguageProgress, error) {
 	return &models.LanguageProgress{}, nil
 }
+
 func (*stubProfileRepo) UpdateLanguageProgress(_ context.Context, _ *models.LanguageProgress) error {
 	return nil
 }
+
 func (*stubProfileRepo) GetAllLanguageProgress(_ context.Context, _ string) ([]*models.LanguageProgress, error) {
 	return []*models.LanguageProgress{}, nil
 }
+
 func (*stubProfileRepo) GetLearningProfile(_ context.Context, _ string) (*models.LearningProfile, error) {
 	return models.DefaultLearningProfile("u1"), nil
 }
+
 func (*stubProfileRepo) UpdateLearningProfile(_ context.Context, _ *models.LearningProfile) error {
 	return nil
 }

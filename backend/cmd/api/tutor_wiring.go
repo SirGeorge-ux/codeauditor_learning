@@ -10,7 +10,7 @@ import (
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven"
-	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/llm_cascade"
+	llmcascade "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/llm_cascade"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/handlers"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )

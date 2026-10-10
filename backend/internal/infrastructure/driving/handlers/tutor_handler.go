@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	authmiddleware "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driving/authmiddleware"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
