@@ -11,12 +11,7 @@
 // pass.
 import { describe, it, expect } from 'vitest';
 
-import {
-  CurriculumTopic,
-  GenerateChallengeArgs,
-  F_S_LEVELS,
-  isF_SLevel,
-} from './curriculum';
+import { CurriculumTopic, GenerateChallengeArgs, F_S_LEVELS, isF_SLevel } from './curriculum';
 
 describe('CurriculumTopic', () => {
   it('accepts a canonical typescript topic fixture', () => {

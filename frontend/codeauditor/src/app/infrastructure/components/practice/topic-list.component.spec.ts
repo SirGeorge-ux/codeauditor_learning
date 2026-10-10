@@ -32,9 +32,7 @@ describe('TopicListComponent', () => {
     fixture.componentRef.setInput('selected', null);
     fixture.detectChanges();
     const rows = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[data-testid="topic-list-row"]',
-      ),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="topic-list-row"]'),
     );
     expect(rows).toHaveLength(3);
   });
@@ -44,9 +42,9 @@ describe('TopicListComponent', () => {
     fixture.componentRef.setInput('selected', null);
     fixture.detectChanges();
     const html = fixture.nativeElement as HTMLElement;
-    expect(html.querySelector('[data-testid="topic-list-row"][data-id="variables"]')?.textContent).toContain(
-      'F',
-    );
+    expect(
+      html.querySelector('[data-testid="topic-list-row"][data-id="variables"]')?.textContent,
+    ).toContain('F');
     expect(
       html.querySelector('[data-testid="topic-list-row"][data-id="inheritance"]')?.textContent,
     ).toContain('D');

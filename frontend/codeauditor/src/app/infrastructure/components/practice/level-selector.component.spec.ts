@@ -26,9 +26,7 @@ describe('LevelSelectorComponent', () => {
     fixture.componentRef.setInput('selected', 'F');
     fixture.detectChanges();
     const buttons = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[data-testid="level-selector-row"]',
-      ),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="level-selector-row"]'),
     );
     expect(buttons).toHaveLength(F_S_LEVELS.length);
     expect(F_S_LEVELS).toEqual(['F', 'E', 'D', 'C', 'B', 'A', 'S']);
@@ -51,9 +49,7 @@ describe('LevelSelectorComponent', () => {
     const emitted: string[] = [];
     component.levelChange.subscribe((v: string) => emitted.push(v));
     const buttons = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[data-testid="level-selector-row"]',
-      ),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="level-selector-row"]'),
     ) as HTMLButtonElement[];
     buttons[3].click(); // index 3 → 'C'
     expect(emitted).toEqual(['C']);

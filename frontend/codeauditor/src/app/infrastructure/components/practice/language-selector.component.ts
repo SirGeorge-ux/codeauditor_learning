@@ -23,10 +23,7 @@ export interface LanguageOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (languages().length === 0) {
-      <div
-        class="text-dojo-text opacity-60 text-sm"
-        data-testid="language-selector-empty"
-      >
+      <div class="text-dojo-text opacity-60 text-sm" data-testid="language-selector-empty">
         No languages available yet.
       </div>
     } @else {

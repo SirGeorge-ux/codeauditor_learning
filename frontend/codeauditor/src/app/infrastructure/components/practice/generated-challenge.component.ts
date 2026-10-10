@@ -18,10 +18,7 @@ import { Challenge } from '../../../domain/models/challenge';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
-      <div
-        class="text-dojo-text opacity-70 text-sm"
-        data-testid="generated-challenge-loading"
-      >
+      <div class="text-dojo-text opacity-70 text-sm" data-testid="generated-challenge-loading">
         Generating challenge…
       </div>
     } @else if (challenge(); as ch) {
@@ -36,7 +33,9 @@ import { Challenge } from '../../../domain/models/challenge';
               {{ ch.description }}
             </p>
           </div>
-          <span class="inline-block px-1.5 py-0.5 rounded-sm bg-dojo-base border border-dojo-border text-xs">
+          <span
+            class="inline-block px-1.5 py-0.5 rounded-sm bg-dojo-base border border-dojo-border text-xs"
+          >
             {{ ch.language }} · {{ ch.difficulty }}
           </span>
         </div>
@@ -64,10 +63,7 @@ import { Challenge } from '../../../domain/models/challenge';
         </div>
       </div>
     } @else {
-      <div
-        class="text-dojo-text opacity-60 text-sm"
-        data-testid="generated-challenge-empty"
-      >
+      <div class="text-dojo-text opacity-60 text-sm" data-testid="generated-challenge-empty">
         Pick a language, topic, and level to generate a challenge.
       </div>
     }
