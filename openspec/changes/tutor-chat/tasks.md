@@ -26,13 +26,25 @@ Chain strategy: pending
 
 ## Phase 1: Backend Foundation
 
-- [ ] 1.1 Create `.atl/prompts/tutor-system.md` with tutor identity system prompt
-- [ ] 1.2 Create `.atl/prompts/tutor-socratic-{0..3}.md` with 4 level-specific prompts
-- [ ] 1.3 Create `backend/internal/core/domain/models/tutor.go` — ChatMessage, ChatContext, SocraticLevel
-- [ ] 1.4 Create `backend/internal/ports/tutor.go` — TutorServicePort, CachePort interfaces
-- [ ] 1.5 Create `backend/internal/infrastructure/mcp/pedagogical/get_socratic_prompt.go` tool
-- [ ] 1.6 Create `backend/internal/infrastructure/mcp/user/profile_tools.go` — get/update LearningProfile
-- [ ] 1.7 Create `backend/internal/infrastructure/driven/session_cache.go` — in-memory 10-message ring
+- [x] 1.1 Create `.atl/prompts/tutor-system.md` with tutor identity system prompt
+- [x] 1.2 Create `.atl/prompts/tutor-socratic-{0..3}.md` with 4 level-specific prompts
+- [x] 1.3 Create `backend/internal/core/domain/models/tutor.go` — ChatMessage, ChatContext, SocraticLevel
+- [x] 1.4 Create `backend/internal/ports/tutor.go` — TutorServicePort, CachePort, LLMClientPort interfaces
+- [x] 1.5 ~~Create~~ **already shipped via mcp-monolith PR 4** — `mcp-pedagogical.get_socratic_prompt` exists at `backend/internal/infrastructure/mcp/pedagogical/pedagogical_tool.go:524` with prompt-injection guard + service-layer defense + OpenAI schema; tool-layer test passes; covers spec scenario "Tutor fetches socratic prompts". **No re-implementation in PR 1.**
+- [x] 1.6 ~~Create~~ **already shipped via mcp-monolith PR 3** — `mcp-user.get_learning_profile` (lines 376–412) and `mcp-user.update_learning_profile` (lines 471–538) exist with `preferencias` validation + `nivel_socratismo` range guard; tool-layer tests pass; cover spec scenarios "Profile update after audit completion" + "/nivel 0–3 changes LearningProfile". **No re-implementation in PR 1.**
+- [x] 1.7 Create `backend/internal/infrastructure/driven/session_cache.go` — in-memory 10-message ring
+
+### PR 1 outcome
+
+Phase 1 delivered in **stacked-to-main** chain, PR 1 of 3. Branch `feature/tutor-chat-pr1` (8 commits, ~1150 LOC inserted, ~12 LOC delta at HEAD). Phases 2–5 land in PR 2 (backend TutorService + SSE handler) and PR 3 (frontend).
+
+Tasks 1.5 and 1.6 were discovered to be already shipped via `mcp-monolith` (PR 3 for `get/update_learning_profile`, PR 4 for `get_socratic_prompt`); PR 1 verified the existing coverage and the new domain types (`SocraticLevel`, `ChatMessage`, `ChatContext`) are consistent with the tool-layer validation. The discover-only outcome is documented in commit messages.
+
+Reused without re-implementation:
+- `services.TutorLookupService` (mcp-monolith PR 3) — registered as `mcp-tutor.tutor_lookup`
+- `services.PedagogicalService` (mcp-monolith PR 4) — the 6 tools including `GetSocraticPrompt`
+- `mcp-user.profile_tools` (mcp-monolith PR 3) — the `get/update_learning_profile` tools
+- `ports.OllamaClient` (audit path) — kept narrow on purpose; **NOT** extended for the cascade. A new `ports.LLMClientPort` carries the multi-provider cascade concern so the two LLM trajectories stay untangled (see discovery note in apply-progress).
 
 ## Phase 2: Core Backend Service
 
