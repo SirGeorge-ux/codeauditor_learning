@@ -34,11 +34,13 @@ export const routes: Routes = [
       { path: 'dashboard', component: DashboardPageComponent },
       { path: 'dojo', component: DojoPageComponent },
       { path: 'dojo/:id', component: DojoPageComponent },
-      // Practice mode is a S3 spec; the page is a stub until
-      // the free-practice-mode change lands. The chat panel is
-      // mounted on it from PR 3 onward so the tutor can
-      // accompany the user during free practice.
-      { path: 'practice', component: PracticePageComponent },
+      // Practice mode: S3 spec landed. The canonical entry point is
+      // `/practice/free` (per design.md §Data Shapes + the proposal's
+      // intended route). `/practice` and `/practice/:language` are
+      // preserved as aliases so existing links (e.g. from the tutor
+      // chat's /diccionario command) keep working without a migration.
+      { path: 'practice', redirectTo: 'practice/free', pathMatch: 'full' },
+      { path: 'practice/free', component: PracticePageComponent },
       { path: 'practice/:language', component: PracticePageComponent },
       { path: 'mcp', component: McpPageComponent },
       { path: 'vault', component: VaultPageComponent },
