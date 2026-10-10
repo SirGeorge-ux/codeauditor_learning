@@ -7,8 +7,7 @@
 // does not exist yet) and flips to GREEN when the implementation
 // lands.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed } from '@angular/core/testing';
-import { ComponentFixture } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 
 import { LanguageSelectorComponent } from './language-selector.component';
 

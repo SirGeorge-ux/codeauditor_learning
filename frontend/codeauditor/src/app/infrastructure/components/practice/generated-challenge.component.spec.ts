@@ -6,8 +6,7 @@
 //
 // RED at HEAD~1; GREEN once the implementation lands.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TestBed } from '@angular/core/testing';
-import { ComponentFixture } from '@angular/core';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 
 import { GeneratedChallengeComponent } from './generated-challenge.component';
 import { Challenge } from '../../../domain/models/challenge';
