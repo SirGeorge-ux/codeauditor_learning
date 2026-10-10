@@ -38,7 +38,7 @@ type TutorSystemDeps struct {
 	// adapter can drive the tutor chat AND the un-stubbed
 	// ChallengeService.GenerateChallenge orchestration. When nil,
 	// TutorSystem builds one from Providers — this preserves the
-	// pre-PR-2 behaviour so existing tutor_wiring_test.go cases
+	// pre-PR-2 behavior so existing tutor_wiring_test.go cases
 	// keep compiling and asserting the same wiring.
 	Cascade *llmcascade.Cascade
 }
@@ -77,7 +77,7 @@ type TutorSystemWiring struct {
 // caller can pre-build the cascade once + share it between the tutor
 // service AND the un-stubbed ChallengeService.GenerateChallenge
 // orchestration. When Cascade is nil, TutorSystem builds one from
-// Providers — this preserves the pre-PR-2 behaviour so existing
+// Providers — this preserves the pre-PR-2 behavior so existing
 // tutor_wiring_test.go cases keep compiling and asserting the same
 // wiring.
 func TutorSystem(deps TutorSystemDeps) (*TutorSystemWiring, error) {
