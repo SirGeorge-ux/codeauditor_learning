@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
@@ -156,4 +157,75 @@ type LLMClientPort interface {
 	// emitting further events. Returns the terminal error (or nil
 	// when the stream ends cleanly with Type == "done").
 	StreamChat(ctx context.Context, messages []models.ChatMessage, opts StreamChatOptions, onEvent func(LLMStreamEvent) error) error
+
+	// Complete performs a single blocking structured completion
+	// (S3 PR 1). The cascade returns the raw content (JSON when
+	// JSONSchema is set), the responding provider name, and the
+	// observed latency. When PreferredProvider is empty, the cascade
+	// walks its ranking (Groq → DeepSeek → MiniMax).
+	//
+	// Implementations MUST honor a whole-response timeout of
+	// DefaultCompleteTimeout; on expiry the call returns
+	// ErrLLMCompleteTimeout so the caller can surface a stable
+	// transport-agnostic error instead of context.DeadlineExceeded.
+	Complete(ctx context.Context, req CompleteRequest) (CompleteResponse, error)
+}
+
+// DefaultCompleteTimeout is the documented 5-second whole-response
+// cap for LLMClientPort.Complete (mirror of DefaultFirstTokenTimeout
+// on the streaming path). Callers can override via a derived
+// context.WithTimeout at the call site.
+const DefaultCompleteTimeout = 5 * time.Second
+
+// ErrLLMCompleteTimeout is the sentinel returned by
+// LLMClientPort.Complete when the whole-response budget expires.
+// Handlers and service-layer code branch with errors.Is so the
+// transport stays uniform.
+var ErrLLMCompleteTimeout = errors.New("llm: complete timed out")
+
+// JSONSchema describes a structured response shape. The adapter
+// hands it to providers that support response_format (Groq,
+// DeepSeek via OpenRouter); providers without native JSON mode
+// (MiniMax M3 today) parse the raw text into JSON via the
+// adapter's best-effort JSON extractor.
+type JSONSchema struct {
+	Type                 string         `json:"type"`
+	Properties           map[string]any `json:"properties,omitempty"`
+	Required             []string       `json:"required,omitempty"`
+	AdditionalProperties bool           `json:"additionalProperties"`
+}
+
+// CompleteRequest is the input envelope for LLMClientPort.Complete.
+//
+// System and Prompt are pre-assembled by the caller (typically a
+// service layer that folds identity, level, topic, story,
+// restrictions, and schema instruction into 2 logical strings —
+// the cascade does NOT do prompt shaping).
+//
+// JSONSchema is optional. When non-nil, providers with native
+// JSON mode (Groq, DeepSeek via OpenRouter) emit a structured
+// response; providers without it (MiniMax) emit free text and the
+// adapter extracts the first JSON object encountered.
+//
+// PreferredProvider short-circuits the cascade ranking. Allowed
+// values: "groq" | "deepseek" | "minimax". Empty string tells the
+// cascade to walk its ranking (Groq → DeepSeek → MiniMax).
+type CompleteRequest struct {
+	System            string
+	Prompt            string
+	JSONSchema        *JSONSchema
+	PreferredProvider string
+}
+
+// CompleteResponse is the output envelope for LLMClientPort.Complete.
+//
+// Content holds the raw provider body — when JSONSchema was supplied
+// the cascade guarantees this is parseable as JSON. Provider carries
+// the canonical Name() of the responder ("groq" | "deepseek" |
+// "minimax"). Latency is the wall-clock time spent in the responding
+// provider's HTTP call.
+type CompleteResponse struct {
+	Content  string
+	Provider string
+	Latency  time.Duration
 }

@@ -61,13 +61,30 @@ func (g *Groq) chatCompletionURL() string {
 	return g.baseURL + "/chat/completions"
 }
 
+// Complete is the structured-JSON-mode entry point used by
+// LLMClientPort.Complete (S3 PR 1). The body shape and response
+// parsing land in a follow-up commit (the constructor + non-HTTP
+// shape); here we ship the stub that satisfies the interface so
+// Cascade.Complete's compile-time guard stays green as PR 1
+// lands.
+func (g *Groq) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	if g.IsDisabled() {
+		return ports.CompleteResponse{}, ErrProviderDisabled
+	}
+	return ports.CompleteResponse{}, ErrProviderDisabled
+}
+
 // openAIRequest is the body shape Groq's OpenAI-compatible endpoint
 // expects. Defined locally so the adapter doesn't import an OpenAI
 // SDK (PR 2 keeps the dependency surface stdlib-only).
+//
+// Stream uses `omitempty` so non-streaming Complete requests omit
+// the key entirely (OpenAI defaults to non-streaming); streaming
+// requests emit `"stream":true`.
 type openAIRequest struct {
 	Model     string                 `json:"model"`
 	Messages  []openAIRequestMessage `json:"messages"`
-	Stream    bool                   `json:"stream"`
+	Stream    bool                   `json:"stream,omitempty"`
 	MaxTokens int                    `json:"max_tokens,omitempty"`
 }
 

@@ -22,6 +22,16 @@ type stubLLMClient struct {
 	calls          int32
 	lastMessages   []models.ChatMessage
 	lastOpts       ports.StreamChatOptions
+
+	// Complete-side (S3 PR 1). PR 2 (ChallengeService
+	// GenerateChallenge) will exercise these through the
+	// service-layer tests; for now they exist so the stub still
+	// satisfies ports.LLMClientPort after the S3 PR 1 contract
+	// expansion.
+	completeResp  ports.CompleteResponse
+	completeErr   error
+	completeCalls int32
+	lastComplete  ports.CompleteRequest
 }
 
 func (s *stubLLMClient) StreamChat(_ context.Context, msgs []models.ChatMessage, opts ports.StreamChatOptions, onEvent func(ports.LLMStreamEvent) error) error {
@@ -41,6 +51,12 @@ func (s *stubLLMClient) StreamChat(_ context.Context, msgs []models.ChatMessage,
 		}
 	}
 	return s.err
+}
+
+func (s *stubLLMClient) Complete(_ context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	atomic.AddInt32(&s.completeCalls, 1)
+	s.lastComplete = req
+	return s.completeResp, s.completeErr
 }
 
 // stubCacheAdapter wraps stubSessionCache with the Snapshot method

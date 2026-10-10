@@ -61,6 +61,63 @@ func (m *MiniMax) chatCompletionURL() string {
 	return m.baseURL + "/chat/completions"
 }
 
+// extractFirstJSONObject returns the first balanced JSON object
+// found in s, or an empty string if none is found. The MiniMax M3
+// opt-in premium tier does NOT honor `response_format` natively
+// (per design.md §"Risks"), so its adapter parses the free-text
+// response for the first JSON object. Brace counting respects
+// strings (no nested-string-escape handling — the models do not
+// emit unusual string contents inside JSON).
+//
+// [S3 PR 1 — the function lands alongside the MiniMax provider's
+// real Complete impl in a follow-up commit; the symbol is
+// referenced from the test file so the body shape is locked.]
+func extractFirstJSONObject(s string) string {
+	start := -1
+	depth := 0
+	inString := false
+	escape := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case escape:
+			escape = false
+			continue
+		case c == '\\' && inString:
+			escape = true
+			continue
+		case c == '"':
+			inString = !inString
+		case inString:
+			continue
+		case c == '{':
+			if start < 0 {
+				start = i
+			}
+			depth++
+		case c == '}':
+			if start >= 0 {
+				depth--
+				if depth == 0 {
+					return s[start : i+1]
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// Complete is the MiniMax M3 non-streaming entry point (S3 PR 1).
+// The body shape + JSON-extraction land in a follow-up commit; here
+// we ship the stub so Cascade.Complete's compile-time guard stays
+// green.
+func (m *MiniMax) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	if m.IsDisabled() {
+		return ports.CompleteResponse{}, ErrProviderDisabled
+	}
+	return ports.CompleteResponse{}, ErrProviderDisabled
+}
+
 // StreamChat is the providerClient implementation. Wire shape
 // mirrors Groq/DeepSeek.
 func (m *MiniMax) StreamChat(

@@ -59,6 +59,17 @@ func (d *DeepSeek) chatCompletionURL() string {
 	return d.baseURL + "/chat/completions"
 }
 
+// Complete is the OpenRouter-routed non-streaming JSON-mode entry
+// point (S3 PR 1). The body shape + response parsing land in a
+// follow-up commit; here we ship the stub so Cascade.Complete's
+// compile-time guard stays green.
+func (d *DeepSeek) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
+	if d.IsDisabled() {
+		return ports.CompleteResponse{}, ErrProviderDisabled
+	}
+	return ports.CompleteResponse{}, ErrProviderDisabled
+}
+
 // StreamChat is the providerClient implementation. Body shape mirrors
 // Groq — OpenRouter speaks the same OpenAI wire format.
 func (d *DeepSeek) StreamChat(
