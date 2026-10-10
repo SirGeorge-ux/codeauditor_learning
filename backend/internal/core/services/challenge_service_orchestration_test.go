@@ -80,13 +80,21 @@ func (f *genFakeLLMClient) Complete(_ context.Context, req ports.CompleteRequest
 // a FIFO queue of canned (body, err) tuples — one per Execute call.
 // Each Execute also records the (language, code) tuple so a test can
 // assert the solution code was actually passed to the sandbox.
+//
+// Phase 5 (free-practice-mode) adds executeWithTestsBehaviour /
+// executeWithTestsCalls so a test can drive the new ExecuteWithTests
+// gate with programmable outcomes. The default is "all tests pass",
+// which keeps the existing pre-Phase-5 orchestration tests green.
 type genFakeSandbox struct {
 	mu sync.Mutex
 
-	executeBehaviour []genFakeSandboxExec
-	executeCalls     int
-	lastLang         string
-	lastCode         string
+	executeBehaviour         []genFakeSandboxExec
+	executeCalls             int
+	lastLang                 string
+	lastCode                 string
+	lastTests                []ports.TestCase
+	executeWithTestsBehaviour []ports.TestRunResult
+	executeWithTestsCalls    int
 
 	healthErr error
 }
@@ -116,6 +124,26 @@ func (f *genFakeSandbox) Execute(_ context.Context, language, code string, _ int
 	}
 	f.executeCalls++
 	return io.NopCloser(strings.NewReader("ok\n")), nil
+}
+
+func (f *genFakeSandbox) ExecuteWithTests(_ context.Context, language, code string, tests []ports.TestCase, _ int) (ports.TestRunResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.lastLang = language
+	f.lastCode = code
+	f.lastTests = tests
+	idx := f.executeWithTestsCalls
+	f.executeWithTestsCalls++
+	if idx < len(f.executeWithTestsBehaviour) {
+		return f.executeWithTestsBehaviour[idx], nil
+	}
+	// Default behaviour: all tests pass. The legacy pre-Phase-5
+	// orchestration tests use this default and must keep passing.
+	return ports.TestRunResult{
+		TestsRun:  len(tests),
+		TestsPass: len(tests),
+		ExitCode:  0,
+	}, nil
 }
 
 func (f *genFakeSandbox) Healthcheck(_ context.Context) error {
