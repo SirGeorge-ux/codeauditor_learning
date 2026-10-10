@@ -18,6 +18,17 @@ linters-settings:
     local-prefixes: github.com/anomalyco/codeauditor
   misspell:
     locale: US
+    ignore-rules:
+      # Spanish-domain vocabulary that is legitimate in our domain.
+      # Misspell runs in US locale and would flag every Spanish
+      # comment; these entries keep the linter useful for English
+      # misspellings while not policing Spanish terms.
+      - informacion
+      - implementacion
+      - socratico
+      - socratica
+      - cronologico
+      - conversacional
 
 issues:
   exclude-dirs:
