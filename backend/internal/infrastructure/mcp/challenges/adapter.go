@@ -84,30 +84,41 @@ func (a *serviceAdapter) CreateTempChallenge(ctx context.Context, userID string,
 }
 
 // GenerateChallenge delegates to ChallengeService.GenerateChallenge. The
-// "not implemented" business decision lives in the service (the S5 LLM
-// cascade will replace the stub there); we translate the MCP wire shape
-// (GenerateHint) into the domain shape (models.GenerateChallengeHint)
-// before the call and propagate any service error verbatim. When S5
-// lands, this method becomes a thin (decode -> call -> encode) shim
-// with no behavior change required at the tool layer.
+// "not implemented" stub was un-stubbed in PR 2; the canonical business
+// decision now lives in the service (ErrChallengeGenerationNotWired +
+// ErrChallengeGenerationInvalidJSON/Invalid/FailedSandbox) so callers
+// across transports branch the same way. We translate the MCP wire
+// shape (GenerateHint, including the new topicId + level fields) into
+// the domain shape (models.GenerateChallengeHint) and propagate any
+// service error verbatim to the tool layer, where the dispatcher maps
+// internal errors to JSON-RPC -32603.
+//
+// The userID is forwarded to the service so the persisted row carries
+// CreatedBy=userID per the spec's generated-challenge persistence
+// contract. When the service is unwired, the userID is not consumed
+// (the sentinel short-circuits before row creation).
 func (a *serviceAdapter) GenerateChallenge(ctx context.Context, userID string, hint GenerateHint) (json.RawMessage, error) {
-	c, err := a.svc.GenerateChallenge(ctx, models.GenerateChallengeHint{
+	c, err := a.svc.GenerateChallenge(ctx, userID, models.GenerateChallengeHint{
 		Language:   hint.Language,
 		Difficulty: hint.Difficulty,
 		Focus:      hint.Focus,
+		TopicID:    hint.TopicID,
+		Level:      hint.Level,
 	})
 	if err != nil {
-		// ErrChallengeGenerateNotImplemented (and any future sentinel)
-		// travels verbatim to the tool, which the dispatcher then maps
-		// to JSON-RPC -32603. We deliberately do NOT re-wrap as
-		// ErrNotImplemented here — the canonical business sentinel lives
-		// in services so callers across transports branch the same way.
+		// Every sentinel (ErrChallengeGenerationNotWired /
+		// ErrChallengeGenerationInvalidJSON / ErrChallengeGenerationInvalid
+		// / ErrChallengeGenerationFailedSandbox) travels verbatim so
+		// the dispatcher can map it to JSON-RPC -32603 without the
+		// adapter re-wrapping. The canonical business sentinels live
+		// in services so HTTP + MCP + future transports branch the
+		// same way.
 		return nil, err
 	}
-	// Stub today: the service returns the zero Challenge alongside the
-	// sentinel. Once S5 lands we will marshal c via encodeChallenge(&c, false).
-	_ = userID
-	return json.Marshal(encodeChallenge(&c, false))
+	// Production adapters can construct the wire from the persisted row;
+	// solution_code is included so the LLM-side tool chain (and the
+	// dojo's "reveal" flow) sees it on a successful generation.
+	return json.Marshal(encodeChallenge(&c, true))
 }
 
 // ValidateChallenge runs the v2 validator and shapes the result. The
