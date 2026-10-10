@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
@@ -112,12 +111,18 @@ func readFile(fsys fs.FS, name string) (string, error) {
 	return string(b), nil
 }
 
-// loadTutorPrompts is the public, paths-aware convenience used by the
-// composition root. It joins base with ".atl/prompts" so callers do
-// not have to spell the relative path twice. The function tolerates
-// the directory being absent and falls through to the missing-file
-// error so the caller can decide whether to degrade or fatal.
-func loadTutorPrompts(base string) (*TutorPrompts, error) {
-	dir := filepath.Join(base, ".atl", "prompts")
+// loadTutorPromptsFromDir is the production-facing loader that
+// takes a fully-resolved prompts directory (e.g. ".atl/prompts" or
+// the abs path the test temp dir holds).
+func loadTutorPromptsFromDirLoader(dir string) (*TutorPrompts, error) {
 	return loadTutorPromptsFromDir(dir)
+}
+
+// LoadTutorPrompts is the exported form of loadTutorPromptsFromDir.
+// The cmd composition root + external tests reach the loader via
+// this name. The `dir` parameter is the directory containing the
+// 5 tutor-*.md files; the caller is responsible for path
+// resolution (e.g. joining ".atl/prompts" onto the project root).
+func LoadTutorPrompts(dir string) (*TutorPrompts, error) {
+	return loadTutorPromptsFromDirLoader(dir)
 }
