@@ -25,9 +25,7 @@ import { TokenProvider } from '../adapters/mcp-client.adapter';
  * TokenProvider. Pure function so it can be unit-tested without
  * bootstrapping Angular's DI.
  */
-export function makeMcpTokenProvider(
-  auth: Pick<AuthService, 'getAccessToken'>,
-): TokenProvider {
+export function makeMcpTokenProvider(auth: Pick<AuthService, 'getAccessToken'>): TokenProvider {
   return {
     getToken: (): string | null => auth.getAccessToken(),
   };

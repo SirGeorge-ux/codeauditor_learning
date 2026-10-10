@@ -15,7 +15,6 @@ import {
   Component,
   ElementRef,
   HostBinding,
-  computed,
   inject,
   input,
   output,
@@ -64,7 +63,9 @@ import { TutorChatService } from '../../services/tutor-chat.service';
         @if (service.messages().length === 0) {
           <div class="text-dojo-text opacity-60 text-xs text-center my-4 leading-relaxed">
             <p>Hola. Soy tu tutor socrático.</p>
-            <p class="mt-2">Nivel actual: {{ service.currentLevel() }} · Usá /help para ver los comandos.</p>
+            <p class="mt-2">
+              Nivel actual: {{ service.currentLevel() }} · Usá /help para ver los comandos.
+            </p>
           </div>
         } @else {
           @for (msg of service.messages(); track msg.id) {
@@ -77,8 +78,8 @@ import { TutorChatService } from '../../services/tutor-chat.service';
       <app-tutor-chat-input
         [streaming]="service.streaming()"
         placeholder="Preguntale algo al tutor..."
-        (send)="onSend($event)"
-        (command)="onCommand($event)"
+        (messageSent)="onSend($event)"
+        (commandSent)="onCommand($event)"
       ></app-tutor-chat-input>
     </div>
   `,
@@ -95,11 +96,12 @@ export class TutorChatPanelComponent {
     route: '/',
   });
 
-  // onNavigate emits the dictionary command's path so the
+  // navigateTo emits the dictionary command's path so the
   // parent page can switch routes without the panel importing
   // @angular/router directly. The use case's navigation hook
-  // fires onNavigate; the page handles the actual router call.
-  readonly onNavigate = output<string>();
+  // fires navigateTo; the page handles the actual router call.
+  // Naming avoids the @angular-eslint/no-output-on-prefix rule.
+  readonly navigateTo = output<string>();
 
   // hidden allows the parent page to collapse the panel on
   // mobile without unmounting it (state survives).
@@ -109,15 +111,14 @@ export class TutorChatPanelComponent {
     return this.hidden();
   }
 
-  private readonly messageListRef =
-    viewChild<ElementRef<HTMLDivElement>>('messageList');
+  private readonly messageListRef = viewChild<ElementRef<HTMLDivElement>>('messageList');
 
   constructor() {
     // Wire the navigation hook so /diccionario can route
     // through the page's onNavigate output (and then to
     // router.navigate) without circular dependencies.
     this.service.registerNavigateHook((path: string) => {
-      this.onNavigate.emit(path);
+      this.navigateTo.emit(path);
     });
   }
 

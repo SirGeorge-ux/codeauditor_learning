@@ -14,13 +14,13 @@ describe('TutorChatInputComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('emits (send) when Enter is pressed with plain text', () => {
+  it('emits (messageSent) when Enter is pressed with plain text', () => {
     TestBed.configureTestingModule({ imports: [TutorChatInputComponent] });
     const fixture = TestBed.createComponent(TutorChatInputComponent);
     const component = fixture.componentInstance;
 
     let received: string | null = null;
-    component.send.subscribe((s: string) => {
+    component.messageSent.subscribe((s: string) => {
       received = s;
     });
 
@@ -33,13 +33,13 @@ describe('TutorChatInputComponent', () => {
     expect(textarea.value).toBe('');
   });
 
-  it('emits (command) when Enter is pressed with a slash command', () => {
+  it('emits (commandSent) when Enter is pressed with a slash command', () => {
     TestBed.configureTestingModule({ imports: [TutorChatInputComponent] });
     const fixture = TestBed.createComponent(TutorChatInputComponent);
     const component = fixture.componentInstance;
 
     let received: string | null = null;
-    component.command.subscribe((c: string) => {
+    component.commandSent.subscribe((c: string) => {
       received = c;
     });
 
@@ -58,10 +58,10 @@ describe('TutorChatInputComponent', () => {
 
     let sendCalls = 0;
     let commandCalls = 0;
-    component.send.subscribe(() => {
+    component.messageSent.subscribe(() => {
       sendCalls++;
     });
-    component.command.subscribe(() => {
+    component.commandSent.subscribe(() => {
       commandCalls++;
     });
 
@@ -80,9 +80,7 @@ describe('TutorChatInputComponent', () => {
     fixture.componentRef.setInput('streaming', true);
     fixture.detectChanges();
     const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector('textarea');
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
-      'button[type="submit"]',
-    );
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('button[type="submit"]');
     expect(textarea.disabled).toBe(true);
     expect(button.disabled).toBe(true);
   });
@@ -93,7 +91,7 @@ describe('TutorChatInputComponent', () => {
     const component = fixture.componentInstance;
 
     let received: string | null = null;
-    component.send.subscribe((s: string) => {
+    component.messageSent.subscribe((s: string) => {
       received = s;
     });
 

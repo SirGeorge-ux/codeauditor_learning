@@ -9,7 +9,7 @@
 // render the inline panel only — the FAB modal can land in the
 // free-practice-mode change when the rest of the practice page
 // is built.
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -35,8 +35,8 @@ import { TutorChatPanelComponent } from '../tutor-chat/tutor-chat-panel.componen
           <div class="text-center text-dojo-text opacity-70 max-w-md px-6">
             <p class="text-lg font-semibold mb-2">Modo práctica libre</p>
             <p class="text-sm leading-relaxed">
-              Próximamente: generación de ejercicios on-demand según el lenguaje y nivel
-              del usuario. Mientras tanto, el tutor socrático está disponible
+              Próximamente: generación de ejercicios on-demand según el lenguaje y nivel del
+              usuario. Mientras tanto, el tutor socrático está disponible
               <span class="text-dojo-accent">en el panel de la derecha</span>
               para responder preguntas sobre cualquier challenge.
             </p>
@@ -47,7 +47,7 @@ import { TutorChatPanelComponent } from '../tutor-chat/tutor-chat-panel.componen
         <div class="w-80 flex-shrink-0">
           <app-tutor-chat-panel
             [routeContext]="{ route: '/practice' }"
-            (onNavigate)="onTutorNavigate($event)"
+            (navigateTo)="onTutorNavigate($event)"
           ></app-tutor-chat-panel>
         </div>
       </div>

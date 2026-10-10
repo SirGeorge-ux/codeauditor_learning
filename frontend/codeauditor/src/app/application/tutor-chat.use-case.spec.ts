@@ -15,20 +15,14 @@
 //   these tests were written BEFORE the implementation; the test
 //   file fails with import errors at HEAD~1, then goes green when
 //   tutor-chat.use-case.ts lands.
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { of, throwError } from 'rxjs';
 
 import { TutorChatUseCase } from './tutor-chat.use-case';
 import { TutorChatPort } from '../domain/ports/tutor-chat.port';
 import { AuthPort } from '../domain/ports/auth.port';
 import { MCPClientPort, MCPTool } from '../domain/ports/mcp-client.port';
-import {
-  ChatMessage,
-  ChatProvider,
-  SocraticLevel,
-  SSEEvent,
-  StreamChatRequest,
-} from '../domain/models/chat';
+import { SSEEvent, StreamChatRequest } from '../domain/models/chat';
 import { User } from '../domain/models/user';
 
 // -- Test doubles ------------------------------------------------------------
@@ -115,7 +109,11 @@ class FakeTutorChatPort implements TutorChatPort {
 
 // -- Helpers -----------------------------------------------------------------
 
-function makeUseCase(opts?: { port?: FakeTutorChatPort; mcp?: FakeMcpPort; token?: string | null }) {
+function makeUseCase(opts?: {
+  port?: FakeTutorChatPort;
+  mcp?: FakeMcpPort;
+  token?: string | null;
+}) {
   const port = opts?.port ?? new FakeTutorChatPort();
   const mcp = opts?.mcp ?? new FakeMcpPort();
   const auth = new FakeAuthPort(opts?.token ?? 'test-token');

@@ -158,7 +158,7 @@ import { ScoreBreakdown } from '../../../domain/models/score-breakdown';
               challengeId: challengeService.selectedChallengeSignal()?.id,
               codeSnippet: challengeService.selectedChallengeSignal()?.code,
             }"
-            (onNavigate)="onTutorNavigate($event)"
+            (navigateTo)="onTutorNavigate($event)"
           ></app-tutor-chat-panel>
         </div>
       }

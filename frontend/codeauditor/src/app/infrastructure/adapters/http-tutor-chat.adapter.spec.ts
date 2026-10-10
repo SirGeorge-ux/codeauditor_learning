@@ -50,7 +50,10 @@ describe('HttpTutorChatAdapter', () => {
         HttpTutorChatAdapter,
         {
           provide: NgZone,
-          useValue: { run: (fn: () => unknown) => fn(), runOutsideAngular: (fn: () => unknown) => fn() },
+          useValue: {
+            run: (fn: () => unknown) => fn(),
+            runOutsideAngular: (fn: () => unknown) => fn(),
+          },
         },
       ],
     });
@@ -88,9 +91,7 @@ describe('HttpTutorChatAdapter', () => {
     expect(url).toBe('/api/v1/tutor/chat');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer jwt-abc');
-    expect((init.headers as Record<string, string>)['Content-Type']).toContain(
-      'application/json',
-    );
+    expect((init.headers as Record<string, string>)['Content-Type']).toContain('application/json');
     expect((init.headers as Record<string, string>)['Accept']).toBe('text/event-stream');
     const body = JSON.parse(init.body as string);
     expect(body).toEqual({
@@ -172,10 +173,7 @@ describe('HttpTutorChatAdapter', () => {
 
   it('skips malformed SSE frames', async () => {
     mockFetch.mockResolvedValueOnce(
-      sseResponse([
-        'event: token\ndata: not-json\n\n',
-        'event: token\ndata: {"text":"x"}\n\n',
-      ]),
+      sseResponse(['event: token\ndata: not-json\n\n', 'event: token\ndata: {"text":"x"}\n\n']),
     );
 
     const collected: SSEEvent[] = [];

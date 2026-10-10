@@ -38,10 +38,7 @@ describe('PracticePageComponent', () => {
   it('renders the placeholder and mounts the chat panel', () => {
     TestBed.configureTestingModule({
       imports: [PracticePageComponent],
-      providers: [
-        provideRouter([]),
-        { provide: TutorChatService, useValue: makeStubService() },
-      ],
+      providers: [provideRouter([]), { provide: TutorChatService, useValue: makeStubService() }],
     });
     const fixture = TestBed.createComponent(PracticePageComponent);
     fixture.detectChanges();

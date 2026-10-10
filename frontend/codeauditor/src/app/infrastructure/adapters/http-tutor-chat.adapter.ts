@@ -27,7 +27,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { TutorChatPort } from '../../domain/ports/tutor-chat.port';
-import { SSEEvent, SocraticLevel, StreamChatRequest, normalizeSocraticLevel } from '../../domain/models/chat';
+import { SSEEvent, StreamChatRequest, normalizeSocraticLevel } from '../../domain/models/chat';
 
 @Injectable({ providedIn: 'root' })
 export class HttpTutorChatAdapter implements TutorChatPort {

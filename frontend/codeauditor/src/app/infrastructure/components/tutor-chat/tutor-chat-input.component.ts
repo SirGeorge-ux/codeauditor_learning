@@ -37,7 +37,9 @@ import { CommonModule } from '@angular/common';
         (input)="onInput($event)"
       ></textarea>
       <div class="flex items-center justify-between text-xs">
-        <span class="text-dojo-text opacity-60">Enter para enviar · Shift+Enter para nueva línea</span>
+        <span class="text-dojo-text opacity-60"
+          >Enter para enviar · Shift+Enter para nueva línea</span
+        >
         <button
           type="submit"
           data-testid="tutor-chat-input-send"
@@ -54,11 +56,13 @@ export class TutorChatInputComponent {
   readonly streaming = input<boolean>(false);
   readonly placeholder = input<string>('Preguntale algo al tutor...');
 
-  // Output events. send fires for normal text messages;
-  // command fires for slash commands so the parent can route
+  // Output events. messageSent fires for normal text messages;
+  // commandSent fires for slash commands so the parent can route
   // them through the use case's command parser directly.
-  readonly send = output<string>();
-  readonly command = output<string>();
+  // Naming avoids the @angular-eslint/no-output-native and
+  // @angular-eslint/no-output-on-prefix rules.
+  readonly messageSent = output<string>();
+  readonly commandSent = output<string>();
 
   private readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textarea');
 
@@ -90,9 +94,9 @@ export class TutorChatInputComponent {
     el.value = '';
     el.style.height = 'auto';
     if (value.startsWith('/')) {
-      this.command.emit(value);
+      this.commandSent.emit(value);
     } else {
-      this.send.emit(value);
+      this.messageSent.emit(value);
     }
   }
 }

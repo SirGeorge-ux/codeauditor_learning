@@ -308,9 +308,7 @@ export class TutorChatUseCase {
     }
     if (ev.type === 'token') {
       this._messages.update((msgs) =>
-        msgs.map((m) =>
-          m.id === assistantId ? { ...m, content: m.content + ev.data.text } : m,
-        ),
+        msgs.map((m) => (m.id === assistantId ? { ...m, content: m.content + ev.data.text } : m)),
       );
       return;
     }
@@ -339,10 +337,7 @@ export class TutorChatUseCase {
   }
 
   private appendSystem(content: string): void {
-    this._messages.update((msgs) => [
-      ...msgs,
-      this.makeMessage('system', content),
-    ]);
+    this._messages.update((msgs) => [...msgs, this.makeMessage('system', content)]);
   }
 
   private readToken(): string {

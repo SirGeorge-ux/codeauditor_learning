@@ -75,7 +75,8 @@ describe('chat domain models', () => {
       const system: ChatMessage = {
         id: 'msg-3',
         role: 'system',
-        content: 'Comandos disponibles: /nivel, /pista, /solucion, /reset, /perfil, /diccionario, /help',
+        content:
+          'Comandos disponibles: /nivel, /pista, /solucion, /reset, /perfil, /diccionario, /help',
         timestamp: new Date('2026-10-10T12:00:10Z'),
       };
       expect(system.role).toBe('system');

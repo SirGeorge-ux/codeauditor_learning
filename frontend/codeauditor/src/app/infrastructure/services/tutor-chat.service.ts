@@ -36,16 +36,15 @@ export class TutorChatService {
     // The use case's third parameter is typed as AuthPort but
     // the readToken() helper uses duck typing on getToken();
     // cast through unknown to keep the type surface honest.
-    this.useCase = new TutorChatUseCase(
-      port,
-      mcp,
-      tokenReader as unknown as AuthPort,
-    );
+    this.useCase = new TutorChatUseCase(port, mcp, tokenReader as unknown as AuthPort);
   }
 
   // Pass-through methods. The use case's public surface is
   // intentionally narrow; the service just makes it injectable.
-  sendMessage(text: string, ctx: { route: string; challengeId?: string; codeSnippet?: string; output?: string }): Promise<void> {
+  sendMessage(
+    text: string,
+    ctx: { route: string; challengeId?: string; codeSnippet?: string; output?: string },
+  ): Promise<void> {
     return this.useCase.sendMessage(text, ctx);
   }
 
