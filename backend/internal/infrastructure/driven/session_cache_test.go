@@ -2,6 +2,7 @@ package driven
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -215,7 +216,7 @@ func TestSessionCache_ConcurrentWritesAreSafe(t *testing.T) {
 			defer wg.Done()
 			for w := 0; w < writesPer; w++ {
 				sessionID := "sess-shared"
-				content := "g" + itoa(gid) + "-w" + itoa(w)
+				content := "g" + strconv.Itoa(gid) + "-w" + strconv.Itoa(w)
 				cache.Set(ctx, sessionID, makeMsg(models.ChatRoleUser, content))
 				_, _ = cache.Get(ctx, sessionID)
 				_ = cache.Snapshot(ctx, sessionID)
@@ -234,29 +235,8 @@ func TestSessionCache_ConcurrentWritesAreSafe(t *testing.T) {
 }
 
 // msgContent genera un string estable a partir de un indice. Util
-// para los loops del test de ring buffer.
+// para los loops del test de ring buffer. Usa strconv.Itoa para
+// soportar indices arbitrarios.
 func msgContent(i int) string {
-	const digits = "0123456789"
-	if i == 0 {
-		return "m-0"
-	}
-	out := "m-"
-	if i >= 10 {
-		out += string(digits[i/10])
-	}
-	out += string(digits[i%10])
-	return out
-}
-
-// itoa evita importar strconv solo para el test concurrente.
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	out := ""
-	for i > 0 {
-		out = string("0123456789"[i%10]) + out
-		i /= 10
-	}
-	return out
+	return "m-" + strconv.Itoa(i)
 }
