@@ -119,7 +119,7 @@ func (s *DockerSandbox) Execute(ctx context.Context, language, code string, time
 }
 
 // ExecuteWithTests runs solutionCode together with tests in the sandbox and
-// returns the per-test outcome. Behaviour by language:
+// returns the per-test outcome. Behavior by language:
 //
 //   - typescript / javascript: a Node.js test driver (ts-test-runner.mjs)
 //     wraps the solution, runs each test, and emits JSON-per-line. The

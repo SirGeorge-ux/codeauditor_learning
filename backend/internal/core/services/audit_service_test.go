@@ -53,7 +53,7 @@ func (f *fakeSandbox) ExecuteWithTests(_ context.Context, _ string, _ string, te
 	if f.withTestsResult.TestsRun != 0 || f.withTestsResult.TestsPass != 0 || f.withTestsResult.ExitCode != 0 || len(f.withTestsResult.PerTest) > 0 {
 		return f.withTestsResult, nil
 	}
-	// Default degraded behaviour: "no test capability" — surfaces the
+	// Default degraded behavior: "no test capability" — surfaces the
 	// sentinel via zero passes so any caller that routed through here
 	// would treat it as a gate failure.
 	return ports.TestRunResult{

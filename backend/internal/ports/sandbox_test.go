@@ -12,7 +12,7 @@ package ports_test
 // silently.
 //
 // These tests assert the method is reachable via the interface; the
-// real behaviour (TypeScript driver + per-test diff) is covered in
+// real behavior (TypeScript driver + per-test diff) is covered in
 // internal/infrastructure/driven/sandbox/*_test.go.
 
 import (

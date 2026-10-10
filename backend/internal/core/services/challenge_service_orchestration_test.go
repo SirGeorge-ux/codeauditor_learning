@@ -88,13 +88,13 @@ func (f *genFakeLLMClient) Complete(_ context.Context, req ports.CompleteRequest
 type genFakeSandbox struct {
 	mu sync.Mutex
 
-	executeBehaviour         []genFakeSandboxExec
-	executeCalls             int
-	lastLang                 string
-	lastCode                 string
-	lastTests                []ports.TestCase
+	executeBehaviour          []genFakeSandboxExec
+	executeCalls              int
+	lastLang                  string
+	lastCode                  string
+	lastTests                 []ports.TestCase
 	executeWithTestsBehaviour []ports.TestRunResult
-	executeWithTestsCalls    int
+	executeWithTestsCalls     int
 
 	healthErr error
 }
@@ -137,7 +137,7 @@ func (f *genFakeSandbox) ExecuteWithTests(_ context.Context, language, code stri
 	if idx < len(f.executeWithTestsBehaviour) {
 		return f.executeWithTestsBehaviour[idx], nil
 	}
-	// Default behaviour: all tests pass. The legacy pre-Phase-5
+	// Default behavior: all tests pass. The legacy pre-Phase-5
 	// orchestration tests use this default and must keep passing.
 	return ports.TestRunResult{
 		TestsRun:  len(tests),
@@ -733,7 +733,7 @@ func TestGenerateChallenge_RepoInsertError_Propagates(t *testing.T) {
 
 // orchestrationScenario is one row of the Phase 5 table-driven
 // scenario matrix. setup is invoked before each test to wire the
-// fake behaviour; expect is called with the orchestration result
+// fake behavior; expect is called with the orchestration result
 // for the case-specific assertion.
 type orchestrationScenario struct {
 	name    string
@@ -882,7 +882,7 @@ func TestGenerateChallenge_ExecuteWithTestsScenarios(t *testing.T) {
 			name: "test driver crashes",
 			setup: func(b *fixtureBundle) {
 				// Attempt 1: driver crashes → gate fail → retry. Attempt
-				// 2: default behaviour (all tests pass) → succeeds.
+				// 2: default behavior (all tests pass) → succeeds.
 				b.llm.completeResponses = []ports.CompleteResponse{
 					{Content: validChallengeJSON(t, "typescript", "attempt1"), Provider: "groq"},
 					{Content: validChallengeJSON(t, "typescript", "attempt2"), Provider: "groq"},
