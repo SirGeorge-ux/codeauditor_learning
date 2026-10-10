@@ -109,10 +109,20 @@ type ValidateResult struct {
 
 // GenerateHint is the optional input the tutor can pass to generate_challenge
 // to bias the produced challenge (language, difficulty, smell focus).
+//
+// PR 2 (free-practice-mode / S3) extended the wire with TopicID +
+// Level so the un-stubbed ChallengeService.GenerateChallenge can drive
+// the curriculum + pedagogical lookups. The two fields mirror the
+// canonical F–S rank model the user-side /practice/free page produces:
+// TopicID is a slug from .atl/curricula/<lang>.md and Level is the
+// selected rank letter (F..S). Existing v1 callers that omit them
+// continue to compile + behave as before (omitempty).
 type GenerateHint struct {
 	Language   string `json:"language,omitempty"`
 	Difficulty string `json:"difficulty,omitempty"`
 	Focus      string `json:"focus,omitempty"`
+	TopicID    string `json:"topicId,omitempty"`
+	Level      string `json:"level,omitempty"`
 }
 
 // --- Service interface ----------------------------------------------------
@@ -337,9 +347,9 @@ func (t *generateChallengeTool) Name() string { return "mcp-challenges.generate_
 func (t *generateChallengeTool) Description() string {
 	return "Generate a brand-new challenge on the fly via the LLM cascade. " +
 		"Returns the same wire shape as create_temp_challenge so the tutor " +
-		"can persist it without re-shaping. NOTE: full implementation lands " +
-		"with the S5 LLM cascade — until then the tool returns an explicit " +
-		"'not implemented' error. Requires an authenticated user_id in context."
+		"can persist it without re-shaping. Driven by .atl/curricula/<lang>.md; " +
+		"topicId is a curriculum slug and level is an F..S rank letter. Requires " +
+		"an authenticated user_id in context."
 }
 
 func (t *generateChallengeTool) Schema() openai.Tool {
@@ -349,6 +359,8 @@ func (t *generateChallengeTool) Schema() openai.Tool {
 			"language":   {Type: "string", Description: "Target language (e.g. typescript, python)."},
 			"difficulty": {Type: "string", Description: "One of: junior, mid, senior, architect."},
 			"focus":      {Type: "string", Description: "Optional code-smell focus (e.g. 'n+1', 'god function')."},
+			"topicId":    {Type: "string", Description: "Curriculum topic slug (e.g. 'inheritance'); read from .atl/curricula/<language>.md."},
+			"level":      {Type: "string", Description: "Per-user rank letter F..S. Maps to 4-bucket difficulty (F,E→junior, D,C→mid, B,A→senior, S→architect)."},
 		},
 		[]string{},
 	)

@@ -23,6 +23,22 @@ var ErrNotImplemented = errors.New("not implemented in this PR")
 // receives actionable feedback without leaking filesystem paths.
 var ErrCurriculumInvalidLanguage = errors.New("invalid language: refusing to traverse outside the curricula root")
 
+// ErrCurriculumTopicNotFound is returned by CurriculumService when a
+// (language, topicID) pair is requested but the topic slug does not
+// appear in the parsed curriculum document. S3 PR 2 surfaced this as
+// its own sentinel so the un-stubbed ChallengeService.GenerateChallenge
+// (and the UI) can branch with errors.Is — "Topic not available" is a
+// distinct failure mode from "language has no curriculum file" or
+// "path traversal".
+var ErrCurriculumTopicNotFound = errors.New("curriculum topic not found")
+
+// ErrCurriculumLanguageNotFound is returned by CurriculumService when
+// the language key is structurally valid (no traversal) but no
+// curriculum file exists for that language. S3 PR 2 surfaced this
+// sentinel so the UI can disable generation for the language instead
+// of silently returning an empty topic list.
+var ErrCurriculumLanguageNotFound = errors.New("curriculum language not found")
+
 // CurriculumService reads the per-language curricula under <baseDir>/<lang>.md
 // and serves the mcp-curriculum tool group. PR 3 ships the path-traversal
 // guard the spec mandates, plus the markdown extraction logic the four tools
@@ -123,9 +139,11 @@ type ReviewTopicResult struct {
 
 // GetTopics lists topic headlines for the given language. Returns
 // ErrCurriculumInvalidLanguage when the language segment fails the
-// traversal guard; returns a curated ErrNotImplemented-free slice or an
-// underlying fs error otherwise. The returned slice is empty (not nil)
-// when no curriculum file exists for the supplied language.
+// traversal guard; returns ErrCurriculumLanguageNotFound when the
+// language segment is valid but no curriculum file exists; returns
+// an underlying fs error otherwise. The returned slice is empty
+// (not nil) when the document parses to zero topics (degenerate
+// curriculum file).
 func (s *CurriculumService) GetTopics(_ context.Context, in GetTopicsInput) ([]Topic, error) {
 	if err := s.validateLanguage(in.Language); err != nil {
 		return nil, err
@@ -137,7 +155,7 @@ func (s *CurriculumService) GetTopics(_ context.Context, in GetTopicsInput) ([]T
 	doc, err := s.readCurriculumDoc(root)
 	if err != nil {
 		if isNotExist(err) {
-			return []Topic{}, nil
+			return nil, ErrCurriculumLanguageNotFound
 		}
 		return nil, err
 	}
@@ -145,6 +163,10 @@ func (s *CurriculumService) GetTopics(_ context.Context, in GetTopicsInput) ([]T
 }
 
 // GetTopic returns the full topic body for a (language, topicID) pair.
+// Returns ErrCurriculumInvalidLanguage on path-traversal attempts,
+// ErrCurriculumLanguageNotFound when no curriculum file exists for
+// the language, and ErrCurriculumTopicNotFound when the topic slug
+// does not appear in the parsed document.
 func (s *CurriculumService) GetTopic(_ context.Context, language, topicID string) (TopicDetail, error) {
 	var zero TopicDetail
 	if err := s.validateLanguage(language); err != nil {
@@ -160,13 +182,13 @@ func (s *CurriculumService) GetTopic(_ context.Context, language, topicID string
 	doc, err := s.readCurriculumDoc(root)
 	if err != nil {
 		if isNotExist(err) {
-			return zero, ErrCurriculumInvalidLanguage
+			return zero, ErrCurriculumLanguageNotFound
 		}
 		return zero, err
 	}
 	topic, ok := doc.findTopic(topicID)
 	if !ok {
-		return zero, fmt.Errorf("topic %q not found in %s", topicID, language)
+		return zero, fmt.Errorf("%w: %q in %s", ErrCurriculumTopicNotFound, topicID, language)
 	}
 	return topic, nil
 }

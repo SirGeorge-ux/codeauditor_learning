@@ -143,12 +143,12 @@ func main() {
 	vaultHandler := handlers.NewVaultHandler(historyService)
 	log.Println("Audit history tracking enabled")
 
-	// Initialize challenge service
+	// Initialize challenge repo. The ChallengeService itself is
+	// constructed BELOW (after curriculum + pedagogical + cascade are
+	// wired) so the un-stubbed GenerateChallenge orchestration has all
+	// its dependencies in place. The audit service's
+	// WithChallengeService call moves with it.
 	challengeRepo := supabase.NewSupabaseChallengeRepository(db)
-	challengeService := services.NewChallengeService(challengeRepo)
-	challengeHandler := handlers.NewChallengeHandler(challengeService)
-	auditService.WithChallengeService(challengeService)
-	log.Println("Challenge service initialized")
 
 	// Initialize dictionary service (personal tech glossary — S2)
 	dictionaryRepo := supabase.NewSupabaseDictionaryRepository(db)
@@ -190,11 +190,20 @@ func main() {
 	// docs/curricula-format.md. The baseDir is resolved relative to the
 	// current working directory so production (Coolify) and dev
 	// (compose stack) both find the curricula without an env override.
-	// Missing .atl/curricula/ in a fresh checkout causes
-	// get_topics/get_topic to return path-traversal errors at the
-	// tool layer (ErrCurriculumInvalidLanguage → JSON-RPC -32602);
-	// the service stays safe to instantiate.
-	curriculumBaseDir := filepath.Join(".", ".atl", "curricula")
+	//
+	// S3 PR 2 (free-practice-mode) added the CURRICULA_BASE_DIR env
+	// override so production deployments can mount the curricula at a
+	// read-only path (Coolify compose volume) without relying on the
+	// cwd-relative default. The default `.atl/curricula` is unchanged
+	// for backwards compatibility. Missing base dir in a fresh
+	// checkout causes get_topics/get_topic to surface
+	// ErrCurriculumLanguageNotFound at the tool layer (mapped to
+	// JSON-RPC -32602 by the dispatcher); the service stays safe to
+	// instantiate.
+	curriculumBaseDir := os.Getenv("CURRICULA_BASE_DIR")
+	if curriculumBaseDir == "" {
+		curriculumBaseDir = filepath.Join(".", ".atl", "curricula")
+	}
 	curriculumService := services.NewCurriculumService(services.WithBaseDir(curriculumBaseDir))
 	log.Printf("Curriculum service initialized (baseDir=%s)", curriculumService.Curriculum())
 
@@ -221,6 +230,43 @@ func main() {
 	externalDocsService := services.NewExternalDocsService(context7Client, braveClient)
 	log.Println("External docs service initialized (Context7 + Brave)")
 
+	// Build the LLM cascade ONCE so both the tutor service AND the
+	// un-stubbed ChallengeService.GenerateChallenge orchestration
+	// share the same provider ranking (Groq → DeepSeek → MiniMax).
+	// This is the PR 2 (free-practice-mode) rewire: previously the
+	// cascade was constructed inside TutorSystem and was unreachable
+	// from ChallengeService; PR 2 surfaces BuildTutorCascade so the
+	// same `*llmcascade.Cascade` instance drives both flows. Empty
+	// API keys mark providers disabled; the cascade silently skips
+	// them.
+	tutorProviderCfg := TutorProvidersConfig{
+		GroqBaseURL:     "https://api.groq.com/openai/v1",
+		GroqAPIKey:      os.Getenv("GROQ_API_KEY"),
+		GroqModel:       os.Getenv("GROQ_MODEL"),
+		DeepSeekBaseURL: "https://openrouter.ai/api/v1",
+		DeepSeekAPIKey:  os.Getenv("OPENROUTER_API_KEY"),
+		DeepSeekModel:   os.Getenv("DEEPSEEK_MODEL"),
+		MiniMaxBaseURL:  os.Getenv("MINIMAX_BASE_URL"),
+		MiniMaxAPIKey:   os.Getenv("MINIMAX_API_KEY"),
+		MiniMaxModel:    os.Getenv("MINIMAX_MODEL"),
+	}
+	sharedCascade := BuildTutorCascade(tutorProviderCfg)
+
+	// Challenge service — NOW wired with all four optional deps:
+	// curriculum + pedagogical + LLM cascade + sandbox executor. The
+	// un-stubbed GenerateChallenge orchestration lives behind these
+	// option funcs; an unconfigured deployment (e.g. test with no API
+	// keys) gets ErrChallengeGenerationNotWired on the wire.
+	challengeService := services.NewChallengeService(challengeRepo,
+		services.WithCurriculumService(curriculumService),
+		services.WithPedagogicalService(pedagogicalService),
+		services.WithLLMClient(sharedCascade),
+		services.WithSandboxExecutor(sandboxExecutor),
+	)
+	challengeHandler := handlers.NewChallengeHandler(challengeService)
+	auditService.WithChallengeService(challengeService)
+	log.Println("Challenge service initialized (curriculum + pedagogical + LLM cascade + sandbox wired)")
+
 	mcpRegistry := BuildMCPRegistry(WiringDeps{
 		DockerSandbox:       dockerSb,
 		ProviderRegistry:    registry,
@@ -245,25 +291,18 @@ func main() {
 	log.Println("Audit service initialized")
 
 	// Tutor chat system (PR 2 of the tutor-chat change): constructs
-	// the TutorService + LLM cascade + HTTP handler. Reuses the
-	// mcp-monolith user profile repository so the same DB row is
-	// read by both the JSON-RPC and HTTP paths. The cascade
-	// silently skips any provider without an API key.
+	// the TutorService + HTTP handler. The LLM cascade was built
+	// earlier (sharedCascade) and is passed in via TutorSystemDeps so
+	// the same `*llmcascade.Cascade` drives both the tutor chat path
+	// AND the un-stubbed ChallengeService.GenerateChallenge. Reuses
+	// the mcp-monolith user profile repository so the same DB row is
+	// read by both the JSON-RPC and HTTP paths.
 	progressRepoForTutor := supabase.NewSupabaseUserProfileRepository(db)
 	tutorWiring, tutorWiringErr := TutorSystem(TutorSystemDeps{
 		ProfileRepository: supabase.NewSupabaseProgressRepository(db),
 		PromptsDir:        filepath.Join(".", ".atl", "prompts"),
-		Providers: TutorProvidersConfig{
-			GroqBaseURL:     "https://api.groq.com/openai/v1",
-			GroqAPIKey:      os.Getenv("GROQ_API_KEY"),
-			GroqModel:       os.Getenv("GROQ_MODEL"),
-			DeepSeekBaseURL: "https://openrouter.ai/api/v1",
-			DeepSeekAPIKey:  os.Getenv("OPENROUTER_API_KEY"),
-			DeepSeekModel:   os.Getenv("DEEPSEEK_MODEL"),
-			MiniMaxBaseURL:  os.Getenv("MINIMAX_BASE_URL"),
-			MiniMaxAPIKey:   os.Getenv("MINIMAX_API_KEY"),
-			MiniMaxModel:    os.Getenv("MINIMAX_MODEL"),
-		},
+		Providers:         tutorProviderCfg,
+		Cascade:           sharedCascade,
 	})
 	if tutorWiringErr != nil {
 		// The .atl/prompts tree is part of the production image, so
@@ -274,7 +313,7 @@ func main() {
 	}
 	tutorHandler := tutorWiring.Handler
 	_ = progressRepoForTutor // keep the userProfile dep thread alive for the S5 cascade path
-	log.Println("Tutor service initialized (LLM cascade + SSE handler)")
+	log.Println("Tutor service initialized (shared LLM cascade + SSE handler)")
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, authAdapter, db)

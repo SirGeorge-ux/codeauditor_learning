@@ -597,44 +597,26 @@ func TestChallengeService_Create_ValidV2Challenge_EchoesV2Fields(t *testing.T) {
 	}
 }
 
-// --- GenerateChallenge stub ---
+// --- GenerateChallenge shell (PR 2 / S3) ---
 
 // TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented
-// proves the GenerateChallenge stub lives in core/services, not in
-// the MCP challenges adapter. The S5 LLM cascade will replace this
-// body; the sentinel contract (ErrChallengeGenerateNotImplemented)
-// stays so callers downstream (mcp-challenges.generate_challenge)
-// keep receiving a JSON-RPC -32603 without rewriting their error
-// handling.
-func TestChallengeService_GenerateChallenge_StubReturnsErrNotImplemented(t *testing.T) {
-	t.Parallel()
-
-	// The stub never queries the repo, so no fake wiring is required.
-	// A nil repo is safe here: GenerateChallenge short-circuits on the
-	// sentinel BEFORE reaching the repository.
-	svc := &ChallengeService{}
-	hint := models.GenerateChallengeHint{
-		Language:   "typescript",
-		Difficulty: "mid",
-		Focus:      "n+1",
-	}
-	c, err := svc.GenerateChallenge(context.Background(), hint)
-	if !errors.Is(err, ErrChallengeGenerateNotImplemented) {
-		t.Fatalf("err = %v, want ErrChallengeGenerateNotImplemented", err)
-	}
-	// Stub returns the zero Challenge so callers don't have to
-	// nil-guard on a (c, err) tuple in tests that only assert the
-	// error path.
-	if c.ID != "" {
-		t.Errorf("challenge.ID = %q, want empty (stub)", c.ID)
-	}
-}
+// was retired in PR 2 — the S5 placeholder was replaced by the real
+// orchestration. The replacement contract is:
+//
+//   - Unwired service (no WithLLMClient) → ErrChallengeGenerationNotWired
+//     + zero row written.
+//   - Wired service + successful LLM/sandbox/validate pass → persisted
+//     Challenge with origin=generated.
+//
+// Detailed shell coverage (sentinels, difficulty mapping, retry loop,
+// sandbox gate, persistence) lives in challenge_service_generate_test.go.
 
 // TestGenerateChallengeHint_DomainShapeMatchesWire verifies the
 // domain model carries Language/Difficulty/Focus with omitempty —
 // this is the shape the MCP adapter translates GenerateHint into
-// before calling the service, and the shape a future S5 LLM impl
-// will consume.
+// before calling the service. The PR 2 extension added TopicID +
+// Level (covered in challenge_models_generate_test.go); this test
+// stays to lock the v1 contract that existing callers depend on.
 func TestGenerateChallengeHint_DomainShapeMatchesWire(t *testing.T) {
 	t.Parallel()
 
@@ -644,6 +626,9 @@ func TestGenerateChallengeHint_DomainShapeMatchesWire(t *testing.T) {
 	}
 	if hint.Focus != "" {
 		t.Errorf("empty Focus = %q, want zero value", hint.Focus)
+	}
+	if hint.TopicID != "" || hint.Level != "" {
+		t.Errorf("TopicID/Level = (%q, %q), want empty default", hint.TopicID, hint.Level)
 	}
 }
 

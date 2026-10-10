@@ -127,12 +127,13 @@ func (f *fakeService) GenerateChallenge(_ context.Context, userID string, hint G
 	if f.generateErr != nil {
 		return nil, f.generateErr
 	}
-	// Mirror the production adapter's behavior: the canonical "not
-	// implemented" sentinel lives in core/services, not in the MCP layer.
-	// The fake simulates that so tests downstream of this fake (e.g. the
-	// HTTP transport smoke test) propagate the same sentinel verbatim
-	// and the dispatcher's JSON-RPC -32603 mapping stays consistent.
-	return nil, services.ErrChallengeGenerateNotImplemented
+	// Mirror the production adapter's behavior: when the un-stubbed
+	// service runs without an LLM client it returns
+	// services.ErrChallengeGenerationNotWired. The fake simulates that
+	// so tests downstream of this fake (e.g. the HTTP transport smoke
+	// test) propagate the same sentinel verbatim and the dispatcher's
+	// JSON-RPC -32603 mapping stays consistent.
+	return nil, services.ErrChallengeGenerationNotWired
 }
 
 func (f *fakeService) ValidateChallenge(_ context.Context, _ string, in validateChallengeInput) (ValidateResult, error) {
@@ -325,33 +326,48 @@ func TestCreateTempChallengeTool_MissingUserID_RejectsWithInvalidParams(t *testi
 
 // --- mcp-challenges.generate_challenge ---
 
-// TestGenerateChallengeTool_StubReturnsErrNotImplemented proves the
-// generate_challenge tool surfaces the S5-pending sentinel up to the
-// JSON-RPC layer (the dispatcher maps it to -32603). The wire-shape
-// assertion proves the LLM gets an actionable "enable via S5 cascade"
-// hint instead of a stack trace.
+// TestGenerateChallengeTool_ForwardsAllWireFields proves the wire-shape
+// mapping (topicId, level, language, difficulty, focus) survives the
+// tool's JSON unmarshal and reaches the service as a populated
+// GenerateHint. PR 2 extended the wire with topicId + level so the
+// un-stubbed GenerateChallenge can drive the curriculum/pedagogy
+// lookups; losing either at the tool boundary would silently fall back
+// to the unwired-error path.
 //
-// PR 2 amendment: the canonical "not implemented" sentinel lives in
-// core/services (ErrChallengeGenerateNotImplemented). The production
-// adapter propagates it verbatim, and this test mirrors that path.
-func TestGenerateChallengeTool_StubReturnsErrNotImplemented(t *testing.T) {
+// The fake service mirrors the new contract: an unwired service
+// returns services.ErrChallengeGenerationNotWired, which the
+// dispatcher's JSON-RPC layer maps to -32603.
+func TestGenerateChallengeTool_ForwardsAllWireFields(t *testing.T) {
 	svc := newFakeService()
 	tool := NewGenerateChallengeTool(svc)
 	_, err := tool.Execute(ctxWithUser(t, "u"), json.RawMessage(`{
 		"language": "typescript",
-		"difficulty": "senior"
+		"difficulty": "senior",
+		"focus": "callback hell",
+		"topicId": "inheritance",
+		"level": "D"
 	}`))
-	if err == nil {
-		t.Fatalf("expected ErrChallengeGenerateNotImplemented, got nil")
-	}
-	if !errors.Is(err, services.ErrChallengeGenerateNotImplemented) {
-		t.Errorf("err = %v, want services.ErrChallengeGenerateNotImplemented", err)
+	if !errors.Is(err, services.ErrChallengeGenerationNotWired) {
+		t.Fatalf("err = %v, want services.ErrChallengeGenerationNotWired (fake simulates unwired service)", err)
 	}
 	if svc.lastGenerateUser != "u" {
 		t.Errorf("generate routed userID=%q, want u", svc.lastGenerateUser)
 	}
-	if svc.lastGenerateHint.Language != "typescript" {
-		t.Errorf("hint.language = %q, want typescript", svc.lastGenerateHint.Language)
+	h := svc.lastGenerateHint
+	if h.Language != "typescript" {
+		t.Errorf("hint.language = %q, want typescript", h.Language)
+	}
+	if h.Difficulty != "senior" {
+		t.Errorf("hint.difficulty = %q, want senior", h.Difficulty)
+	}
+	if h.Focus != "callback hell" {
+		t.Errorf("hint.focus = %q, want callback hell", h.Focus)
+	}
+	if h.TopicID != "inheritance" {
+		t.Errorf("hint.topicId = %q, want inheritance", h.TopicID)
+	}
+	if h.Level != "D" {
+		t.Errorf("hint.level = %q, want D", h.Level)
 	}
 }
 
