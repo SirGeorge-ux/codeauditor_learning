@@ -490,7 +490,9 @@ func TestGenerateChallenge_LanguageNotInCurriculum_ReturnsSentinel(t *testing.T)
 
 // TestGenerateChallenge_SandboxGatePassesOnFirstRun exercises the
 // happy path of the solution-code gate: the LLM emits a clean
-// solution, the sandbox returns ok, the orchestrator persists.
+// solution, the test driver reports all tests pass on the first
+// call, and the orchestrator persists. Phase 5 retargeted this from
+// the legacy Execute path to ExecuteWithTests (testCases route).
 func TestGenerateChallenge_SandboxGatePassesOnFirstRun(t *testing.T) {
 	t.Parallel()
 
@@ -498,8 +500,12 @@ func TestGenerateChallenge_SandboxGatePassesOnFirstRun(t *testing.T) {
 	b.llm.completeResponses = []ports.CompleteResponse{
 		{Content: validChallengeJSON(t, "typescript", "class Dog extends Animal {}"), Provider: "groq"},
 	}
-	b.sandbox.executeBehaviour = []genFakeSandboxExec{
-		{Body: "ok\n"},
+	// Phase 5: 2 tests, both passing on first run.
+	b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+		{TestsRun: 2, TestsPass: 2, ExitCode: 0, PerTest: []ports.TestOutcome{
+			{Name: "test1", Passed: true},
+			{Name: "test2", Passed: true},
+		}},
 	}
 
 	got, err := b.svc.GenerateChallenge(context.Background(), "u1", models.GenerateChallengeHint{
@@ -513,15 +519,16 @@ func TestGenerateChallenge_SandboxGatePassesOnFirstRun(t *testing.T) {
 	if got.ID == "" {
 		t.Errorf("ID = empty; persisted row must carry a UUID")
 	}
-	if b.sandbox.executeCalls != 1 {
-		t.Errorf("sandbox.executeCalls = %d, want 1 (gate runs once)", b.sandbox.executeCalls)
+	if b.sandbox.executeWithTestsCalls != 1 {
+		t.Errorf("sandbox.executeWithTestsCalls = %d, want 1 (gate runs once)", b.sandbox.executeWithTestsCalls)
 	}
 }
 
 // TestGenerateChallenge_SandboxGateFailsThreeTimes_ReturnsSentinel
 // covers the spec scenario "Solution fails three times" — three
-// consecutive sandbox failures return ErrChallengeGenerationFailedSandbox
-// and write NO row.
+// consecutive test gate failures return ErrChallengeGenerationFailedSandbox
+// and write NO row. Phase 5 retargeted the failure simulation to the
+// ExecuteWithTests path (testCases gate).
 func TestGenerateChallenge_SandboxGateFailsThreeTimes_ReturnsSentinel(t *testing.T) {
 	t.Parallel()
 
@@ -531,10 +538,14 @@ func TestGenerateChallenge_SandboxGateFailsThreeTimes_ReturnsSentinel(t *testing
 		{Content: validChallengeJSON(t, "typescript", "broken 2"), Provider: "groq"},
 		{Content: validChallengeJSON(t, "typescript", "broken 3"), Provider: "groq"},
 	}
-	b.sandbox.executeBehaviour = []genFakeSandboxExec{
-		{Err: errors.New("compile error: broken 1")},
-		{Err: errors.New("compile error: broken 2")},
-		{Err: errors.New("compile error: broken 3")},
+	// Phase 5: 2 tests, only 1 passes — the gate must retry.
+	b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+		{TestsRun: 2, TestsPass: 1, ExitCode: 0, PerTest: []ports.TestOutcome{
+			{Name: "test1", Passed: true},
+			{Name: "test2", Passed: false, ErrorMessage: "expected ok, got broken"},
+		}},
+		{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+		{TestsRun: 2, TestsPass: 1, ExitCode: 0},
 	}
 
 	_, err := b.svc.GenerateChallenge(context.Background(), "u1", models.GenerateChallengeHint{
@@ -545,8 +556,8 @@ func TestGenerateChallenge_SandboxGateFailsThreeTimes_ReturnsSentinel(t *testing
 	if !errors.Is(err, ErrChallengeGenerationFailedSandbox) {
 		t.Errorf("err = %v, want ErrChallengeGenerationFailedSandbox", err)
 	}
-	if b.sandbox.executeCalls != 3 {
-		t.Errorf("sandbox.executeCalls = %d, want 3 (full retry budget)", b.sandbox.executeCalls)
+	if b.sandbox.executeWithTestsCalls != 3 {
+		t.Errorf("sandbox.executeWithTestsCalls = %d, want 3 (full retry budget)", b.sandbox.executeWithTestsCalls)
 	}
 	if b.llm.completeCalls != 3 {
 		t.Errorf("llm.completeCalls = %d, want 3 (full retry budget)", b.llm.completeCalls)
@@ -559,7 +570,8 @@ func TestGenerateChallenge_SandboxGateFailsThreeTimes_ReturnsSentinel(t *testing
 // TestGenerateChallenge_SandboxGateFailsTwiceThenPasses covers the
 // spec scenario "Solution fails twice, passes third" — the
 // orchestrator persists the third-pass success and the failure
-// history is not in the persisted row.
+// history is not in the persisted row. Phase 5 retargeted the
+// simulation to ExecuteWithTests.
 func TestGenerateChallenge_SandboxGateFailsTwiceThenPasses(t *testing.T) {
 	t.Parallel()
 
@@ -569,10 +581,10 @@ func TestGenerateChallenge_SandboxGateFailsTwiceThenPasses(t *testing.T) {
 		{Content: validChallengeJSON(t, "typescript", "broken 2"), Provider: "groq"},
 		{Content: validChallengeJSON(t, "typescript", "ok now"), Provider: "groq"},
 	}
-	b.sandbox.executeBehaviour = []genFakeSandboxExec{
-		{Err: errors.New("compile error 1")},
-		{Err: errors.New("compile error 2")},
-		{Body: "ok\n"},
+	b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+		{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+		{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+		{TestsRun: 2, TestsPass: 2, ExitCode: 0},
 	}
 
 	got, err := b.svc.GenerateChallenge(context.Background(), "u1", models.GenerateChallengeHint{
@@ -709,4 +721,246 @@ func TestGenerateChallenge_RepoInsertError_Propagates(t *testing.T) {
 	if !strings.Contains(err.Error(), "db constraint violation") {
 		t.Errorf("err = %v, want it to wrap db constraint violation", err)
 	}
+}
+
+// --- Phase 5 orchestration tests (TestCases path) --------------------------
+//
+// These exercise the spec scenarios "First-run solution passes",
+// "Solution fails once, passes second", "Solution fails 3 times",
+// "No testCases → execute-only path", and "test driver crashes"
+// via ExecuteWithTests (the new sandbox gate). They use the
+// programmable genFakeSandbox.executeWithTestsBehaviour FIFO.
+
+// orchestrationScenario is one row of the Phase 5 table-driven
+// scenario matrix. setup is invoked before each test to wire the
+// fake behaviour; expect is called with the orchestration result
+// for the case-specific assertion.
+type orchestrationScenario struct {
+	name    string
+	setup   func(b *fixtureBundle)
+	expect  func(t *testing.T, b *fixtureBundle, got models.Challenge, err error)
+	wantLLM int
+	wantEWT int // expected ExecuteWithTests call count
+}
+
+// TestGenerateChallenge_ExecuteWithTestsScenarios is the table-driven
+// umbrella for all Phase 5 sandbox gate scenarios. Splitting the
+// cases into a t.Run subtest makes each one independently runnable
+// under `go test -run`.
+func TestGenerateChallenge_ExecuteWithTestsScenarios(t *testing.T) {
+	t.Parallel()
+
+	scenarios := []orchestrationScenario{
+		{
+			name: "first-run solution passes tests",
+			setup: func(b *fixtureBundle) {
+				b.llm.completeResponses = []ports.CompleteResponse{
+					{Content: validChallengeJSON(t, "typescript", "export function solve(){return 'ok'}"), Provider: "groq"},
+				}
+				b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+					{TestsRun: 2, TestsPass: 2, ExitCode: 0, PerTest: []ports.TestOutcome{
+						{Name: "test1", Passed: true},
+						{Name: "test2", Passed: true},
+					}},
+				}
+			},
+			expect: func(t *testing.T, b *fixtureBundle, got models.Challenge, err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got.ID == "" {
+					t.Error("persisted row missing UUID")
+				}
+				if len(b.repo.insertCalls) != 1 {
+					t.Errorf("Insert calls = %d, want 1 (first-pass persists)", len(b.repo.insertCalls))
+				}
+			},
+			wantLLM: 1,
+			wantEWT: 1,
+		},
+		{
+			name: "fails test once, passes second",
+			setup: func(b *fixtureBundle) {
+				b.llm.completeResponses = []ports.CompleteResponse{
+					{Content: validChallengeJSON(t, "typescript", "broken 1"), Provider: "groq"},
+					{Content: validChallengeJSON(t, "typescript", "fixed"), Provider: "groq"},
+				}
+				b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+					{TestsRun: 2, TestsPass: 1, ExitCode: 0, PerTest: []ports.TestOutcome{
+						{Name: "test1", Passed: true},
+						{Name: "test2", Passed: false, ErrorMessage: "expected ok, got broken"},
+					}},
+					{TestsRun: 2, TestsPass: 2, ExitCode: 0},
+				}
+			},
+			expect: func(t *testing.T, b *fixtureBundle, got models.Challenge, err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got.SolutionCode != "fixed" {
+					t.Errorf("SolutionCode = %q, want the second-pass solution", got.SolutionCode)
+				}
+				if len(b.repo.insertCalls) != 1 {
+					t.Errorf("Insert calls = %d, want 1 (2nd attempt persists)", len(b.repo.insertCalls))
+				}
+			},
+			wantLLM: 2,
+			wantEWT: 2,
+		},
+		{
+			name: "fails 3 tests in a row",
+			setup: func(b *fixtureBundle) {
+				b.llm.completeResponses = []ports.CompleteResponse{
+					{Content: validChallengeJSON(t, "typescript", "broken 1"), Provider: "groq"},
+					{Content: validChallengeJSON(t, "typescript", "broken 2"), Provider: "groq"},
+					{Content: validChallengeJSON(t, "typescript", "broken 3"), Provider: "groq"},
+				}
+				b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+					{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+					{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+					{TestsRun: 2, TestsPass: 1, ExitCode: 0},
+				}
+			},
+			expect: func(t *testing.T, b *fixtureBundle, _ models.Challenge, err error) {
+				t.Helper()
+				if !errors.Is(err, ErrChallengeGenerationFailedSandbox) {
+					t.Errorf("err = %v, want ErrChallengeGenerationFailedSandbox", err)
+				}
+				if len(b.repo.insertCalls) != 0 {
+					t.Errorf("Insert calls = %d, want 0 (full retry budget consumed without persist)", len(b.repo.insertCalls))
+				}
+			},
+			wantLLM: 3,
+			wantEWT: 3,
+		},
+		{
+			name: "no testCases → execute-only path",
+			setup: func(b *fixtureBundle) {
+				// Build a draft with NO testCases; the orchestrator
+				// passes []ports.TestCase to the executor, the executor's
+				// default handles 0 tests as a pass (gate OK).
+				// The orchestrator then runs validateChallengeV2 and
+				// the v2 cardinality rule rejects 0 tests. We provide
+				// three identical responses so the retry loop never
+				// hits a JSON-parse fallback.
+				noTests := noTestCasesChallengeJSON(t, "typescript", "class X {}")
+				b.llm.completeResponses = []ports.CompleteResponse{
+					{Content: noTests, Provider: "groq"},
+					{Content: noTests, Provider: "groq"},
+					{Content: noTests, Provider: "groq"},
+				}
+				b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+					{TestsRun: 0, TestsPass: 0, ExitCode: 0},
+					{TestsRun: 0, TestsPass: 0, ExitCode: 0},
+					{TestsRun: 0, TestsPass: 0, ExitCode: 0},
+				}
+			},
+			expect: func(t *testing.T, b *fixtureBundle, _ models.Challenge, err error) {
+				t.Helper()
+				// validateChallengeV2 enforces 2-4 test_cases, so the
+				// no-testCases draft correctly surfaces
+				// ErrChallengeGenerationInvalid after the gate passes.
+				// The assertion that matters is that the executor SAW
+				// the empty slice (lastTests) — the orchestrator did
+				// not panic, did not bypass validation.
+				if !errors.Is(err, ErrChallengeGenerationInvalid) {
+					t.Errorf("err = %v, want ErrChallengeGenerationInvalid (v2 rejects 0 tests)", err)
+				}
+				if len(b.sandbox.lastTests) != 0 {
+					t.Errorf("lastTests length = %d, want 0 (executor must receive empty slice)", len(b.sandbox.lastTests))
+				}
+				if len(b.repo.insertCalls) != 0 {
+					t.Errorf("Insert calls = %d, want 0 (validation rejected; no persist)", len(b.repo.insertCalls))
+				}
+			},
+			wantLLM: 3, // 3 attempts → 3 LLM calls before validation sentinel
+			wantEWT: 3,
+		},
+		{
+			name: "test driver crashes",
+			setup: func(b *fixtureBundle) {
+				// Attempt 1: driver crashes → gate fail → retry. Attempt
+				// 2: default behaviour (all tests pass) → succeeds.
+				b.llm.completeResponses = []ports.CompleteResponse{
+					{Content: validChallengeJSON(t, "typescript", "attempt1"), Provider: "groq"},
+					{Content: validChallengeJSON(t, "typescript", "attempt2"), Provider: "groq"},
+				}
+				// First call: driver crashed (ExitCode 2). Second call
+				// falls through to genFakeSandbox's default "all pass".
+				b.sandbox.executeWithTestsBehaviour = []ports.TestRunResult{
+					{TestsRun: 2, TestsPass: 0, ExitCode: 2},
+				}
+			},
+			expect: func(t *testing.T, b *fixtureBundle, got models.Challenge, err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got.SolutionCode != "attempt2" {
+					t.Errorf("SolutionCode = %q, want the retry-pass solution", got.SolutionCode)
+				}
+				if len(b.repo.insertCalls) != 1 {
+					t.Errorf("Insert calls = %d, want 1 (retry passes)", len(b.repo.insertCalls))
+				}
+			},
+			wantLLM: 2,
+			wantEWT: 2,
+		},
+	}
+
+	for _, sc := range scenarios {
+		t.Run(sc.name, func(t *testing.T) {
+			t.Parallel()
+
+			b := newFixtureBundle(t)
+			sc.setup(b)
+
+			got, err := b.svc.GenerateChallenge(context.Background(), "u1", models.GenerateChallengeHint{
+				Language: "typescript",
+				TopicID:  "inheritance",
+				Level:    "D",
+			})
+			sc.expect(t, b, got, err)
+
+			if b.llm.completeCalls != sc.wantLLM {
+				t.Errorf("llm.completeCalls = %d, want %d", b.llm.completeCalls, sc.wantLLM)
+			}
+			if b.sandbox.executeWithTestsCalls != sc.wantEWT {
+				t.Errorf("sandbox.executeWithTestsCalls = %d, want %d", b.sandbox.executeWithTestsCalls, sc.wantEWT)
+			}
+		})
+	}
+}
+
+// noTestCasesChallengeJSON returns a v2 challenge draft that parses
+// but carries ZERO testCases (so the orchestrator routes through
+// the legacy execute-only path). It mirrors validChallengeJSON
+// minus the testCases field.
+func noTestCasesChallengeJSON(t *testing.T, lang, solutionBody string) string {
+	t.Helper()
+	draft := models.CreateChallengeInput{
+		Title:        "NoTests Title",
+		Description:  "A description without spoilers.",
+		Difficulty:   "junior",
+		Category:     "oop",
+		Language:     lang,
+		Code:         "class A {}",
+		SolutionCode: solutionBody,
+		Hints: []models.Hint{
+			{Level: 1, Content: "hint 1", CostPoints: 0},
+			{Level: 2, Content: "hint 2", CostPoints: 10},
+			{Level: 3, Content: "hint 3", CostPoints: 25},
+		},
+		ExpectedFindings: []models.ExpectedFinding{
+			{Severity: "high", Category: "oop", Message: "missing"},
+		},
+		// TestCases intentionally absent → 0 tests → execute-only path.
+	}
+	raw, err := json.Marshal(draft)
+	if err != nil {
+		t.Fatalf("marshal no-testCases draft: %v", err)
+	}
+	return string(raw)
 }

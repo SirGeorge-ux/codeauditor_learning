@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
@@ -463,10 +464,24 @@ func (s *ChallengeService) GenerateChallenge(ctx context.Context, userID string,
 			continue
 		}
 
-		// Sandbox gate. When sandbox is nil (degraded mode / unit
-		// tests), skip the gate.
+		// Sandbox gate (Phase 5). Runs solutionCode + testCases
+		// together per the spec scenario Solution-Validates Sandbox
+		// Gate. When sandbox is nil (degraded mode / unit tests with
+		// no fake wired), skip the gate. When draft.TestCases is empty
+		// the executor returns a zero-tests result that counts as a
+		// pass; if the executor surfaces a non-zero ExitCode with zero
+		// tests it signals a driver crash (which we still treat as a
+		// gate failure).
 		if s.sandbox != nil && draft.SolutionCode != "" {
-			reader, execErr := s.sandbox.Execute(ctx, hint.Language, draft.SolutionCode, 15)
+			wireTests, convErr := modelTestCasesToWire(draft.TestCases)
+			if convErr != nil {
+				lastErr = fmt.Errorf("%w: %s", ErrChallengeGenerationFailedSandbox, convErr.Error())
+				if attempt == maxAttempts {
+					return models.Challenge{}, ErrChallengeGenerationFailedSandbox
+				}
+				continue
+			}
+			res, execErr := s.sandbox.ExecuteWithTests(ctx, hint.Language, draft.SolutionCode, wireTests, 15)
 			if execErr != nil {
 				lastErr = fmt.Errorf("%w: %s", ErrChallengeGenerationFailedSandbox, execErr.Error())
 				if attempt == maxAttempts {
@@ -474,10 +489,24 @@ func (s *ChallengeService) GenerateChallenge(ctx context.Context, userID string,
 				}
 				continue
 			}
-			// We only need a non-error reader (the gate's pass/fail
-			// signal is "Execute did not error"). Closing early is
-			// safe and frees the underlying file descriptor.
-			_ = reader.Close()
+			// Close any reader the executor left open; the gate's
+			// pass/fail signal is the TestRunResult, not stdout.
+			if res.Output != nil {
+				if closer, ok := res.Output.(io.Closer); ok {
+					_ = closer.Close()
+				}
+			}
+			// Gate decision.
+			if res.TestsPass < res.TestsRun || res.ExitCode != 0 {
+				lastErr = fmt.Errorf("%w: testsPass=%d testsRun=%d exitCode=%d perTest=%s",
+					ErrChallengeGenerationFailedSandbox,
+					res.TestsPass, res.TestsRun, res.ExitCode,
+					summarizePerTest(res.PerTest))
+				if attempt == maxAttempts {
+					return models.Challenge{}, ErrChallengeGenerationFailedSandbox
+				}
+				continue
+			}
 		}
 
 		// v2 validation. Card + spoiler + difficulty constraints.
@@ -580,6 +609,71 @@ func buildGenerationPrompt(hint models.GenerateChallengeHint, objective string, 
 	}
 	b.WriteString("\nReturn JSON matching the v2 Challenge schema (object with title, description, language, code, hints, expectedFindings, testCases, solutionCode, solutionExplanation, commonMistakes, learningObjectives).")
 	return b.String()
+}
+
+// summarizePerTest flattens the per-test outcomes into a short
+// string the LLM prompt can digest on the next retry attempt. We
+// keep names + pass/fail + a short error excerpt; full bodies are
+// not needed because the LLM already saw the original test
+// expectations in the prior attempt's prompt.
+func summarizePerTest(perTest []ports.TestOutcome) string {
+	if len(perTest) == 0 {
+		return "[]"
+	}
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, o := range perTest {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		fmt.Fprintf(&b, "{%s passed=%v", o.Name, o.Passed)
+		if !o.Passed && o.ErrorMessage != "" {
+			fmt.Fprintf(&b, " error=%q", truncateErr(o.ErrorMessage))
+		}
+		b.WriteByte('}')
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// truncateErr keeps the error excerpt small (max ~80 chars) so the
+// retry prompt stays under the LLM's input budget. Long stack
+// traces are clipped with an ellipsis.
+func truncateErr(s string) string {
+	const max = 80
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "…"
+}
+
+// modelTestCasesToWire maps the domain TestCase (Input /
+// ExpectedOutput are arbitrary JSON values) into the wire shape
+// the test driver consumes (Input / ExpectedOutput are JSON-encoded
+// strings). A marshal failure surfaces as the sentinel so the retry
+// loop can record the cause.
+func modelTestCasesToWire(in []models.TestCase) ([]ports.TestCase, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	out := make([]ports.TestCase, len(in))
+	for i, tc := range in {
+		inputJSON, err := json.Marshal(tc.Input)
+		if err != nil {
+			return nil, fmt.Errorf("test[%d] input marshal: %w", i, err)
+		}
+		expectedJSON, err := json.Marshal(tc.ExpectedOutput)
+		if err != nil {
+			return nil, fmt.Errorf("test[%d] expectedOutput marshal: %w", i, err)
+		}
+		out[i] = ports.TestCase{
+			Name:           tc.Name,
+			Input:          string(inputJSON),
+			ExpectedOutput: string(expectedJSON),
+			Weight:         tc.Weight,
+		}
+	}
+	return out, nil
 }
 
 // challengeJSONSchema returns the JSONSchema passed to
