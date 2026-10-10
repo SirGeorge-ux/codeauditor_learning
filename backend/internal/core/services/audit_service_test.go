@@ -19,9 +19,23 @@ import (
 // configured output line. It is enough to drive audit_service.RunAudit
 // past the sandbox stage and into the Ollama analysis stage without
 // invoking any real runtime.
+//
+// Phase 5 (free-practice-mode) adds ExecuteWithTests; audit_service does
+// NOT use it (it keeps the legacy Execute path for the audit's stdout
+// streaming). The fake implements ExecuteWithTests only to satisfy the
+// extended ports.SandboxExecutor interface — it is wired so a future
+// test can drive it explicitly via the `withTestsResult` knob.
 type fakeSandbox struct {
 	output string
 	err    error
+
+	// withTestsResult lets a future Phase-5-driven audit test program
+	// the ExecuteWithTests response. Defaults to a "no test capability"
+	// degraded result (TestsRun == len(tests), TestsPass == 0,
+	// ExitCode == 1) because the audit path never goes through here.
+	withTestsResult ports.TestRunResult
+	withTestsErr    error
+	withTestsCalls  int
 }
 
 func (f *fakeSandbox) Execute(_ context.Context, _, _ string, _ int) (io.ReadCloser, error) {
@@ -29,6 +43,24 @@ func (f *fakeSandbox) Execute(_ context.Context, _, _ string, _ int) (io.ReadClo
 		return nil, f.err
 	}
 	return io.NopCloser(strings.NewReader(f.output)), nil
+}
+
+func (f *fakeSandbox) ExecuteWithTests(_ context.Context, _ string, _ string, tests []ports.TestCase, _ int) (ports.TestRunResult, error) {
+	f.withTestsCalls++
+	if f.withTestsErr != nil {
+		return ports.TestRunResult{}, f.withTestsErr
+	}
+	if f.withTestsResult.TestsRun != 0 || f.withTestsResult.TestsPass != 0 || f.withTestsResult.ExitCode != 0 || len(f.withTestsResult.PerTest) > 0 {
+		return f.withTestsResult, nil
+	}
+	// Default degraded behavior: "no test capability" — surfaces the
+	// sentinel via zero passes so any caller that routed through here
+	// would treat it as a gate failure.
+	return ports.TestRunResult{
+		TestsRun:  len(tests),
+		TestsPass: 0,
+		ExitCode:  1,
+	}, nil
 }
 
 func (f *fakeSandbox) Healthcheck(_ context.Context) error { return nil }

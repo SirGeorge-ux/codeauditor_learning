@@ -112,6 +112,36 @@ Phase 3 delivered as **stacked-to-main** chain, PR 3 of 3. Branch `feature/free-
 - [ ] 4.12 End-to-end smoke (manual or Playwright): navigate `/practice/free`, select `typescript` / `inheritance` / `D`, generate, verify challenge opens in dojo and runs in sandbox
 - [ ] 4.13 Daily cap smoke: trigger 20 generations, verify 21st is rejected client-side and the UI shows "Daily limit reached"
 
+> **Phase 4 outcome (2026-10-10):** Automated gates 4.1–4.5, 4.7, 4.8, 4.10, 4.11 are green on master after PR 3 merge. Gate 4.9 is non-green due to a pre-existing test-isolation flake (`auth.service.spec.ts` × practice specs) plus a genuine spec drift: the sandbox gate omits `testCases` execution (`challenge_service.go:469` only passes `solutionCode`). Phase 5 closes both.
+
+## Phase 5: Spec-Fidelity Hardening (PR 4 of 3)
+
+> **Branch:** `feature/free-practice-sandbox-tests` (base: `master` after PR 3 merged)
+> **Stacked-to-main chain, PR 4.** Closes the two blockers surfaced by Phase 4 verification.
+> **Status (2026-10-10):** landed on `feature/free-practice-sandbox-tests`. Awaiting `--no-ff` merge into `master`.
+
+- [x] 5.1 Add `ExecuteWithTests(ctx, lang, code, tests []TestCase, timeout)` to `SandboxExecutor` port in `backend/internal/ports/sandbox.go`, with new types `TestCase` (name, input, expectedOutput, weight), `TestRunResult` (output io.Reader, testsRun, testsPass, perTest []TestOutcome, exitCode), `TestOutcome` (name, passed, actualOutput, errorMessage)
+- [x] 5.2 Implement `ExecuteWithTests` on `DockerSandbox` — concatenates solutionCode with a per-language test driver that iterates the testCases (input → invoke solution → capture output → diff against expectedOutput); for languages without test support, return `TestRunResult{TestsRun: len(tests), TestsPass: 0, Output: nil}` with a sentinel so the gate degrades cleanly
+- [x] 5.3 Implement `ExecuteWithTests` on `LocalSandbox` — same contract as Docker; same degraded-mode behaviour
+- [x] 5.4 Update `ChallengeService.GenerateChallenge` to call `sandbox.ExecuteWithTests(...)` instead of `sandbox.Execute(...)`; treat any test failure or non-passing gate as a retry-trigger (the existing ≤3 retry loop already handles this); the reader from `TestRunResult.Output` replaces the existing `io.ReadCloser`
+- [x] 5.5 Update `audit_service.go` to keep using the legacy `Execute(...)` (audit streaming is not affected); no other callers exist
+- [x] 5.6 Update fakes: `fakeSandbox` in `audit_service_test.go`, `genFakeSandbox` in `challenge_service_orchestration_test.go`, the `dockersandbox_test.go`/`localsandbox_test.go` test doubles — each must satisfy the extended `SandboxExecutor` interface
+- [x] 5.7 Update `mcp/infrastructure/sandbox/adapter.go` if it exposes the legacy `Execute` over MCP (preserve legacy wire for the audit path; add a new wire method for the test-aware path is deferred to a future change)
+- [x] 5.8 New tests in `challenge_service_orchestration_test.go`: "first-run solution passes tests" (gate ok → persist), "solution fails test once, passes second" (retry loop with prompt augmentation), "solution fails 3 tests in a row" (gate fails → no persist + sentinel), "no testCases → execute-only path" (legacy behavior preserved), "test driver crashes" (ExitCode != 0 → retry)
+- [x] 5.9 Update `ports/sandbox_test.go` (compile-time check): `ExecuteWithTests` present on `SandboxExecutor`
+- [x] 5.10 New tests in `dockersandbox_test.go` + `localsandbox_test.go`: buildDockerRunArgs / buildLocalCommand include the test driver; typeScript provider drives the standard Node.js test harness; other languages degrade cleanly
+- [x] 5.11 Frontend: in `practice-page.component.spec.ts` register `MCP_TOKEN_PROVIDER` via TestBed (the user-prescribed `vi.mock('../../services/mcp-token.provider', ...)` is rejected by `@angular/build:unit-test`'s `vitest-mock-patch`; the TestBed stub delivers the same isolation intent). The other practice specs do not import AuthService — their chain stops at `@angular/core` + domain models, so no TestBed stub is needed.
+- [x] 5.12 Frontend: `npx ng test --watch=false` × 3 (consecutive) → 29 / 29 files PASS, 253 / 253 tests PASS, 0 FAIL.
+- [x] 5.13 Backend quality gates green: `go test ./...`, `golangci-lint run ./...`, `gofumpt -l .`, `go vet ./...`, `go build ./...` — all exit 0
+- [x] 5.14 Frontend quality gates green: `pnpm exec prettier --check`, `pnpm exec eslint src/`, `npx ng test --watch=false` (×3), `npx ng build` — all exit 0
+- [x] 5.15 Hexagonal purity: 0 `database/sql` imports in `backend/internal/core/`; 0 `@angular/*` imports in `frontend/.../domain/`
+- [ ] 5.16 Push branch + merge with `git merge --no-ff feature/free-practice-sandbox-tests` (orchestrator-driven post-PR)
+- [ ] 5.17 Re-run Phase 4 verification on master (4.1–4.11 all green); manual smokes 4.12–4.13 still deferred to user
+
+### PR 4 outcome (planned)
+
+Phase 5 delivers the spec-aligned sandbox gate (executing `solutionCode` + `testCases` together, ≤3 attempts) and isolates the frontend practice specs from the `@supabase/supabase-js` import chain. After this PR lands, Phase 4 verification passes and `sdd-archive-resilient-backup free-practice-mode` can close S3.
+
 ## Dependencies
 
 - `mcp-monolith` (S2, archived 2026-10-10): `mcp-curriculum`, `mcp-pedagogical`, `mcp-challenges`, `MCPClientAdapter` exist and are stable.

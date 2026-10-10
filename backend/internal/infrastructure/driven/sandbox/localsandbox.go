@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -158,4 +159,102 @@ func buildLocalCommand(ctx context.Context, provider ports.LanguageProvider, fil
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = tmpDir
 	return cmd
+}
+
+// ExecuteWithTests is the local-sandbox equivalent of DockerSandbox.ExecuteWithTests.
+// It supports the same languages (typescript, javascript) via the inlined
+// Node.js driver and degrades to a "no test capability" result for the rest.
+//
+// The local path runs `node runner.mjs` directly (no docker) so it is the
+// fastest development iteration; the docker path is preserved for
+// production deployments where the hardened runtime is required.
+func (s *LocalSandbox) ExecuteWithTests(ctx context.Context, language, code string, tests []ports.TestCase, timeoutSeconds int) (ports.TestRunResult, error) {
+	switch language {
+	case "typescript", "javascript":
+		return s.executeWithTestsScript(ctx, language, code, tests, timeoutSeconds)
+	default:
+		// Degraded mode: surface the unsupported-language signal so
+		// the orchestrator's retry loop can record it; do NOT silently
+		// mark tests as passing.
+		return ports.TestRunResult{
+			TestsRun:  len(tests),
+			TestsPass: 0,
+			ExitCode:  1,
+		}, fmt.Errorf("sandbox.ExecuteWithTests: no test driver for language %q (degraded mode)", language)
+	}
+}
+
+// executeWithTestsScript is the local-Sandbox mirror of
+// DockerSandbox.executeWithTestsScript. It writes the same 3-file
+// layout (solution + runner.mjs + test-cases.json) into a temp dir
+// and runs `node runner.mjs` directly.
+//
+// The Node.js runtime is assumed available in PATH (`LocalCommand()`
+// returns "npx" for typescript/javascript, but we invoke node directly
+// to avoid the noisy npx-cli wrapper output mixing with the driver
+// JSON). The driver script is identical to the docker one — both
+// sandboxes share the implementation through the tsTestRunnerScript
+// constant.
+func (s *LocalSandbox) executeWithTestsScript(ctx context.Context, language, code string, tests []ports.TestCase, timeoutSeconds int) (ports.TestRunResult, error) {
+	if _, err := s.registry.Get(language); err != nil {
+		return ports.TestRunResult{}, err
+	}
+
+	tmpDir, err := os.MkdirTemp("", "sandbox-tests-*")
+	if err != nil {
+		return ports.TestRunResult{}, fmt.Errorf("create temp dir: %w", err)
+	}
+
+	solutionExt := ".ts"
+	if language == "javascript" {
+		solutionExt = ".js"
+	}
+	solutionFile := "code" + solutionExt
+	if err := os.WriteFile(filepath.Join(tmpDir, solutionFile), []byte(code), 0o644); err != nil {
+		os.RemoveAll(tmpDir)
+		return ports.TestRunResult{}, fmt.Errorf("write solution: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "runner.mjs"), []byte(tsTestRunnerScript), 0o644); err != nil {
+		os.RemoveAll(tmpDir)
+		return ports.TestRunResult{}, fmt.Errorf("write runner: %w", err)
+	}
+	testCasesJSON, err := jsonMarshal(tests)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return ports.TestRunResult{}, fmt.Errorf("encode test cases: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "test-cases.json"), testCasesJSON, 0o644); err != nil {
+		os.RemoveAll(tmpDir)
+		return ports.TestRunResult{}, fmt.Errorf("write test cases: %w", err)
+	}
+
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 15
+	}
+	timeout := time.Duration(timeoutSeconds) * time.Second
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "node", "runner.mjs", solutionFile)
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	_ = os.RemoveAll(tmpDir)
+	if err != nil {
+		parsed := parseTestDriverOutput(output)
+		return ports.TestRunResult{
+			Output:    bytes.NewReader(output),
+			TestsRun:  len(tests),
+			TestsPass: countPassed(parsed),
+			PerTest:   parsed,
+			ExitCode:  cmdExitCode(err),
+		}, nil
+	}
+	parsed := parseTestDriverOutput(output)
+	return ports.TestRunResult{
+		Output:    bytes.NewReader(output),
+		TestsRun:  len(tests),
+		TestsPass: countPassed(parsed),
+		PerTest:   parsed,
+		ExitCode:  0,
+	}, nil
 }
