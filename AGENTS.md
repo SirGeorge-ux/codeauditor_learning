@@ -138,17 +138,16 @@ academy-mic/
 │           │   └── shared/          # context-panel, code-panel, terminal-panel, resize
 │           │   + login + register (top-level standalone components)
 │           │   + tutor-chat/      # ⭐ NUEVO: panel + message + input (S2, archivado 2026-10-10)
-│           │   # pendientes (spec stage, no componentes aún): practice/ (S3), code-health/ (S4)
+│           │   # pendiente (spec stage, no componentes aún): code-health/ (S4)
 │           ├── guards/
 │           ├── repositories/
 │           ├── services/
 │           └── adapters/             # ⭐ NUEVO: MCP client adapter
 ├── openspec/                         # Spec-Driven Development
-│   ├── changes/                      # Cambios en curso (3 activos al 2026-10-10)
-│   │   ├── free-practice-mode/       # ⭐ S3 (scaffold vacío)
+│   ├── changes/                      # Cambios en curso (2 activos al 2026-10-10)
 │   │   ├── code-health-dashboard/    # ⭐ S4 (scaffold vacío)
 │   │   └── llm-cascade/              # ⭐ S5 (scaffold vacío)
-│   ├── archive/                      # Cambios ya aplicados (20)
+│   ├── archive/                      # Cambios ya aplicados (22)
 │   ├── specs/                        # Specs activas
 │   └── config.yaml
 ├── .atl/                             # Harnesado del proyecto
@@ -289,7 +288,7 @@ Detalles ampliados: `docs/ui-and-stack.md`.
 |---|---|---|
 | Unit Go | `make test-backend` | Servicios, adapters (sandbox, auth, ollama, gogs, github, mcp), handlers |
 | Unit Angular | `make test-frontend` | Servicios (auth, gogs, vault), repos, guards, componentes |
-| E2E | `make e2e` | Flujos completos: home, login, register, dashboard, dojo, profile, dictionary, vault, mcp (los flujos `practice` (S3) y `code-health` (S4) están en spec stage, no testeados aún) |
+| E2E | `make e2e` | Flujos completos: home, login, register, dashboard, dojo, profile, dictionary, vault, mcp (el flujo `practice` (S3) ya no está en spec stage — cubierto por unit tests; `code-health` (S4) sigue en spec stage) |
 | Quality gate | `make validate` | gofumpt + golangci-lint + Prettier + ESLint (pre-deploy) |
 
 **Reglas:**
@@ -322,7 +321,7 @@ Detalle: `docs/openspec-workflow.md`.
 | `mcpkit` | S2 | ✅ archivado 2026-10-08 (extraído de `mcp-monolith`) |
 | `mcp-monolith` | S2 | ✅ archivado 2026-10-10 (33 tools / 8 grupos registrados) |
 | `tutor-chat` | S2 | ✅ archivado 2026-10-10 (3 PRs stacked-to-main; backend cascade Groq→DeepSeek→MiniMax; frontend con 5 signals + 7 slash commands + SSE; cierra el S2 entero) |
-| `free-practice-mode` | S3 | 🔄 activo, scaffold vacío |
+| `free-practice-mode` | S3 | ✅ archivado 2026-10-10 (4 PRs stacked-to-main; cascade JSON-mode `Complete` + `GenerateChallenge` un-stub + sandbox gate con `ExecuteWithTests` + auth isolation; cierra el S3 entero) |
 | `code-health-dashboard` | S4 | 🔄 activo, scaffold vacío |
 | `llm-cascade` | S5 | 🔄 activo, scaffold vacío |
 
@@ -420,7 +419,7 @@ Detalle: `docs/openspec-workflow.md`.
 | **S0** | Debate + docs + specs vacías | Docs/skills/harnesses actualizados + 8 specs nuevas creadas | ✅ done |
 | **S1** | Challenge rebuild + Language Progress | 8 challenges nuevos + LanguageProgress + rango mixto | ✅ done (challenge-rebuild + language-progress archivados 2026-07-22) |
 | **S2** | Dictionary + Tutor Chat v1 + MCP base | Diccionario + chat con context awareness + MCP monolítico completo | ✅ done (Dictionary ✅ 2026-10-08; MCP base ✅ 2026-10-10; Tutor Chat ✅ 2026-10-10) |
-| **S3** | Free Practice Mode | Generador de challenges + currículas + validación + Exercism wrapper | 🔲 scaffold listo |
+| **S3** | Free Practice Mode | Generador de challenges + currículas + validación + Exercism wrapper | ✅ done 2026-10-10 (4 PRs stacked-to-main; cascade `Complete` + `GenerateChallenge` un-stub + frontend `/practice/free` + sandbox gate `ExecuteWithTests` + auth isolation; smoke E2E manual y drivers multi-lenguaje como follow-ups) |
 | **S4** | Code Health Dashboard | Análisis de repo + caché + ranking de issues + DeepWiki | 🔲 scaffold listo |
 | **S5** | LLM Cascade completo | OpenRouter cascade + Ollama local + M3 opt-in | 🔲 scaffold listo |
 | **S6+** | Iteración con datos reales | Mejoras de UX, socratismo fino, OAuth, multi-usuario (futuro) | 🔲 |
@@ -433,11 +432,12 @@ Detalle: `docs/openspec-workflow.md`.
 - **8 handlers HTTP**: audit, auth, challenge, dictionary, gogs, progress, sse, vault.
 - **8 páginas Angular**: dashboard, dictionary, dojo, mcp, profile, vault + login + register (más `layout/` y `shared/` como infrastructure).
 - **~1,070 tests Go** (24 paquetes) + **207 tests Angular** (23 archivos) + Playwright E2E instalado (conteos al 2026-10-10 post-tutor-chat).
-- **3 specs activas** (`free-practice-mode`, `code-health-dashboard`, `llm-cascade`) + 21 archivadas.
+- **2 specs activas** (`code-health-dashboard`, `llm-cascade`) + 22 archivadas.
 - **MCP monolítico**: 33 tools / 8 grupos registrados en `cmd/api/wiring.go` (verificado vía `GET /mcp/tools/list`).
 - **Frontend MCPClientAdapter**: 100% hexagonal — port puro en `domain/ports/mcp-client.port.ts`, adapter en `infrastructure/adapters/mcp-client.adapter.ts`; `MCP_TOKEN_PROVIDER` registrado en `app.config.ts` (cierra el blocker de mcp-monolith PR 5 verify).
 - **Hexagonal purity**: 0 `database/sql` imports en `backend/internal/core/` (verificado vía grep); ports + driven adapters respetan la dirección de imports.
 - **Tutor Chat (S2)**: 33a entrega — 3 PRs stacked-to-main (`feature/tutor-chat-pr1` + `-pr2` + `-pr3`); backend cascade (Groq → DeepSeek → MiniMax opt-in, 5s first-token timeout); frontend con 5 signals + 7 slash commands (`/nivel`, `/pista`, `/solucion`, `/reset`, `/perfil`, `/diccionario`, `/help`) + SSE consumer; `POST /api/v1/tutor/chat` con auto-escalation state machine.
-- **Cerrado 2026-10-10:** `mcp-integration` archivado, `multi-lang-sandbox-oleada1/` eliminado (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`); 15 branches stale borradas (12 locales + 10 remotas en `github` + 3 locales follow-up); `tutor-chat` archivado a `archive/2026-10-10-tutor-chat/` (S2 cerrado, 27 tasks completos, 0 spec reconciliation).
+- **Free Practice Mode (S3)**: 4 PRs stacked-to-main (`feature/free-practice-pr1` + `-pr2` + `-pr3` + `feature/free-practice-sandbox-tests`); cascade JSON-mode `Complete` (Groq `response_format` / DeepSeek / MiniMax text+parser, 5s whole-response timeout, provider fallthrough); `ChallengeService.GenerateChallenge` un-stub (topic → objective → story → LLM → sandbox ≤3 → persist `origin="generated"`); `.atl/curricula/typescript.md` seed (15 topics F–S, formato canónico); frontend `PracticeUseCase` (signals + daily cap 20/UTC en localStorage) + 4 dumb components + `practice-page` STUB reemplazada; ruta canónica `/practice/free`; sandbox gate `ExecuteWithTests` (ejecuta `solutionCode` + `testCases` juntos, driver TypeScript, resto de lenguajes degradado) + aislamiento de auth vía TestBed stub (`MCP_TOKEN_PROVIDER`).
+- **Cerrado 2026-10-10:** `mcp-integration` archivado, `multi-lang-sandbox-oleada1/` eliminado (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`); 15 branches stale borradas (12 locales + 10 remotas en `github` + 3 locales follow-up); `tutor-chat` archivado a `archive/2026-10-10-tutor-chat/` (S2 cerrado, 27 tasks completos, 0 spec reconciliation); `free-practice-mode` archivado a `archive/2026-10-10-free-practice-mode/` (S3 cerrado — 4 PRs stacked-to-main: `e41ae23` PR 1 cascade `LLMClientPort.Complete`, `a0cc492` PR 2 `GenerateChallenge` un-stub + curricula + wiring, `4b0b1a7` PR 3 frontend `/practice/free`, `cc5e787` PR 4 sandbox gate `ExecuteWithTests` + auth isolation; 0 spec reconciliation; canonical spec en `openspec/specs/free-practice/spec.md`).
 
 Esto es un proyecto **maduro**, no un MVP. Trátalo como tal: con respeto por lo que ya está, y cuidado al añadir.
