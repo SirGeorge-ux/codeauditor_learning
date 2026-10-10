@@ -10,3 +10,4 @@ export * from './dictionary-repository.port';
 export * from './llm.port';
 export * from './mcp-client.port';
 export * from './progress-repository.port';
+export * from './tutor-chat.port';
