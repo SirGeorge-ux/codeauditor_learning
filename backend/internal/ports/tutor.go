@@ -52,13 +52,16 @@ type TutorServicePort interface {
 //   - Code is sanitized for prompt-injection patterns at the boundary
 //     (matches the mcp-pedagogical guard) so a malicious code blob
 //     cannot escape into the system prompt.
+//   - PreferredProvider is the user-side opt-in to MiniMax M3 (e.g.
+//     "minimax"). Empty value tells the cascade to walk its ranking.
 type StreamChatRequest struct {
-	UserID      string
-	Message     string
-	Route       string
-	ChallengeID string
-	Code        string
-	Output      string
+	UserID            string
+	Message           string
+	Route             string
+	ChallengeID       string
+	Code              string
+	Output            string
+	PreferredProvider string
 }
 
 // StreamChatEvent is the SSE-shaped event the handler streams back to

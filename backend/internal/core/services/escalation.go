@@ -132,10 +132,20 @@ func (t *EscalationTracker) MarkSolvedNoHints(userID, challengeID string) {
 }
 
 // ResetSession wipes the metrics for the (user, challenge) pair.
-// Called by /reset.
+// An empty challengeID resets all sessions for the user (the /reset
+// command without a challenge id clears every metric row). Called
+// by the /reset slash command.
 func (t *EscalationTracker) ResetSession(userID, challengeID string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if challengeID == "" {
+		for k := range t.metrics {
+			if k.userID == userID {
+				delete(t.metrics, k)
+			}
+		}
+		return
+	}
 	delete(t.metrics, sessionKey{userID: userID, challengeID: challengeID})
 }
 
