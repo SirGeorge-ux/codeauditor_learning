@@ -90,19 +90,23 @@ func TestCurriculumService_GetTopics_HappyPath(t *testing.T) {
 	}
 }
 
-func TestCurriculumService_GetTopics_MissingFile_ReturnsEmptySlice(t *testing.T) {
+func TestCurriculumService_GetTopics_MissingFile_ReturnsLanguageNotFound(t *testing.T) {
+	// PR 2 (free-practice-mode / S3) tightened GetTopics' contract:
+	// when the language segment is structurally valid but the
+	// curriculum file is missing, the service now surfaces
+	// ErrCurriculumLanguageNotFound instead of an empty slice so the
+	// UI can disable generation for the language instead of silently
+	// rendering an empty list. The empty-slice shape is preserved at
+	// the caller boundary by handling the sentinel.
 	dir := t.TempDir()
 	svc := NewCurriculumService(WithBaseDir(dir))
 
 	got, err := svc.GetTopics(context.Background(), GetTopicsInput{Language: "kotlin"})
-	if err != nil {
-		t.Fatalf("GetTopics(missing): %v", err)
+	if !errors.Is(err, ErrCurriculumLanguageNotFound) {
+		t.Fatalf("GetTopics(missing): err = %v, want ErrCurriculumLanguageNotFound", err)
 	}
-	if got == nil {
-		t.Errorf("GetTopics(missing) returned nil slice, want empty (LLM branches on len not nil)")
-	}
-	if len(got) != 0 {
-		t.Errorf("len(topics) = %d, want 0", len(got))
+	if got != nil {
+		t.Errorf("GetTopics(missing) returned %+v, want nil", got)
 	}
 }
 
@@ -157,6 +161,11 @@ func TestCurriculumService_GetTopic_NotFound(t *testing.T) {
 	_, err := svc.GetTopic(context.Background(), "typescript", "missing")
 	if err == nil {
 		t.Fatal("expected not-found, got nil")
+	}
+	// PR 2 (free-practice-mode / S3) tightened the missing-topic
+	// contract to surface ErrCurriculumTopicNotFound specifically.
+	if !errors.Is(err, ErrCurriculumTopicNotFound) {
+		t.Errorf("err = %v, want ErrCurriculumTopicNotFound", err)
 	}
 	if errors.Is(err, ErrCurriculumInvalidLanguage) {
 		t.Errorf("missing-topic must not be reported as invalid-language: %v", err)
