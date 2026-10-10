@@ -72,9 +72,9 @@ func (d *DeepSeek) Complete(ctx context.Context, req ports.CompleteRequest) (por
 		Type string `json:"type"`
 	}
 	type openRouterRequest struct {
-		Model          string                 `json:"model"`
-		Messages       []openAIRequestMessage `json:"messages"`
-		Stream         bool                   `json:"stream,omitempty"`
+		Model          string                    `json:"model"`
+		Messages       []openAIRequestMessage    `json:"messages"`
+		Stream         bool                      `json:"stream,omitempty"`
 		ResponseFormat *openRouterResponseFormat `json:"response_format,omitempty"`
 	}
 	msgs := []openAIRequestMessage{
