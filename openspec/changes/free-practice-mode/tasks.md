@@ -53,23 +53,24 @@ Phase 1 delivered as **stacked-to-main** chain, PR 1 of 3. Branch `feature/free-
 
 > **Branch:** `feature/free-practice-pr2` (base: `master` after PR 1 merged)
 > **Depends on:** PR 1 (`Complete` available on cascade)
+> **Status (2026-10-10):** ✅ All Phase 2 tasks landed. Branch `feature/free-practice-pr2` ready for `git merge --no-ff feature/free-practice-pr2` after user spot-check.
 
-- [ ] 2.1 Extend `GenerateChallengeHint` in `backend/internal/core/domain/models/challenge_models.go` with `TopicID string` and `Level string` (F..S)
-- [ ] 2.2 Add 4 option funcs to `ChallengeService`: `WithCurriculumService`, `WithPedagogicalService`, `WithLLMClient`, `WithSandboxExecutor` (additive, nil-safe)
-- [ ] 2.3 Add `ErrChallengeGenerationNotWired` (returned when `llm` is nil)
-- [ ] 2.4 Implement `ChallengeService.GenerateChallenge` orchestration: read topic → fetch learning objective → build story context → assemble system+prompt → call `llm.Complete` → parse JSON draft → loop ≤3 sandbox runs → `validateChallengeV2` → map F-S to difficulty → build `Challenge{Origin:"generated", GeneratedBy:"free-practice-v1", CreatedBy:userID}` → `repo.Insert` → return
-- [ ] 2.5 Add helper `difficultyForLevel(level string) string` (`F,E→junior`, `D,C→mid`, `B,A→senior`, `S→architect`)
-- [ ] 2.6 Add `ErrChallengeGenerationInvalidJSON`, `ErrChallengeGenerationInvalid`, `ErrChallengeGenerationFailedSandbox`
-- [ ] 2.7 Extend `mcp-challenges.generate_challenge` wire shape in `infrastructure/mcp/challenges/challenges_tool.go` and `adapter.go` to accept `topicId`, `level`; map into domain `GenerateChallengeHint`
-- [ ] 2.8 Add `CURRICULA_BASE_DIR` env override in `cmd/api/main.go`; default `.atl/curricula`
-- [ ] 2.9 Wire new deps into `ChallengeService` construction in `main.go` (option funcs)
-- [ ] 2.10 Create `.atl/curricula/typescript.md` — 10–15 topics, F–S ordered, format per `docs/curricula-format.md` §2 (header `# TypeScript Curriculum`, section `## Topics`, each topic `### <slug>` with description)
-- [ ] 2.11 Go unit tests (`challenge_service_generate_test.go`, table-driven): prompt assembly, level mapping, retry loop, sandbox gate, `origin/generatedBy/createdBy` fields, persist-via-Insert, unwired error, JSON parse error, validateChallengeV2 error, sandbox-fail-3-times error
-- [ ] 2.12 Go unit tests (`mcp/challenges/generate_challenge_adapter_test.go`): wire-shape mapping (topicId, level)
-- [ ] 2.13 Go quality gates: `go test`, `golangci-lint`, `gofumpt`, `go vet`, `go build` all pass
-- [ ] 2.14 Hexagonal purity check: 0 `database/sql` imports in `backend/internal/core/`
+- [x] 2.1 Extend `GenerateChallengeHint` in `backend/internal/core/domain/models/challenge_models.go` with `TopicID string` and `Level string` (F..S)
+- [x] 2.2 Add 4 option funcs to `ChallengeService`: `WithCurriculumService`, `WithPedagogicalService`, `WithLLMClient`, `WithSandboxExecutor` (additive, nil-safe)
+- [x] 2.3 Add `ErrChallengeGenerationNotWired` (returned when `llm` is nil)
+- [x] 2.4 Implement `ChallengeService.GenerateChallenge` orchestration: read topic → fetch learning objective → build story context → assemble system+prompt → call `llm.Complete` → parse JSON draft → loop ≤3 sandbox runs → `validateChallengeV2` → map F-S to difficulty → build `Challenge{Origin:"generated", GeneratedBy:"free-practice-v1", CreatedBy:userID}` → `repo.Insert` → return
+- [x] 2.5 Add helper `difficultyForLevel(level string) string` (`F,E→junior`, `D,C→mid`, `B,A→senior`, `S→architect`)
+- [x] 2.6 Add `ErrChallengeGenerationInvalidJSON`, `ErrChallengeGenerationInvalid`, `ErrChallengeGenerationFailedSandbox`
+- [x] 2.7 Extend `mcp-challenges.generate_challenge` wire shape in `infrastructure/mcp/challenges/challenges_tool.go` and `adapter.go` to accept `topicId`, `level`; map into domain `GenerateChallengeHint`
+- [x] 2.8 Add `CURRICULA_BASE_DIR` env override in `cmd/api/main.go`; default `.atl/curricula`
+- [x] 2.9 Wire new deps into `ChallengeService` construction in `main.go` (option funcs)
+- [x] 2.10 Create `.atl/curricula/typescript.md` — 10–15 topics, F–S ordered, format per `docs/curricula-format.md` §2 (header `# TypeScript Curriculum`, section `## Topics`, each topic `### <slug>` with description)
+- [x] 2.11 Go unit tests (`challenge_service_generate_test.go`, table-driven): prompt assembly, level mapping, retry loop, sandbox gate, `origin/generatedBy/createdBy` fields, persist-via-Insert, unwired error, JSON parse error, validateChallengeV2 error, sandbox-fail-3-times error
+- [x] 2.12 Go unit tests (`mcp/challenges/generate_challenge_adapter_test.go`): wire-shape mapping (topicId, level)
+- [x] 2.13 Go quality gates: `go test`, `golangci-lint`, `gofumpt`, `go vet`, `go build` all pass
+- [x] 2.14 Hexagonal purity check: 0 `database/sql` imports in `backend/internal/core/`
 
-### PR 2 outcome (planned)
+### PR 2 outcome
 
 Phase 2 delivered as **stacked-to-main** chain, PR 2 of 3. Branch `feature/free-practice-pr2`, base `master` after PR 1. The un-stubbed `GenerateChallenge` is reachable end-to-end through `mcp-challenges.generate_challenge`. The typescript curriculum is the canonical example; other languages arrive via `add-curriculum-topic.harness.md` follow-ups.
 
