@@ -68,10 +68,6 @@ func (m *MiniMax) chatCompletionURL() string {
 // response for the first JSON object. Brace counting respects
 // strings (no nested-string-escape handling — the models do not
 // emit unusual string contents inside JSON).
-//
-// [S3 PR 1 — the function lands alongside the MiniMax provider's
-// real Complete impl in a follow-up commit; the symbol is
-// referenced from the test file so the body shape is locked.]
 func extractFirstJSONObject(s string) string {
 	start := -1
 	depth := 0
@@ -108,14 +104,76 @@ func extractFirstJSONObject(s string) string {
 }
 
 // Complete is the MiniMax M3 non-streaming entry point (S3 PR 1).
-// The body shape + JSON-extraction land in a follow-up commit; here
-// we ship the stub so Cascade.Complete's compile-time guard stays
-// green.
+//
+// MiniMax M3 does NOT support `response_format=json_object`; per
+// design.md §"Risks" we ask for free text and extract the first
+// JSON object via extractFirstJSONObject. When extraction fails
+// (no `{...}` block found) the adapter returns the raw text —
+// callers (ChallengeService in PR 2) decide whether to surface
+// ErrChallengeGenerationInvalidJSON downstream.
 func (m *MiniMax) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
 	if m.IsDisabled() {
 		return ports.CompleteResponse{}, ErrProviderDisabled
 	}
-	return ports.CompleteResponse{}, ErrProviderDisabled
+	// MiniMax M3 is text-only — NEVER set response_format, even
+	// when req.JSONSchema is non-nil.
+	body, err := json.Marshal(openAIRequest{
+		Model: m.model,
+		Messages: []openAIRequestMessage{
+			{Role: "system", Content: req.System},
+			{Role: "user", Content: req.Prompt},
+		},
+		Stream: false,
+	})
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: marshal: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, m.chatCompletionURL(), bytes.NewReader(body))
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: new req: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+m.apiKey)
+
+	start := time.Now()
+	resp, err := m.http.Do(httpReq)
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: do: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		limited := io.LimitReader(resp.Body, 1024)
+		msg, _ := io.ReadAll(limited)
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: status %d: %s", resp.StatusCode, string(msg))
+	}
+	var parsed struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: decode: %w", err)
+	}
+	if len(parsed.Choices) == 0 {
+		return ports.CompleteResponse{}, fmt.Errorf("minimax: no choices in response")
+	}
+	raw := parsed.Choices[0].Message.Content
+	// If the caller asked for a JSON schema and MiniMax emitted a
+	// JSON object buried in prose, extract it. Otherwise the raw
+	// text is forwarded as-is.
+	content := raw
+	if req.JSONSchema != nil {
+		if extracted := extractFirstJSONObject(raw); extracted != "" {
+			content = extracted
+		}
+	}
+	return ports.CompleteResponse{
+		Content:  content,
+		Provider: m.Name(),
+		Latency:  time.Since(start),
+	}, nil
 }
 
 // StreamChat is the providerClient implementation. Wire shape

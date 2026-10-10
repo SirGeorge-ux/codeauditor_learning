@@ -60,14 +60,76 @@ func (d *DeepSeek) chatCompletionURL() string {
 }
 
 // Complete is the OpenRouter-routed non-streaming JSON-mode entry
-// point (S3 PR 1). The body shape + response parsing land in a
-// follow-up commit; here we ship the stub so Cascade.Complete's
-// compile-time guard stays green.
+// point (S3 PR 1). OpenRouter honors the OpenAI-compatible wire
+// format with `response_format: {type:"json_object"}` for providers
+// that support it (DeepSeek V3 does). The returned Content is the
+// raw model output (a JSON object when JSONSchema is supplied).
 func (d *DeepSeek) Complete(ctx context.Context, req ports.CompleteRequest) (ports.CompleteResponse, error) {
 	if d.IsDisabled() {
 		return ports.CompleteResponse{}, ErrProviderDisabled
 	}
-	return ports.CompleteResponse{}, ErrProviderDisabled
+	type openRouterResponseFormat struct {
+		Type string `json:"type"`
+	}
+	type openRouterRequest struct {
+		Model          string                 `json:"model"`
+		Messages       []openAIRequestMessage `json:"messages"`
+		Stream         bool                   `json:"stream,omitempty"`
+		ResponseFormat *openRouterResponseFormat `json:"response_format,omitempty"`
+	}
+	msgs := []openAIRequestMessage{
+		{Role: "system", Content: req.System},
+		{Role: "user", Content: req.Prompt},
+	}
+	reqBody := openRouterRequest{
+		Model:    d.model,
+		Messages: msgs,
+		Stream:   false,
+	}
+	if req.JSONSchema != nil {
+		reqBody.ResponseFormat = &openRouterResponseFormat{Type: "json_object"}
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: marshal: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, d.chatCompletionURL(), bytes.NewReader(body))
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: new req: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+d.apiKey)
+	httpReq.Header.Set("X-Title", "codeauditor-tutor")
+
+	start := time.Now()
+	resp, err := d.http.Do(httpReq)
+	if err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: do: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		limited := io.LimitReader(resp.Body, 1024)
+		msg, _ := io.ReadAll(limited)
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: status %d: %s", resp.StatusCode, string(msg))
+	}
+	var parsed struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: decode: %w", err)
+	}
+	if len(parsed.Choices) == 0 {
+		return ports.CompleteResponse{}, fmt.Errorf("deepseek: no choices in response")
+	}
+	return ports.CompleteResponse{
+		Content:  parsed.Choices[0].Message.Content,
+		Provider: d.Name(),
+		Latency:  time.Since(start),
+	}, nil
 }
 
 // StreamChat is the providerClient implementation. Body shape mirrors
