@@ -134,7 +134,8 @@ func TestWithOptionFuncs_AdditiveNilSafe(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeChallengeRepo{}
-	svc := NewChallengeService(repo,
+	svc := NewChallengeService(
+		repo,
 		WithCurriculumService(nil),
 		WithPedagogicalService(nil),
 		WithLLMClient(nil),
@@ -182,7 +183,8 @@ func TestGenerateChallenge_UnwiredLLM_ReturnsErrChallengeGenerationNotWired(t *t
 func TestGenerateChallenge_LLMNil_NilSafetyShortCircuits(t *testing.T) {
 	t.Parallel()
 
-	svc := NewChallengeService(&fakeChallengeRepo{},
+	svc := NewChallengeService(
+		&fakeChallengeRepo{},
 		WithCurriculumService(nil),
 		WithPedagogicalService(nil),
 		WithSandboxExecutor(nil),

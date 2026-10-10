@@ -257,7 +257,8 @@ func main() {
 	// un-stubbed GenerateChallenge orchestration lives behind these
 	// option funcs; an unconfigured deployment (e.g. test with no API
 	// keys) gets ErrChallengeGenerationNotWired on the wire.
-	challengeService := services.NewChallengeService(challengeRepo,
+	challengeService := services.NewChallengeService(
+		challengeRepo,
 		services.WithCurriculumService(curriculumService),
 		services.WithPedagogicalService(pedagogicalService),
 		services.WithLLMClient(sharedCascade),

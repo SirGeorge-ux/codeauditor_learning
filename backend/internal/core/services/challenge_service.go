@@ -435,7 +435,7 @@ func (s *ChallengeService) GenerateChallenge(ctx context.Context, userID string,
 	// 5. Loop ≤ 3 attempts: LLM → JSON parse → sandbox gate → validate.
 	const maxAttempts = 3
 	var (
-		draft  models.CreateChallengeInput
+		draft   models.CreateChallengeInput
 		lastErr error
 	)
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
@@ -590,11 +590,11 @@ func challengeJSONSchema() *ports.JSONSchema {
 	return &ports.JSONSchema{
 		Type: "object",
 		Properties: map[string]any{
-			"title":               map[string]any{"type": "string"},
-			"description":         map[string]any{"type": "string"},
-			"language":            map[string]any{"type": "string"},
-			"code":                map[string]any{"type": "string"},
-			"learningObjectives":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			"title":              map[string]any{"type": "string"},
+			"description":        map[string]any{"type": "string"},
+			"language":           map[string]any{"type": "string"},
+			"code":               map[string]any{"type": "string"},
+			"learningObjectives": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"hints": map[string]any{
 				"type": "array",
 				"items": map[string]any{
