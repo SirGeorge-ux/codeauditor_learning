@@ -3,6 +3,7 @@
 export * from './audit-event';
 export * from './audit-session';
 export * from './challenge';
+export * from './chat';
 export * from './finding';
 export * from './language-progress';
 export * from './learning-profile';
