@@ -9,6 +9,7 @@ import { signal } from '@angular/core';
 import { PracticePageComponent } from './practice-page.component';
 import { PracticeService } from '../../services/practice.service';
 import { TutorChatService } from '../../services/tutor-chat.service';
+import { MCP_TOKEN_PROVIDER } from '../../adapters/mcp-client.adapter';
 import { Challenge } from '../../../domain/models/challenge';
 import { ChatMessage, SocraticLevel } from '../../../domain/models/chat';
 import { CurriculumTopic } from '../../../domain/models/curriculum';
@@ -121,6 +122,19 @@ describe('PracticePageComponent', () => {
         provideRouter([]),
         { provide: TutorChatService, useValue: makeStubTutorChatService() },
         { provide: PracticeService, useValue: practice },
+        // Phase 5 (free-practice-mode): the production
+        // PracticeService injects MCPClientAdapter which reads
+        // MCP_TOKEN_PROVIDER. We stub both services via useValue,
+        // so neither reaches the provider at runtime — but
+        // registering a static stub here means any future edit
+        // that touches a child that asks for MCP_TOKEN_PROVIDER
+        // (not just the stub) will not silently leak the
+        // AuthService chain. Belt-and-suspenders against the
+        // practice-vs-auth.service.spec.ts flake.
+        {
+          provide: MCP_TOKEN_PROVIDER,
+          useValue: { getToken: (): string | null => 'fake-token' },
+        },
       ],
     });
   }
