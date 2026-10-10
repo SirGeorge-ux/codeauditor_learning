@@ -48,11 +48,11 @@ Reused without re-implementation:
 
 ## Phase 2: Core Backend Service
 
-- [ ] 2.1 Create `backend/internal/core/services/tutor_service.go` — StreamChat, ProcessCommand, SummarizeSession
-- [ ] 2.2 Build ChatContext assembly pipeline (5 system messages: identity, socratic, user, location, history)
-- [ ] 2.3 Implement auto-escalation state machine (failures≥2, give-up≥3, 10m-stuck, solved-no-hints)
-- [ ] 2.4 Create `backend/internal/infrastructure/driving/tutor_handler.go` — POST /api/v1/tutor/chat with SSE
-- [ ] 2.5 Wire LLM cascade: Groq `llama-3.3-70b-versatile` → DeepSeek V3 fallback, MiniMax M3 opt-in
+- [x] 2.1 Create `backend/internal/core/services/tutor_service.go` — StreamChat, ProcessCommand, SummarizeSession
+- [x] 2.2 Build ChatContext assembly pipeline (5 system messages: identity, socratic, user, location, history)
+- [x] 2.3 Implement auto-escalation state machine (failures≥2, give-up≥3, 10m-stuck, solved-no-hints)
+- [x] 2.4 Create `backend/internal/infrastructure/driving/tutor_handler.go` — POST /api/v1/tutor/chat with SSE
+- [x] 2.5 Wire LLM cascade: Groq `llama-3.3-70b-versatile` → DeepSeek V3 fallback, MiniMax M3 opt-in
 
 ## Phase 3: Frontend Domain & Application
 

@@ -244,6 +244,38 @@ func main() {
 	auditHandler := handlers.NewAuditHandler(auditService)
 	log.Println("Audit service initialized")
 
+	// Tutor chat system (PR 2 of the tutor-chat change): constructs
+	// the TutorService + LLM cascade + HTTP handler. Reuses the
+	// mcp-monolith user profile repository so the same DB row is
+	// read by both the JSON-RPC and HTTP paths. The cascade
+	// silently skips any provider without an API key.
+	progressRepoForTutor := supabase.NewSupabaseUserProfileRepository(db)
+	tutorWiring, tutorWiringErr := TutorSystem(TutorSystemDeps{
+		ProfileRepository: supabase.NewSupabaseProgressRepository(db),
+		PromptsDir:        filepath.Join(".", ".atl", "prompts"),
+		Providers: TutorProvidersConfig{
+			GroqBaseURL:     "https://api.groq.com/openai/v1",
+			GroqAPIKey:      os.Getenv("GROQ_API_KEY"),
+			GroqModel:       os.Getenv("GROQ_MODEL"),
+			DeepSeekBaseURL: "https://openrouter.ai/api/v1",
+			DeepSeekAPIKey:  os.Getenv("OPENROUTER_API_KEY"),
+			DeepSeekModel:   os.Getenv("DEEPSEEK_MODEL"),
+			MiniMaxBaseURL:  os.Getenv("MINIMAX_BASE_URL"),
+			MiniMaxAPIKey:   os.Getenv("MINIMAX_API_KEY"),
+			MiniMaxModel:    os.Getenv("MINIMAX_MODEL"),
+		},
+	})
+	if tutorWiringErr != nil {
+		// The .atl/prompts tree is part of the production image, so
+		// a missing prompt at process start is a fatal deploy bug —
+		// not a runtime degradation. Failing fast keeps the
+		// diagnostic surface tight.
+		log.Fatalf("Tutor wiring failed: %v", tutorWiringErr)
+	}
+	tutorHandler := tutorWiring.Handler
+	_ = progressRepoForTutor // keep the userProfile dep thread alive for the S5 cascade path
+	log.Println("Tutor service initialized (LLM cascade + SSE handler)")
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(supabaseClient, authAdapter, db)
 
@@ -321,6 +353,13 @@ func main() {
 		r.Put("/users/{id}/progress/{lang}", progressHandler.UpdateLanguageProgress)
 		r.Get("/users/{id}/learning-profile", progressHandler.GetLearningProfile)
 		r.Put("/users/{id}/learning-profile", progressHandler.UpdateLearningProfile)
+		// Tutor chat endpoint (PR 2 of the tutor-chat change). Streams
+		// SSE token/status/done/error frames per design.md §5. The
+		// AuthMiddleware above enforces JWT presence so no inline
+		// check is required in the handler — but the handler still
+		// surfaces a 400 if the user_id stamp is missing (defense
+		// in depth against wiring races).
+		r.Post("/tutor/chat", tutorHandler.StreamChat)
 	})
 
 	addr := ":" + port
