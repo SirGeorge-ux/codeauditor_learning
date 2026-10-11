@@ -25,6 +25,9 @@ import (
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
+
+	codehealthsvc "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 )
 
 // analyzeRepoArgs is the wire shape (snake_case, mirroring the
@@ -109,11 +112,15 @@ func (t *analyzeRepoTool) Execute(ctx context.Context, args json.RawMessage) (an
 	}
 	analysisID, status, err := t.svc.AnalyzeRepo(ctx, userID, a.Owner, a.Name, a.Source, branch, a.Force)
 	if err != nil {
-		// The daily-cap sentinel from the service is a
-		// `*rateLimitedError` (mcpkit.NewRateLimitedError) so
-		// the dispatcher's IsRateLimitedError check fires
-		// here and maps to JSON-RPC -32609. Other errors
-		// propagate to -32603.
+		// The daily-cap sentinel from the service is
+		// mapped to mcpkit.NewRateLimitedError so the
+		// dispatcher's IsRateLimitedError check fires and
+		// the response is JSON-RPC -32609 (per
+		// REQ-CODE-HEALTH-011). Other errors propagate to
+		// -32603.
+		if errors.Is(err, codehealthsvc.ErrCodeHealthDailyCapReached) {
+			return nil, mcpkit.NewRateLimitedError(t.Name())
+		}
 		return nil, err
 	}
 	return map[string]any{

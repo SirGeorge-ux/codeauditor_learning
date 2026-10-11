@@ -18,9 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
 	"sync"
 	"testing"
+
+	codehealthsvc "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
+	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 )
 
 // fakeCodeHealthService is the hand-rolled stand-in for the local
@@ -75,7 +77,12 @@ func (f *fakeCodeHealthService) AnalyzeRepo(_ context.Context, userID, owner, na
 	f.lastAnalyzeBranch = branch
 	f.lastAnalyzeForce = force
 	if f.dailyCapHit {
-		return "", "", errors.New("Daily limit reached, resets at 00:00 UTC")
+		// Return the canonical sentinel so the tool's
+		// errors.Is branch fires and the response is
+		// JSON-RPC -32609 (defense-in-depth: the
+		// production service returns this exact sentinel
+		// from CountSince(midnightUTC) >= 5).
+		return "", "", codehealthsvc.ErrCodeHealthDailyCapReached
 	}
 	if f.analyzeErr != nil {
 		return "", "", f.analyzeErr
@@ -313,11 +320,14 @@ func TestAnalyzeRepoTool_DailyCap_ReturnsRateLimitedError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected daily-cap error, got nil")
 	}
-	// The error MUST mention the daily cap so the user-facing
-	// notice "Daily limit reached, resets at 00:00 UTC" is
-	// visible in the response.
-	if !strings.Contains(err.Error(), "Daily limit reached") {
-		t.Errorf("daily-cap error should mention 'Daily limit reached', got %q", err.Error())
+	// The tool maps the service's daily-cap sentinel to
+	// mcpkit.NewRateLimitedError so the dispatcher's
+	// IsRateLimitedError check fires and the response is
+	// JSON-RPC -32609 (defense-in-depth: the client
+	// localStorage cap is the primary control; this is the
+	// backstop).
+	if !mcpkit.IsRateLimitedError(err) {
+		t.Errorf("daily-cap error should be a rate-limit-flavored error, got %T %v", err, err)
 	}
 }
 

@@ -28,6 +28,19 @@ type HealthReport struct {
 // this to JSON-RPC -32603 (per design.md tradeoffs).
 var ErrCodeHealthPDFNotImplemented = errors.New("code-health: pdf report format is not implemented yet (S5)")
 
+// CodeHealthDailyCap is the per-user daily cap on
+// AnalyzeRepo submissions (REQ-CODE-HEALTH-011). A user
+// with >= this many analyses since UTC midnight is
+// rejected with ErrCodeHealthDailyCapReached so the MCP
+// analyze_repo tool can surface JSON-RPC -32609.
+const CodeHealthDailyCap = 5
+
+// ErrCodeHealthDailyCapReached is returned by AnalyzeRepo
+// when the user has hit the daily cap. The MCP tool maps
+// this to mcpkit.NewRateLimitedError so the dispatcher's
+// IsRateLimitedError branch fires (-32609).
+var ErrCodeHealthDailyCapReached = errors.New("code-health: daily limit reached, resets at 00:00 UTC")
+
 // SuppressionResult is the structured payload the MCP
 // mcp-code-health.suppress_issue tool returns. The
 // SuppressionID is a deterministic hash of
@@ -167,6 +180,17 @@ func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo
 	// tests that pre-date the multi-source refactor).
 	if source == "" {
 		source = string(models.SourceGogs)
+	}
+	// Daily-cap defense-in-depth (REQ-CODE-HEALTH-011).
+	// The client's localStorage cap is the primary control;
+	// this server-side count is the backstop. The check
+	// happens BEFORE the pending-row insert so a rejected
+	// call does not consume an analysis_id. Errors from
+	// the count query are non-fatal: if the DB is
+	// transiently unavailable we let the analysis proceed
+	// (the client cap is the primary control).
+	if count, err := s.repo.CountSince(ctx, userID, s.opts.Now().UTC().Truncate(24*time.Hour)); err == nil && count >= CodeHealthDailyCap {
+		return "", ErrCodeHealthDailyCapReached
 	}
 	// Insert the pending row first so we have a row to update.
 	pending := &models.CodeHealthAnalysis{
