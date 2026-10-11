@@ -2,13 +2,19 @@ package gogs
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
+
+// Compile-time guard: GogsClient implements ports.SourceClient.
+var _ ports.SourceClient = (*GogsClient)(nil)
 
 const maxFileSize int64 = 1 << 20 // 1 MB
 
@@ -83,6 +89,52 @@ func (c *GogsClient) ListRepos(ctx context.Context) ([]Repo, error) {
 	return repos, nil
 }
 
+// ListFiles calls GET /api/v1/repos/:owner/:repo/git/trees/:ref?recursive=1
+// to fetch the repo tree, then returns the blob entries as
+// []ports.FileEntry (Path, Size, SHA). Tree entries (directories)
+// are filtered out — the analyzer's per-file loop operates on
+// blobs only. SHA is the git blob SHA so the analysis cache can
+// key on it across renames (spec REQ-CODE-HEALTH-009).
+func (c *GogsClient) ListFiles(ctx context.Context, owner, repo, ref string) ([]ports.FileEntry, error) {
+	url := fmt.Sprintf("%s/api/v1/repos/%s/%s/git/trees/%s?recursive=1",
+		c.baseURL, owner, repo, ref)
+
+	respBody, err := c.doRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		SHA  string `json:"sha"`
+		Tree []struct {
+			Path string `json:"path"`
+			Type string `json:"type"`
+			SHA  string `json:"sha"`
+			Size int64  `json:"size"`
+		} `json:"tree"`
+	}
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return nil, &GogsError{
+			Message: fmt.Sprintf("failed to decode tree response: %v", err),
+			Code:    "GOGS_PARSE_ERROR",
+			Status:  http.StatusBadGateway,
+		}
+	}
+
+	out := make([]ports.FileEntry, 0, len(resp.Tree))
+	for _, entry := range resp.Tree {
+		if entry.Type != "blob" {
+			continue
+		}
+		out = append(out, ports.FileEntry{
+			Path: entry.Path,
+			SHA:  entry.SHA,
+			Size: entry.Size,
+		})
+	}
+	return out, nil
+}
+
 // GetFileContents calls GET /api/v1/repos/:owner/:repo/contents/:path?ref=:ref
 // to fetch file contents. It enforces a 1 MB size limit.
 func (c *GogsClient) GetFileContents(ctx context.Context, owner, repo, ref, path string) (*FileContent, error) {
@@ -113,6 +165,53 @@ func (c *GogsClient) GetFileContents(ctx context.Context, owner, repo, ref, path
 	}
 
 	return &fc, nil
+}
+
+// GetFileContent is the port-shaped wrapper around GetFileContents.
+// The code-health service consumes this through ports.SourceClient
+// (the interface defined in internal/ports/code_health.go); the
+// legacy gogs HTTP handler keeps the original GetFileContents
+// method for backward compatibility.
+func (c *GogsClient) GetFileContent(ctx context.Context, owner, repo, branch, path string) (*ports.FileContent, error) {
+	fc, err := c.GetFileContents(ctx, owner, repo, branch, path)
+	if err != nil {
+		return nil, err
+	}
+	// Gogs returns base64-encoded content; decode to plaintext.
+	decoded, decErr := decodeBase64Content(fc.Content, fc.Encoding)
+	if decErr != nil {
+		return nil, &GogsError{
+			Message: fmt.Sprintf("failed to decode base64 content: %v", decErr),
+			Code:    "GOGS_DECODE_ERROR",
+			Status:  http.StatusBadGateway,
+		}
+	}
+	return &ports.FileContent{
+		Path:    fc.Path,
+		Content: decoded,
+		SHA:     "",
+		Size:    fc.Size,
+	}, nil
+}
+
+// decodeBase64Content is a tiny helper that mirrors the GitHub
+// adapter's content decoding. Gogs returns base64 by default;
+// the spec assumes the canonical encoding.
+func decodeBase64Content(content, encoding string) (string, error) {
+	switch encoding {
+	case "base64":
+		// Gogs may insert newlines every 60 chars; strip them
+		// before decoding.
+		cleaned := strings.ReplaceAll(content, "\n", "")
+		raw, err := base64.StdEncoding.DecodeString(cleaned)
+		if err != nil {
+			return "", err
+		}
+		return string(raw), nil
+	default:
+		// "none" or unknown: pass through.
+		return content, nil
+	}
 }
 
 // doRequest executes an HTTP request against the Gogs API and returns the body.
