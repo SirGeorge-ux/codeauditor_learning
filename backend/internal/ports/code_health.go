@@ -63,8 +63,12 @@ var ErrCodeHealthAnalysisNotFound = errors.New("code-health analysis not found")
 // feedback lives behind a separate pair of methods (task 1.19).
 type CodeHealthRepository interface {
 	// InsertAnalysis persists a fresh analysis row. The adapter
-	// generates the ID via the SQL `gen_random_uuid()` default.
-	InsertAnalysis(ctx context.Context, a *models.CodeHealthAnalysis) error
+	// generates the ID via the SQL `gen_random_uuid()` default
+	// and returns the persisted row (populated with id,
+	// created_at, expires_at). The input `a` is NOT mutated;
+	// callers should use the returned value as the source of
+	// truth.
+	InsertAnalysis(ctx context.Context, a *models.CodeHealthAnalysis) (models.CodeHealthAnalysis, error)
 
 	// UpdateStatus flips the row's status enum. errMsg is non-empty
 	// when status = failed; the adapter writes the column as NULL
@@ -93,10 +97,12 @@ type CodeHealthRepository interface {
 	// (>= 5 since UTC midnight → reject).
 	CountSince(ctx context.Context, userID string, since time.Time) (int, error)
 
-	// InsertIssue persists one issue row. The service calls this in
-	// bulk after the per-file analysis loop; the adapter batches in a
-	// single transaction.
-	InsertIssue(ctx context.Context, i *models.CodeHealthIssue) error
+	// InsertIssue persists one issue row and returns the row
+	// populated with the DB-assigned id + created_at. The
+	// service calls this in bulk after the per-file analysis
+	// loop; the adapter persists each issue in its own statement
+	// (PostgreSQL batches them in a single connection turn).
+	InsertIssue(ctx context.Context, i *models.CodeHealthIssue) (models.CodeHealthIssue, error)
 
 	// ListIssues returns issues for analysisID, optionally filtered by
 	// severity and capped at limit. Sorted by severity weight DESC
