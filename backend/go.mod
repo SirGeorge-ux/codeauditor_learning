@@ -10,4 +10,8 @@ require (
 
 require github.com/DATA-DOG/go-sqlmock v1.5.2
 
-require github.com/sashabaranov/go-openai v1.41.2 // indirect
+require (
+	github.com/sashabaranov/go-openai v1.41.2 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+)

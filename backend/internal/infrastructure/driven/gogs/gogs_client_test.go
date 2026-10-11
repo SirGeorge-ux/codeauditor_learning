@@ -525,3 +525,77 @@ func TestGetFileContents_VarStatusCodes(t *testing.T) {
 		})
 	}
 }
+
+// --- ListFiles tests (task 1.3) ---
+
+func TestListFiles_HappyPath(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expectedPath := "/api/v1/repos/octocat/hello-world/git/trees/main"
+		if r.URL.Path != expectedPath {
+			t.Errorf("expected path %s, got %s", expectedPath, r.URL.Path)
+		}
+		if r.URL.Query().Get("recursive") != "1" {
+			t.Errorf("expected recursive=1, got %s", r.URL.Query().Get("recursive"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"sha": "tree-sha",
+			"tree": [
+				{"path": "src", "type": "tree", "sha": "tree-src", "size": 0},
+				{"path": "src/main.go", "type": "blob", "sha": "blob-main", "size": 1024},
+				{"path": "README.md", "type": "blob", "sha": "blob-readme", "size": 256}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	client := NewGogsClient(server.URL, "test-token")
+	files, err := client.ListFiles(context.Background(), "octocat", "hello-world", "main")
+	if err != nil {
+		t.Fatalf("ListFiles: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("ListFiles len = %d, want 2 (blobs only)", len(files))
+	}
+	if files[0].Path != "src/main.go" {
+		t.Errorf("ListFiles[0].Path = %q, want src/main.go", files[0].Path)
+	}
+	if files[0].SHA != "blob-main" {
+		t.Errorf("ListFiles[0].SHA = %q, want blob-main", files[0].SHA)
+	}
+}
+
+func TestListFiles_EmptyRepo(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"sha": "empty", "tree": []}`))
+	}))
+	defer server.Close()
+
+	client := NewGogsClient(server.URL, "test-token")
+	files, err := client.ListFiles(context.Background(), "octocat", "empty", "main")
+	if err != nil {
+		t.Fatalf("ListFiles: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("ListFiles empty repo len = %d, want 0", len(files))
+	}
+}
+
+func TestListFiles_NotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"message": "repo not found"}`))
+	}))
+	defer server.Close()
+
+	client := NewGogsClient(server.URL, "test-token")
+	_, err := client.ListFiles(context.Background(), "octocat", "missing", "main")
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+	gogsErr, ok := err.(*GogsError)
+	if !ok || gogsErr.Code != "FILE_NOT_FOUND" {
+		t.Errorf("expected FILE_NOT_FOUND, got %v", err)
+	}
+}
