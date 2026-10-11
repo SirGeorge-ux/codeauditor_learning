@@ -232,13 +232,21 @@ func (a *serviceAdapter) GetRepoIssues(ctx context.Context, userID, owner, name,
 	return payload, nil
 }
 
-// GenerateHealthReport stub. Real implementation lands in
-// generate_health_report.go (PR 2, task 2.5).
-func (a *serviceAdapter) GenerateHealthReport(_ context.Context, _, analysisID, format string) (string, string, string, error) {
+// GenerateHealthReport renders the analysis as a markdown (or
+// pdf — S5) report. The service's HealthReport carries
+// {ReportID, Format, Content}; the adapter forwards the
+// fields unchanged. The MVP supports markdown only; pdf
+// returns ErrCodeHealthPDFNotImplemented so the MCP tool can
+// map it to -32603.
+func (a *serviceAdapter) GenerateHealthReport(ctx context.Context, userID, analysisID, format string) (string, string, string, error) {
 	if a.svc == nil {
 		return "", "", "", fmt.Errorf("codehealth: service is nil")
 	}
-	return "stub-rpt-" + analysisID, "# stub report\n", format, nil
+	report, err := a.svc.GenerateHealthReport(ctx, userID, analysisID, format)
+	if err != nil {
+		return "", "", "", err
+	}
+	return report.ReportID, report.Content, report.Format, nil
 }
 
 // SuppressIssue records a user-marked "not an issue" feedback.
