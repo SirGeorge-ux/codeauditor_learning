@@ -46,8 +46,13 @@ func (r *InjectionRule) DefaultSeverity() models.Severity { return models.Severi
 func (r *InjectionRule) Weight() int                      { return 15 }
 
 func (r *InjectionRule) Detect(_ context.Context, file File) ([]models.CodeHealthIssue, error) {
-	var issues []models.CodeHealthIssue
 	cleaned := stripLineComments(file.Content)
+
+	// Pre-count: each regex's match count is the upper bound.
+	total := len(r.evalRe.FindAllStringIndex(cleaned, -1)) +
+		len(r.execRe.FindAllStringIndex(cleaned, -1)) +
+		len(r.sqlRe.FindAllStringIndex(cleaned, -1))
+	issues := make([]models.CodeHealthIssue, 0, total)
 
 	appendHit := func(re *regexp.Regexp, label, fix string) {
 		matches := re.FindAllStringIndex(cleaned, -1)

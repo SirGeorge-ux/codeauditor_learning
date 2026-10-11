@@ -53,8 +53,8 @@ func (r *LeakyAbstractionRule) Detect(_ context.Context, file File) ([]models.Co
 		// file but the language gate keeps the cost low.
 		return nil, nil
 	}
-	var issues []models.CodeHealthIssue
 	matches := r.importRe.FindAllStringSubmatch(file.Content, -1)
+	issues := make([]models.CodeHealthIssue, 0, len(matches))
 	for _, m := range matches {
 		// m[1] is the single-line `import "..."` path; m[2] is
 		// the grouped `import ( ... )` path. Use whichever is

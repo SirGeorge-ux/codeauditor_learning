@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/anomalyco/codeauditor/backend/internal/core/services/code_health/rules"
 	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
@@ -56,11 +54,3 @@ func newRulesDefault() *rules.Registry {
 // defaultRegistry in service_test.go. The alias keeps the
 // test's signature short.
 type rulesReg = rules.Registry
-
-// requireNotNil is a tiny helper that wraps require.NotNil for
-// the analyzer's mandatory-field check; kept here so the test
-// files don't each declare their own.
-func requireNotNil(t *testing.T, v interface{}) {
-	t.Helper()
-	require.NotNil(t, v)
-}

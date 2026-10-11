@@ -65,50 +65,6 @@ func (f *fakeCache) Set(_ context.Context, userID, fileSHA string, issues []mode
 	return nil
 }
 
-type fakeRepo struct{}
-
-func (fakeRepo) InsertAnalysis(context.Context, *models.CodeHealthAnalysis) (models.CodeHealthAnalysis, error) {
-	return models.CodeHealthAnalysis{}, nil
-}
-func (fakeRepo) UpdateStatus(context.Context, string, string, string, string) error { return nil }
-func (fakeRepo) Complete(context.Context, string, string, int, []models.CodeHealthIssue, map[string]float64, string) error {
-	return nil
-}
-
-func (fakeRepo) FindByID(context.Context, string, string) (models.CodeHealthAnalysis, error) {
-	return models.CodeHealthAnalysis{}, nil
-}
-
-func (fakeRepo) ListHistory(context.Context, string, string, string, string, int) ([]models.CodeHealthAnalysis, error) {
-	return nil, nil
-}
-func (fakeRepo) CountSince(context.Context, string, time.Time) (int, error) { return 0, nil }
-func (fakeRepo) InsertIssue(context.Context, *models.CodeHealthIssue) (models.CodeHealthIssue, error) {
-	return models.CodeHealthIssue{}, nil
-}
-
-func (fakeRepo) ListIssues(context.Context, string, string, int) ([]models.CodeHealthIssue, error) {
-	return nil, nil
-}
-
-func (fakeRepo) InsertSuppression(context.Context, string, string, string, int, *string) error {
-	return nil
-}
-
-func (fakeRepo) IsSuppressed(context.Context, string, string, string, int) (bool, error) {
-	return false, nil
-}
-
-type fakeOllama struct {
-	called int
-	resp   string
-}
-
-func (f *fakeOllama) Generate(_ context.Context, _, _ string) (string, error) {
-	f.called++
-	return f.resp, nil
-}
-
 // TestAnalyzer_FiltersSkippedPaths covers the spec's filter
 // (REQ-CODE-HEALTH-001 / REQ-CODE-HEALTH-011): the analyzer MUST
 // skip files in node_modules/, .git/, dist/, vendor/, binary

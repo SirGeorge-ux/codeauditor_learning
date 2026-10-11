@@ -51,10 +51,10 @@ func (r *NPlusOneRule) Weight() int                      { return 8 }
 const nPlusOneWindow = 8 // lines after a loop opener to scan for DB calls
 
 func (r *NPlusOneRule) Detect(_ context.Context, file File) ([]models.CodeHealthIssue, error) {
-	var issues []models.CodeHealthIssue
 	lines := strings.Split(file.Content, "\n")
 
 	loopHits := r.loopRe.FindAllStringIndex(file.Content, -1)
+	issues := make([]models.CodeHealthIssue, 0, len(loopHits))
 	for _, m := range loopHits {
 		loopLine := lineNumberAt(file.Content, m[0])
 		// Window: lines [loopLine, loopLine + nPlusOneWindow]

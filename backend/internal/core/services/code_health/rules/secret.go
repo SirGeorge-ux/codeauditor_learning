@@ -88,9 +88,9 @@ func (r *SecretRule) DefaultSeverity() models.Severity { return models.SeverityC
 func (r *SecretRule) Weight() int                      { return 15 }
 
 func (r *SecretRule) Detect(_ context.Context, file File) ([]models.CodeHealthIssue, error) {
-	var issues []models.CodeHealthIssue
 	cleaned := stripLineComments(file.Content)
 	matches := r.pattern.FindAllStringIndex(cleaned, -1)
+	issues := make([]models.CodeHealthIssue, 0, len(matches))
 	for _, m := range matches {
 		line := lineNumberAt(file.Content, m[0])
 		issues = append(issues, models.CodeHealthIssue{

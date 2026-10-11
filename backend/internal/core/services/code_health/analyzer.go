@@ -217,10 +217,7 @@ func shouldSkip(path string, size, maxFileSize int64) bool {
 		".mp3": true, ".wav": true, ".flac": true,
 		".pdf": true, ".doc": true, ".docx": true,
 	}
-	if binaryExts[ext] {
-		return true
-	}
-	return false
+	return binaryExts[ext]
 }
 
 // languageFromPath is a cheap extension-based language hint for

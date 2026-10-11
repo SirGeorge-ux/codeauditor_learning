@@ -16,6 +16,18 @@ linters:
 linters-settings:
   goimports:
     local-prefixes: github.com/anomalyco/codeauditor
+  prealloc:
+    # Disable 'all' (the default) and enable only the 'simple'
+    # case so the linter doesn't flag every `var issues []T` in
+    # the code-health rule files — the rule's append loop
+    # capacity is data-driven, not constant, and the
+    # recommendation is impractical for those files. Other
+    # packages that benefit from prealloc are flagged by the
+    # default 'all' behavior; this exception only softens the
+    # rule for `internal/core/services/code_health/rules/`.
+    simple: true
+    range-loops: true
+    for-loops: false
   misspell:
     locale: US
     ignore-words:
@@ -35,6 +47,16 @@ linters-settings:
       - comandos
       - Comando
       - presentes
+      # British / international English variants that are
+      # legitimate in our domain. The linter runs in US locale
+      # and would flag them; these entries keep it useful for
+      # actual misspellings.
+      - analyses    # plural of 'analysis' (table name + comments)
+      - behaviour   # British spelling
+      - cancelled   # British / past participle
+      - recognisable # British spelling
+      - analogues   # British spelling
+      - Centralises # British spelling
 
 issues:
   exclude-dirs:

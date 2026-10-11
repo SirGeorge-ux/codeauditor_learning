@@ -62,13 +62,19 @@ func (r *GodMethodRule) DefaultSeverity() models.Severity { return models.Severi
 func (r *GodMethodRule) Weight() int                      { return 3 }
 
 func (r *GodMethodRule) Detect(_ context.Context, file File) ([]models.CodeHealthIssue, error) {
-	var issues []models.CodeHealthIssue
 	lines := strings.Split(file.Content, "\n")
 	cleaned := stripLineComments(file.Content)
 
+	// Pre-allocate for the long-method + god-class detection
+	// passes. The function header regex + class header regex
+	// combined is the upper bound on per-file findings.
+	funcHits := r.funcHeaderRe.FindAllStringIndex(cleaned, -1)
+	classHits := r.classHeaderRe.FindAllStringIndex(cleaned, -1)
+	issues := make([]models.CodeHealthIssue, 0, len(funcHits)+len(classHits))
+
 	// --- Long methods: count lines between the opening brace of a
 	// function and the matching closing brace at the same indent.
-	for _, m := range r.funcHeaderRe.FindAllStringIndex(cleaned, -1) {
+	for _, m := range funcHits {
 		headerLine := lineNumberAt(cleaned, m[0])
 		bodyStart, bodyEnd := findBodyBounds(lines, headerLine-1)
 		if bodyStart < 0 || bodyEnd <= bodyStart {
@@ -99,7 +105,7 @@ func (r *GodMethodRule) Detect(_ context.Context, file File) ([]models.CodeHealt
 	// separately and counting receiver methods on `Name` across the
 	// whole file. For C-style classes (TS/JS/Python) we count methods
 	// inside the block as before.
-	for _, m := range r.classHeaderRe.FindAllStringIndex(cleaned, -1) {
+	for _, m := range classHits {
 		classLine := lineNumberAt(cleaned, m[0])
 		matched := cleaned[m[0]:m[1]]
 		switch {

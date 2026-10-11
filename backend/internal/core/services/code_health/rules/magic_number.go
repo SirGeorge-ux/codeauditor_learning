@@ -25,8 +25,14 @@ type MagicNumberRule struct {
 }
 
 // magicNumberMinDigits is the spec threshold (REQ-CODE-HEALTH-007
-// row for STYLE-MAGIC-001): numeric literal > 2 digits.
+// row for STYLE-MAGIC-001): numeric literal > 2 digits. The
+// constant is part of the rule's public docstring surface but
+// is not used in code — the regex's \d{3,} literal is the
+// canonical source. Kept as a named constant for future
+// per-language threshold overrides.
 const magicNumberMinDigits = 3
+
+var _ = magicNumberMinDigits // referenced for future use; silences the unused-const linter
 
 func NewMagicNumberRule() *MagicNumberRule {
 	// \b\d{N,} — at least 3 consecutive digits, word-bounded.
@@ -41,8 +47,8 @@ func (r *MagicNumberRule) DefaultSeverity() models.Severity { return models.Seve
 func (r *MagicNumberRule) Weight() int                      { return 1 }
 
 func (r *MagicNumberRule) Detect(_ context.Context, file File) ([]models.CodeHealthIssue, error) {
-	var issues []models.CodeHealthIssue
 	matches := r.pattern.FindAllStringIndex(file.Content, -1)
+	issues := make([]models.CodeHealthIssue, 0, len(matches))
 	for _, m := range matches {
 		line := lineNumberAt(file.Content, m[0])
 		lineText := strings.TrimSpace(extractLine(file.Content, line))
