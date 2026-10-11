@@ -272,22 +272,6 @@ func main() {
 	auditService.WithChallengeService(challengeService)
 	log.Println("Challenge service initialized (curriculum + pedagogical + LLM cascade + sandbox wired)")
 
-	mcpRegistry := BuildMCPRegistry(WiringDeps{
-		DockerSandbox:       dockerSb,
-		ProviderRegistry:    registry,
-		DictionaryService:   dictionaryService,
-		ChallengeService:    challengeService,
-		TutorLookupService:  tutorLookupService,
-		UserService:         userService,
-		UserProgressService: progressService,
-		AuditHistoryService: historyService,
-		CurriculumService:   curriculumService,
-		PedagogicalService:  pedagogicalService,
-		ExternalDocsService: externalDocsService,
-	})
-	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
-	log.Printf("MCP monolith registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
-
 	// Initialize progress handler (user language progress + learning profile)
 	progressHandler := handlers.NewProgressHandler(progressService)
 	log.Println("Progress handler initialized")
@@ -382,6 +366,30 @@ func main() {
 		analyzer.SetSuppressionChecker(codeHealthService)
 		log.Println("Code health service initialized (analyzer + cache + 6 rules)")
 	}
+
+	// MCP registry: 33 S2 tools + 5 S4 code-health tools across
+	// 9 groups. Built after codeHealthService so the wiring
+	// captures the fully-constructed service.
+	mcpRegistry := BuildMCPRegistry(WiringDeps{
+		DockerSandbox:       dockerSb,
+		ProviderRegistry:    registry,
+		DictionaryService:   dictionaryService,
+		ChallengeService:    challengeService,
+		TutorLookupService:  tutorLookupService,
+		UserService:         userService,
+		UserProgressService: progressService,
+		AuditHistoryService: historyService,
+		CurriculumService:   curriculumService,
+		PedagogicalService:  pedagogicalService,
+		ExternalDocsService: externalDocsService,
+		// S4 code-health (PR 2 of code-health-dashboard):
+		// the 5 mcp-code-health.* tools wire to the service
+		// constructed above (multi-source clients + 6 seeded
+		// rules + Supabase repository + 7d AnalysisCache).
+		CodeHealthService: codeHealthService,
+	})
+	mcpHTTPServer := mcpkit.NewServer(mcpRegistry)
+	log.Printf("MCP monolith registered and mounted on /mcp (%d tools)", mcpRegistry.Count())
 
 	r := chi.NewRouter()
 

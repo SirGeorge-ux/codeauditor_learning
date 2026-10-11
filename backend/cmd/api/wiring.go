@@ -1,11 +1,13 @@
 // Package main — production composition root for the CodeAuditor MCP
-// monolith. BuildMCPRegistry wires the 32 S2 tools across 8 groups onto
-// a single mcpkit.Registry so cmd/api/main.go and tests can both call
-// it. The function is extracted from main() so the registry wiring is
-// testable without booting a database / Docker / HTTP server.
+// monolith. BuildMCPRegistry wires the 33 S2 tools + 5 S4
+// code-health tools across 9 groups onto a single mcpkit.Registry
+// so cmd/api/main.go and tests can both call it. The function is
+// extracted from main() so the registry wiring is testable without
+// booting a database / Docker / HTTP server.
 //
 // Tool inventory (mirrors openspec/changes/mcp-monolith/specs/mcp/spec.md
-// Requirement: S2 Tool Inventory — exactly 32 tools):
+// Requirement: S2 Tool Inventory — 33 tools, plus 5 S4 code-health
+// tools for 38 total):
 //
 //	mcp-sandbox       (4)  run_code, list_languages, healthcheck, get_install_hint
 //	mcp-challenges    (5)  list_challenges, get_challenge, create_temp_challenge,
@@ -19,16 +21,21 @@
 //	                          create_scaffolded_steps, validate_solution,
 //	                          get_socratic_prompt, peer_review_topic
 //	mcp-external_docs (3)  get_library_docs, search_documentation, get_real_example
-//	tutor             (1)  lookup (shipped via the dictionary change)
+//	mcp-tutor         (1)  lookup (shipped via the dictionary change)
+//	mcp-code-health   (5)  analyze_repo, get_analysis, get_repo_issues,
+//	                          generate_health_report, suppress_issue
+//	                          (S4 code-health-dashboard, PR 2)
 //
-// Deferred (S3/S4 — must stay absent): mcp-inspiration, mcp-code_health.
+// Deferred (S3+/S5+ — must stay absent): mcp-inspiration.
 package main
 
 import (
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	codehealthsvc "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox/providers"
 	challengesmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/challenges"
+	codehealthmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/code_health"
 	curriculummcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/curriculum"
 	dictionarymcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/dictionary"
 	externaldocsmcp "github.com/anomalyco/codeauditor/backend/internal/infrastructure/mcp/external_docs"
@@ -61,6 +68,12 @@ type WiringDeps struct {
 	CurriculumService   *services.CurriculumService
 	PedagogicalService  *services.PedagogicalService
 	ExternalDocsService *services.ExternalDocsService
+	// CodeHealthService (S4) — the orchestrator for the
+	// mcp-code-health group. The wiring in main.go
+	// constructs it after the multi-source clients are
+	// built; nil-safe (BuildMCPRegistry tolerates a nil
+	// service: the adapter returns an error per call).
+	CodeHealthService *codehealthsvc.CodeHealthService
 }
 
 // BuildMCPRegistry wires every S2 tool onto a fresh *mcpkit.Registry.
@@ -151,6 +164,20 @@ func BuildMCPRegistry(deps WiringDeps) *mcpkit.Registry {
 	reg.Register(externaldocsmcp.NewGetLibraryDocsTool(externalDocsMCPSvc))
 	reg.Register(externaldocsmcp.NewSearchDocumentationTool(externalDocsMCPSvc))
 	reg.Register(externaldocsmcp.NewGetRealExampleTool(externalDocsMCPSvc))
+
+	// mcp-code-health (5) — S4 code-health dashboard. Wired
+	// to the production CodeHealthService (constructed in
+	// main.go with the multi-source client + 6 seeded
+	// rules + Supabase repository + 7d AnalysisCache).
+	// The adapter bridges the *services.CodeHealthService
+	// to the local Service interface so the tools stay
+	// swappable for tests.
+	codeHealthMCPSvc := codehealthmcp.NewServiceAdapter(deps.CodeHealthService)
+	reg.Register(codehealthmcp.NewAnalyzeRepoTool(codeHealthMCPSvc))
+	reg.Register(codehealthmcp.NewGetAnalysisTool(codeHealthMCPSvc))
+	reg.Register(codehealthmcp.NewGetRepoIssuesTool(codeHealthMCPSvc))
+	reg.Register(codehealthmcp.NewGenerateHealthReportTool(codeHealthMCPSvc))
+	reg.Register(codehealthmcp.NewSuppressIssueTool(codeHealthMCPSvc))
 
 	return reg
 }

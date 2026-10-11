@@ -3,24 +3,20 @@
 //
 //   - S2 Tool Inventory (the system SHALL register the canonical set)
 //   - Tool Test Coverage (every tool must have ≥1 unit test)
-//   - Deferred groups are excluded (no mcp-inspiration / mcp-code_health)
+//   - Deferred groups are excluded (no mcp-inspiration)
 //
-// Tool count: the spec headline reads "exactly 32 tools across 7
-// groups", but the canonical wiring ships 33 tools across 8 groups:
-//   - 7 spec-listed groups (32 tools)
-//   - + mcp-tutor.tutor_lookup, shipped via the archived dictionary
-//     change (2026-10-08-dictionary)
-//
-// The orchestrator's PR 5 brief flags 32 as the target, but the
-// tutor tool is a production dependency for the tutor LLM and
-// removing it would regress the dictionary change. We register 33
-// and document the discrepancy here + in the tasks.md close-out.
+// Tool count: the canonical wiring ships 33 S2 tools across 8
+// groups, plus 5 S4 code-health tools (analyze_repo, get_analysis,
+// get_repo_issues, generate_health_report, suppress_issue) for
+// 38 total across 9 groups. The mcp-code-health group is the 9th
+// group, registered by the code-health-dashboard PR 2.
 //
 // These tests don't boot the whole server — they exercise the
 // composition root directly via BuildMCPRegistry. A separate
-// `TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33` test in the
-// same file boots an httptest.Server with the same registry so the
-// end-to-end `/mcp/tools/list` contract is also covered.
+// `TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports38` test
+// in the same file boots an httptest.Server with the same
+// registry so the end-to-end `/mcp/tools/list` contract is
+// also covered.
 package main
 
 import (
@@ -37,6 +33,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	codehealthsvc "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/brave"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/context7"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
@@ -52,11 +49,9 @@ import (
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit"
 )
 
-// expectedToolNames enumerates the 33 S2 tools the production wiring
-// MUST register. The list mirrors the spec's inventory plus the
-// tutor tool shipped via the dictionary change (see the file header
-// for the rationale). Drift between this list and the spec is
-// caught at test time.
+// expectedToolNames enumerates the 38 tools the production wiring
+// MUST register: 33 S2 + 5 S4 code-health. Drift between this list
+// and the spec is caught at test time.
 var expectedToolNames = []string{
 	// mcp-sandbox (4)
 	"mcp-sandbox.run_code",
@@ -99,14 +94,19 @@ var expectedToolNames = []string{
 	"mcp-external_docs.get_real_example",
 	// mcp-tutor (1, shipped via the dictionary change)
 	"mcp-tutor.tutor_lookup",
+	// mcp-code-health (5, shipped via the code-health-dashboard PR 2)
+	"mcp-code-health.analyze_repo",
+	"mcp-code-health.get_analysis",
+	"mcp-code-health.get_repo_issues",
+	"mcp-code-health.generate_health_report",
+	"mcp-code-health.suppress_issue",
 }
 
 // forbiddenToolNames is the set of tools the production wiring MUST
 // NOT register. Per spec scenario "Deferred groups are excluded" —
-// mcp-inspiration (S3) and mcp-code_health (S4) stay absent.
+// mcp-inspiration (S3+) stays absent.
 var forbiddenToolNames = []string{
 	"mcp-inspiration.",
-	"mcp-code_health.",
 }
 
 // newTestRegistry returns a *mcpkit.Registry wired with all 32
@@ -151,6 +151,11 @@ func newTestRegistry(t *testing.T) *mcpkit.Registry {
 	progressSvc := services.NewUserProgressService(nil)
 	historySvc := services.NewAuditHistoryService(nil)
 	pedagogicalSvc := services.NewPedagogicalService(curriculumSvc)
+	// CodeHealthService with a nil repo + nil analyzer: the
+	// tools never run in this test (only the registry
+	// inspection does), so a nil-port service is safe. The
+	// adapter's nil-guards handle it.
+	codeHealthSvc := codehealthsvc.NewCodeHealthService(nil, nil)
 
 	deps := WiringDeps{
 		DockerSandbox:       dockerSb,
@@ -164,15 +169,16 @@ func newTestRegistry(t *testing.T) *mcpkit.Registry {
 		CurriculumService:   curriculumSvc,
 		PedagogicalService:  pedagogicalSvc,
 		ExternalDocsService: externalDocsSvc,
+		CodeHealthService:   codeHealthSvc,
 	}
 	return BuildMCPRegistry(deps)
 }
 
-func TestBuildMCPRegistry_ListsExactly33Tools(t *testing.T) {
+func TestBuildMCPRegistry_ListsExactly38Tools(t *testing.T) {
 	reg := newTestRegistry(t)
 
 	tools := reg.List()
-	if got, want := len(tools), 33; got != want {
+	if got, want := len(tools), 38; got != want {
 		for _, tl := range tools {
 			t.Logf("tool: %s", tl.Name())
 		}
@@ -195,13 +201,13 @@ func TestBuildMCPRegistry_ListsExactly33Tools(t *testing.T) {
 	for _, prefix := range forbiddenToolNames {
 		for _, name := range got {
 			if strings.HasPrefix(name, prefix) {
-				t.Errorf("registry contains forbidden tool %q (prefix %q) — S3/S4 must stay absent", name, prefix)
+				t.Errorf("registry contains forbidden tool %q (prefix %q) — must stay absent", name, prefix)
 			}
 		}
 	}
 }
 
-func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33(t *testing.T) {
+func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports38(t *testing.T) {
 	reg := newTestRegistry(t)
 	srv := mcpkit.NewServer(reg)
 	r := chi.NewRouter()
@@ -224,13 +230,13 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33(t *testing.T) {
 		t.Fatalf("decode /mcp/tools/list body: %v\nbody=%s", err, body)
 	}
 
-	if got, want := len(items), 33; got != want {
+	if got, want := len(items), 38; got != want {
 		t.Fatalf("HTTP /mcp/tools/list count = %d, want %d", got, want)
 	}
 
 	// Verify every group is represented — protects against a regression
 	// where the wiring loses an entire group but the count happens to
-	// stay at 32.
+	// stay at 38.
 	groupCounts := map[string]int{}
 	for _, it := range items {
 		name, _ := it["name"].(string)
@@ -240,7 +246,7 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33(t *testing.T) {
 	for _, grp := range []string{
 		"mcp-sandbox", "mcp-challenges", "mcp-user",
 		"mcp-curriculum", "mcp-dictionary", "mcp-pedagogical",
-		"mcp-external_docs", "mcp-tutor",
+		"mcp-external_docs", "mcp-tutor", "mcp-code-health",
 	} {
 		if groupCounts[grp] == 0 {
 			t.Errorf("HTTP /mcp/tools/list missing group %q", grp)
@@ -248,9 +254,10 @@ func TestBuildMCPRegistry_HTTP_GET_MCPToolsList_Reports33(t *testing.T) {
 	}
 }
 
-// TestBuildMCPRegistry_GroupByPrefix confirms the canonical 4/5/6/4/4/6/3/1
-// group split (33 total). If the wiring silently drops a tool from a
-// group, this test fails before the count test would have caught it.
+// TestBuildMCPRegistry_GroupByPrefix confirms the canonical
+// 4/5/6/4/4/6/3/1/5 group split (38 total). If the wiring
+// silently drops a tool from a group, this test fails before
+// the count test would have caught it.
 func TestBuildMCPRegistry_GroupByPrefix(t *testing.T) {
 	reg := newTestRegistry(t)
 	tools := reg.List()
@@ -271,6 +278,7 @@ func TestBuildMCPRegistry_GroupByPrefix(t *testing.T) {
 		"mcp-pedagogical":   6,
 		"mcp-external_docs": 3,
 		"mcp-tutor":         1,
+		"mcp-code-health":   5,
 	}
 
 	for grp, want := range wantByPrefix {

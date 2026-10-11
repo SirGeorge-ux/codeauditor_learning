@@ -137,11 +137,16 @@ func NewCodeHealthService(repo ports.CodeHealthRepository, analyzer *Analyzer, o
 	}
 	// Apply MaxFiles / MaxFileSize to the analyzer's config so
 	// the per-file pipeline honors the service-level knobs.
-	if o.MaxFiles > 0 {
-		analyzer.cfg.MaxFiles = o.MaxFiles
-	}
-	if o.MaxFileSize > 0 {
-		analyzer.cfg.MaxFileSize = o.MaxFileSize
+	// The analyzer is optional (nil-safe) so the wiring test
+	// can construct a CodeHealthService without booting the
+	// full pipeline.
+	if analyzer != nil {
+		if o.MaxFiles > 0 {
+			analyzer.cfg.MaxFiles = o.MaxFiles
+		}
+		if o.MaxFileSize > 0 {
+			analyzer.cfg.MaxFileSize = o.MaxFileSize
+		}
 	}
 	return &CodeHealthService{repo: repo, analyzer: analyzer, opts: o}
 }
