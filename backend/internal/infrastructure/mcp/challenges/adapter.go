@@ -99,11 +99,12 @@ func (a *serviceAdapter) CreateTempChallenge(ctx context.Context, userID string,
 // (the sentinel short-circuits before row creation).
 func (a *serviceAdapter) GenerateChallenge(ctx context.Context, userID string, hint GenerateHint) (json.RawMessage, error) {
 	c, err := a.svc.GenerateChallenge(ctx, userID, models.GenerateChallengeHint{
-		Language:   hint.Language,
-		Difficulty: hint.Difficulty,
-		Focus:      hint.Focus,
-		TopicID:    hint.TopicID,
-		Level:      hint.Level,
+		Language:      hint.Language,
+		Difficulty:    hint.Difficulty,
+		Focus:         hint.Focus,
+		TopicID:       hint.TopicID,
+		Level:         hint.Level,
+		SourceIssueID: hint.SourceIssueID,
 	})
 	if err != nil {
 		// Every sentinel (ErrChallengeGenerationNotWired /
@@ -167,6 +168,7 @@ func encodeChallenge(c *models.Challenge, includeSolution bool) map[string]any {
 		"sourcePath":           c.SourcePath,
 		"generatedBy":          c.GeneratedBy,
 		"createdBy":            c.CreatedBy,
+		"sourceIssueId":        c.SourceIssueID,
 	}
 	if c.RepoURL != "" {
 		out["repoUrl"] = c.RepoURL
