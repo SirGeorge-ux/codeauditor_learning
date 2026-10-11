@@ -82,6 +82,14 @@ func NewAnalyzer(cfg AnalyzerConfig) *Analyzer {
 	return &Analyzer{cfg: cfg}
 }
 
+// SetSuppressionChecker injects the suppression port after
+// construction. The wiring layer uses this to break the
+// chicken-and-egg between the analyzer and the service (the
+// service is the suppression checker).
+func (a *Analyzer) SetSuppressionChecker(c SuppressionChecker) {
+	a.cfg.SuppressionChecker = c
+}
+
 // AnalyzeRepo runs the per-file pipeline against the supplied
 // (owner, repo, branch) descriptor. The returned []CodeHealthIssue
 // is the UNION of all per-file hits, ranked by severity (the

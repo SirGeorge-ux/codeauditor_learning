@@ -333,6 +333,16 @@ func (s *CodeHealthService) GetAnalysis(ctx context.Context, userID, analysisID 
 	return a, nil
 }
 
+// IsSuppressed is the SuppressionChecker implementation the
+// analyzer consumes. It forwards to the repository so the
+// analyzer stays decoupled from the storage layer. Returns
+// (false, nil) on transient errors so the analyzer never
+// drops a real issue just because the suppression lookup
+// failed.
+func (s *CodeHealthService) IsSuppressed(ctx context.Context, userID, filePath, ruleID string, lineNumber int) (bool, error) {
+	return s.repo.IsSuppressed(ctx, userID, filePath, ruleID, lineNumber)
+}
+
 // GetRepoIssues returns ranked issues for the most-recent
 // analysis of (owner, name, source) scoped to userID, filtered
 // by severity (optional) and capped at limit. The ranking

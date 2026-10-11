@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,8 +17,11 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/anomalyco/codeauditor/backend/internal/core/services"
+	codehealth "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
+	"github.com/anomalyco/codeauditor/backend/internal/core/services/code_health/rules"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/brave"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/context7"
+	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/github"
 	"github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/gogs"
 	ollama "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/ollama"
 	sandboxpkg "github.com/anomalyco/codeauditor/backend/internal/infrastructure/driven/sandbox"
@@ -331,6 +335,54 @@ func main() {
 		log.Println("Gogs client not configured (GOGS_BASE_URL and GOGS_TOKEN not set)")
 	}
 
+	// Code health service (S4, PR 1 — backend foundation; PR 2
+	// wires the MCP tools; PR 3 wires the dashboard). The
+	// construction is env-var driven so the binary boots
+	// without GITHUB_TOKEN (GitHub source is gated at the
+	// SourceClient registry; Gogs is the always-on default).
+	// See openspec/changes/code-health-dashboard/{proposal,design}.md.
+	var codeHealthService *codehealth.CodeHealthService
+	{
+		codeHealthRepo := supabase.NewSupabaseCodeHealthRepository(db)
+		analysisCache := supabase.NewSupabaseAnalysisCache(db)
+		// Source clients keyed by source string. Gogs is
+		// always-on if its env vars are set; GitHub is
+		// gated on GITHUB_TOKEN.
+		sourceClients := map[string]ports.SourceClient{}
+		if gogsBaseURL != "" && gogsToken != "" {
+			sourceClients["gogs"] = gogs.NewGogsClient(gogsBaseURL, gogsToken)
+		}
+		githubBaseURL := os.Getenv("GITHUB_BASE_URL")
+		if githubBaseURL == "" {
+			githubBaseURL = "https://api.github.com"
+		}
+		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+			sourceClients["github"] = github.NewGitHubClient(githubBaseURL, token)
+			log.Println("GitHub client initialized")
+		} else {
+			log.Println("GitHub client not configured (GITHUB_TOKEN not set)")
+		}
+		// multiSource dispatches by source string. The
+		// analyzer's per-file pipeline uses a per-call
+		// SourceClient (set via SetSource), so the service
+		// updates the analyzer before each AnalyzeRepo.
+		multiSource := &multiSourceClient{clients: sourceClients}
+		registry := rules.NewDefaultRegistry()
+		analyzer := codehealth.NewAnalyzer(codehealth.AnalyzerConfig{
+			Source:      multiSource,
+			Cache:       analysisCache,
+			Registry:    registry,
+			MaxFiles:    codehealth.DefaultMaxFiles,
+			MaxFileSize: codehealth.DefaultMaxFileSize,
+			// SuppressionChecker wired below once the
+			// service is constructed (chicken-and-egg:
+			// the service IS the suppression checker).
+		})
+		codeHealthService = codehealth.NewCodeHealthService(codeHealthRepo, analyzer)
+		analyzer.SetSuppressionChecker(codeHealthService)
+		log.Println("Code health service initialized (analyzer + cache + 6 rules)")
+	}
+
 	r := chi.NewRouter()
 
 	// Global middleware (no global timeout — SSE endpoint handles its own timeout)
@@ -423,4 +475,45 @@ func main() {
 	}
 
 	log.Println("Server exited gracefully")
+}
+
+// multiSourceClient dispatches ListFiles / GetFileContent to
+// the right underlying client based on a "current source"
+// string the analyzer (or the service) sets before each call.
+// The MVP uses a flat string ("gogs" or "github") that the
+// service stamps on the analysis row.
+//
+// A future PR can extend the contract to auto-detect from the
+// repo descriptor (e.g. owner prefix "github.com/" -> GitHub).
+type multiSourceClient struct {
+	clients       map[string]ports.SourceClient
+	currentSource string
+}
+
+// SetSource selects which underlying client subsequent
+// ListFiles / GetFileContent calls will use. The analyzer's
+// service calls this before each analyzer.AnalyzeRepo
+// invocation via the WithSource option (not yet wired; PR 2).
+func (m *multiSourceClient) SetSource(source string) {
+	m.currentSource = source
+}
+
+// ListFiles dispatches to the client for the currently-set
+// source. Returns an error if the source is unknown.
+func (m *multiSourceClient) ListFiles(ctx context.Context, owner, repo, branch string) ([]ports.FileEntry, error) {
+	client, ok := m.clients[m.currentSource]
+	if !ok {
+		return nil, fmt.Errorf("code-health: no source client for %q (set GITHUB_TOKEN or GOGS_BASE_URL+GOGS_TOKEN)", m.currentSource)
+	}
+	return client.ListFiles(ctx, owner, repo, branch)
+}
+
+// GetFileContent dispatches to the client for the
+// currently-set source.
+func (m *multiSourceClient) GetFileContent(ctx context.Context, owner, repo, branch, path string) (*ports.FileContent, error) {
+	client, ok := m.clients[m.currentSource]
+	if !ok {
+		return nil, fmt.Errorf("code-health: no source client for %q", m.currentSource)
+	}
+	return client.GetFileContent(ctx, owner, repo, branch, path)
 }
