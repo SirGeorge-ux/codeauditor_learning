@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -361,4 +362,87 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(buf[i:])
+}
+
+// fakeSuppression is a minimal SuppressionChecker used by the
+// round-trip test (task 1.20). It tracks the suppressed keys
+// in-memory so the test can both seed and verify.
+type fakeSuppression struct {
+	mu    sync.Mutex
+	store map[string]bool
+}
+
+func newFakeSuppression() *fakeSuppression {
+	return &fakeSuppression{store: map[string]bool{}}
+}
+
+func (f *fakeSuppression) suppressKey(userID, filePath, ruleID string, line int) string {
+	return userID + "|" + filePath + "|" + ruleID + "|" + itoa(line)
+}
+
+func (f *fakeSuppression) IsSuppressed(_ context.Context, userID, filePath, ruleID string, line int) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.store[f.suppressKey(userID, filePath, ruleID, line)], nil
+}
+
+func (f *fakeSuppression) add(userID, filePath, ruleID string, line int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.store[f.suppressKey(userID, filePath, ruleID, line)] = true
+}
+
+// TestAnalyzer_SkipsSuppressedHits_Task120 covers task 1.20's
+// REQ-CODE-HEALTH-008 round-trip: insert a suppression -> re-
+// analyze the same file -> the suppressed (file_path, rule_id,
+// line_number) is NOT re-emitted.
+func TestAnalyzer_SkipsSuppressedHits_Task120(t *testing.T) {
+	// File with a hardcoded secret on line 1. The SECRET rule
+	// will fire on (src/main.go, RULE-SEC-SECRET-001, 1).
+	src := &fakeSource{
+		files: map[string][]ports.FileEntry{
+			"o/r": {{Path: "src/main.go", SHA: "sha-main", Size: 100}},
+		},
+		contents: map[string]string{
+			"o/r/src/main.go": `password = "super-secret-123456"`,
+		},
+	}
+	cache := newFakeCache()
+	registry := rules.NewDefaultRegistry()
+	suppression := newFakeSuppression()
+	a := NewAnalyzer(AnalyzerConfig{
+		Source:             src,
+		Cache:              cache,
+		Registry:           registry,
+		MaxFiles:           300,
+		MaxFileSize:        1 << 20,
+		SuppressionChecker: suppression,
+	})
+
+	// --- First analysis: expect the SECRET rule to fire ---
+	issues, err := a.AnalyzeRepo(context.Background(), "u-1", "o", "r", "main", false)
+	require.NoError(t, err)
+	var secretHit *models.CodeHealthIssue
+	for i := range issues {
+		if issues[i].Rule == "RULE-SEC-SECRET-001" {
+			secretHit = &issues[i]
+		}
+	}
+	require.NotNil(t, secretHit, "expected the SECRET rule to fire on the first analysis")
+	assert.Equal(t, 1, secretHit.Line)
+
+	// --- User marks the issue as 'Not an issue' ---
+	suppression.add("u-1", "src/main.go", "RULE-SEC-SECRET-001", 1)
+
+	// --- Clear the cache so the analyzer re-runs the rules ---
+	cache.store = map[string][]models.CodeHealthIssue{}
+
+	// --- Second analysis: the SECRET issue MUST be suppressed ---
+	issues2, err := a.AnalyzeRepo(context.Background(), "u-1", "o", "r", "main", false)
+	require.NoError(t, err)
+	for _, iss := range issues2 {
+		if iss.Rule == "RULE-SEC-SECRET-001" {
+			t.Errorf("suppressed issue still emitted on re-analyze: %+v", iss)
+		}
+	}
 }
