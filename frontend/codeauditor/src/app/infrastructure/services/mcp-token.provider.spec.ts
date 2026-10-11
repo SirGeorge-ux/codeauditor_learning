@@ -3,7 +3,26 @@
 // directly with a stub AuthService so the test never instantiates
 // the real Supabase client (which performs network I/O at
 // construction time and would pollute the auth.service mocks).
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock @supabase/supabase-js so the AuthService import (used as a
+// type only) does not load the real module + create a real
+// GoTrueClient at module-evaluation time. Required to keep the
+// auth.service.spec.ts vi.mock binding across the full suite.
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    auth: {
+      signUp: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signOut: vi.fn(),
+      getSession: vi.fn(),
+      getUser: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+    },
+  }),
+}));
 
 import { makeMcpTokenProvider, mcpTokenProvider } from './mcp-token.provider';
 import { AuthService } from './auth.service';
