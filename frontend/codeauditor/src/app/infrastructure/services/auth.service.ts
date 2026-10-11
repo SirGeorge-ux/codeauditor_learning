@@ -16,16 +16,27 @@ export interface UserProfile {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private supabase: SupabaseClient = createClient(
-    environment.supabaseUrl,
-    environment.supabaseAnonKey,
-  );
+  // Lazy-initialize the Supabase client in the constructor instead of
+  // as a class field. The previous class-field form ran `createClient`
+  // at module evaluation time, which created a real GoTrueClient as
+  // soon as any test file imported the module — even when the test
+  // only used AuthService as a type or replaced it with a TestBed
+  // mock. The class-field initialization bypassed the per-file
+  // `vi.mock('@supabase/supabase-js', ...)` and produced a second
+  // GoTrueClient in a worker pool, breaking the auth.service.spec.ts
+  // mock binding intermittently (3/5 green runs, 2/5 red — the
+  // chronic 6/10 flake across S1, S2, S3, S4). Lazy-init confines
+  // the side effect to the constructor so test files that never
+  // instantiate AuthService (type-only imports, TestBed `useValue`)
+  // never create a Supabase client at all.
+  private supabase: SupabaseClient;
 
   userSignal = signal<UserProfile | null>(null);
   sessionSignal = signal<Session | null>(null);
   isAuthenticatedSignal = computed(() => !!this.sessionSignal());
 
   constructor() {
+    this.supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
     this.initSession();
     this.listenToAuthChanges();
   }
