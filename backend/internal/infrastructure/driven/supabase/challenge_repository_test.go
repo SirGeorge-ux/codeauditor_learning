@@ -30,7 +30,7 @@ var challengeColumnsForTest = []string{
 	"learning_objectives", "hints", "common_mistakes", "estimated_time_minutes",
 	"expected_findings", "test_cases", "linter_rules",
 	"base_points", "bonus_points", "penalty_per_hint", "time_bonus",
-	"origin", "source_path", "generated_by", "created_by",
+	"origin", "source_path", "generated_by", "created_by", "source_issue_id",
 }
 
 func challengeColumnsWithSolutionForTest() []string {
@@ -72,7 +72,7 @@ func TestChallengeRepo_FindBySourceRepoAndUser_Hit(t *testing.T) {
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest, 15,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest,
 			100, 50, 0, false,
-			"curated", nil, nil, nil)
+			"curated", nil, nil, nil, nil)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
 		 FROM public.challenges
@@ -154,6 +154,7 @@ func TestChallengeRepo_Insert_ReturnsCreatedAt(t *testing.T) {
 			c.SolutionCode, c.SolutionExplanation,
 			c.BasePoints, c.BonusPoints, c.PenaltyPerHint, c.TimeBonus,
 			c.Origin, c.SourcePath, c.GeneratedBy, c.CreatedBy,
+			nil, // source_issue_id is nullable; empty -> nil
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"created_at"}).AddRow(now))
 
@@ -180,11 +181,11 @@ func TestChallengeRepo_ListVisibleToUser_ReturnsRows(t *testing.T) {
 		AddRow("ch-1", "T1", "d", "junior", "security", "typescript", "", "c", "smell", "available", now, nil, nil,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest, 15,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest,
-			100, 50, 0, false, "curated", nil, nil, nil).
+			100, 50, 0, false, "curated", nil, nil, nil, nil).
 		AddRow("ch-2", "T2", "d", "junior", "security", "typescript", "", "c", "smell", "available", now, nil, nil,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest, 15,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest,
-			100, 50, 0, false, "curated", nil, nil, nil)
+			100, 50, 0, false, "curated", nil, nil, nil, nil)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT ` + challengeSelectColumns + `
 		 FROM public.challenges
@@ -239,7 +240,7 @@ func TestChallengeRepo_FindByIDVisibleToUser_Hit(t *testing.T) {
 		AddRow("ch-1", "T1", "d", "junior", "security", "typescript", "", "c", "smell", "available", now, nil, nil,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest, 15,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest,
-			100, 50, 0, false, "curated", nil, nil, nil)
+			100, 50, 0, false, "curated", nil, nil, nil, nil)
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumns+`
 		 FROM public.challenges
@@ -291,7 +292,7 @@ func TestChallengeRepo_FindByIDWithSolutionVisibleToUser_IncludesSolution(t *tes
 		AddRow("ch-1", "T1", "d", "junior", "security", "typescript", "", "c", "smell", "available", now, nil, nil,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest, 15,
 			emptyJSONBForTest, emptyJSONBForTest, emptyJSONBForTest,
-			100, 50, 0, false, "curated", nil, nil, nil,
+			100, 50, 0, false, "curated", nil, nil, nil, nil,
 			"SELECT * FROM users WHERE...", "Use parameterized queries")
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `+challengeSelectColumnsWithSolution+`

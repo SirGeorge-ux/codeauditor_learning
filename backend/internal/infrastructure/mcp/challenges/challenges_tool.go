@@ -117,12 +117,19 @@ type ValidateResult struct {
 // TopicID is a slug from .atl/curricula/<lang>.md and Level is the
 // selected rank letter (F..S). Existing v1 callers that omit them
 // continue to compile + behave as before (omitempty).
+//
+// PR 2 of the code-health-dashboard change (S4) further extended the
+// wire with SourceIssueID so the S4 code-health flow can persist
+// the parent issue id on the resulting Challenge row
+// (Origin='code_health'). Empty SourceIssueID = S3 free-practice
+// path (no code-health metadata); the service branches internally.
 type GenerateHint struct {
-	Language   string `json:"language,omitempty"`
-	Difficulty string `json:"difficulty,omitempty"`
-	Focus      string `json:"focus,omitempty"`
-	TopicID    string `json:"topicId,omitempty"`
-	Level      string `json:"level,omitempty"`
+	Language      string `json:"language,omitempty"`
+	Difficulty    string `json:"difficulty,omitempty"`
+	Focus         string `json:"focus,omitempty"`
+	TopicID       string `json:"topicId,omitempty"`
+	Level         string `json:"level,omitempty"`
+	SourceIssueID string `json:"sourceIssueId,omitempty"`
 }
 
 // --- Service interface ----------------------------------------------------
@@ -356,11 +363,12 @@ func (t *generateChallengeTool) Schema() openai.Tool {
 	return schema(
 		t.Name(), t.Description(),
 		map[string]propertyArg{
-			"language":   {Type: "string", Description: "Target language (e.g. typescript, python)."},
-			"difficulty": {Type: "string", Description: "One of: junior, mid, senior, architect."},
-			"focus":      {Type: "string", Description: "Optional code-smell focus (e.g. 'n+1', 'god function')."},
-			"topicId":    {Type: "string", Description: "Curriculum topic slug (e.g. 'inheritance'); read from .atl/curricula/<language>.md."},
-			"level":      {Type: "string", Description: "Per-user rank letter F..S. Maps to 4-bucket difficulty (F,E→junior, D,C→mid, B,A→senior, S→architect)."},
+			"language":      {Type: "string", Description: "Target language (e.g. typescript, python)."},
+			"difficulty":    {Type: "string", Description: "One of: junior, mid, senior, architect."},
+			"focus":         {Type: "string", Description: "Optional code-smell focus (e.g. 'n+1', 'god function')."},
+			"topicId":       {Type: "string", Description: "Curriculum topic slug (e.g. 'inheritance'); read from .atl/curricula/<language>.md."},
+			"level":         {Type: "string", Description: "Per-user rank letter F..S. Maps to 4-bucket difficulty (F,E→junior, D,C→mid, B,A→senior, S→architect)."},
+			"sourceIssueId": {Type: "string", Description: "Optional code-health issue UUID (S4). When set, the persisted row carries Origin='code_health' + SourceIssueID=<value>. Empty = S3 free-practice path."},
 		},
 		[]string{},
 	)

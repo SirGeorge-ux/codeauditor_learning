@@ -51,6 +51,12 @@ type SourceClient interface {
 // tenant information leaks).
 var ErrCodeHealthAnalysisNotFound = errors.New("code-health analysis not found")
 
+// ErrCodeHealthIssueNotFound is returned by CodeHealthRepository
+// methods when the supplied issue_id does not exist (or belongs to
+// a different user). The SuppressIssue flow consumes this sentinel
+// to surface a "this issue isn't yours" notice.
+var ErrCodeHealthIssueNotFound = errors.New("code-health issue not found")
+
 // CodeHealthRepository is the driven (secondary) port that persists
 // `code_health_analyses` and `code_health_issues` rows. Every read
 // scopes by userID at the SQL layer; every write stamps userID from
@@ -108,6 +114,15 @@ type CodeHealthRepository interface {
 	// severity and capped at limit. Sorted by severity weight DESC
 	// (matches the public ranking in REQ-CODE-HEALTH-005).
 	ListIssues(ctx context.Context, analysisID, severity string, limit int) ([]models.CodeHealthIssue, error)
+
+	// FindIssueByID returns the issue row scoped to userID via the
+	// parent analysis's user_id (so cross-tenant access is
+	// indistinguishable from a missing row). Returns
+	// ErrCodeHealthIssueNotFound when no row matches. The
+	// SuppressIssue flow (mcp-code-health.suppress_issue, task 2.12)
+	// consumes this to look up the (file_path, rule_id, line_number)
+	// tuple the suppression row needs.
+	FindIssueByID(ctx context.Context, issueID, userID string) (models.CodeHealthIssue, error)
 
 	// InsertSuppression records a user-marked "not an issue" feedback
 	// (spec REQ-CODE-HEALTH-008 "not an issue" scenario, task 1.19).

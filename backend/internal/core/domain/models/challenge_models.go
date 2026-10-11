@@ -93,6 +93,12 @@ type Challenge struct {
 	SourcePath           string            `json:"sourcePath,omitempty"`
 	GeneratedBy          string            `json:"generatedBy,omitempty"`
 	CreatedBy            string            `json:"createdBy,omitempty"`
+	// SourceIssueID is the code-health issue UUID the S4
+	// flow set when generating the challenge. Empty for
+	// S3 free-practice rows. Persisted to the
+	// challenges.source_issue_id column (added in
+	// migration 010_create_code_health.sql).
+	SourceIssueID string `json:"sourceIssueId,omitempty"`
 }
 
 // GenerateChallengeHint is the domain input for ChallengeService.GenerateChallenge.
@@ -127,6 +133,19 @@ type GenerateChallengeHint struct {
 	// B,A→senior, S→architect). Empty means "use Hint.Difficulty
 	// as a fallback".
 	Level string `json:"level,omitempty"`
+	// SourceIssueID is the code-health issue id the S4 flow
+	// passes when the user clicks "Generate challenge from
+	// this issue" on a code-health dashboard. The service
+	// branches on this field: when non-empty, the persisted
+	// row carries Origin="code_health", GeneratedBy="code-
+	// health-v1", and SourcePath=<issue.file_path>. Empty
+	// means "S3 free-practice path" (no code-health metadata,
+	// Origin="generated", GeneratedBy="free-practice-v1").
+	//
+	// S4 PR 2 (code-health-dashboard) added this field as
+	// an additive change. Existing S3 callers that omit it
+	// continue to compile + behave as before (omitempty).
+	SourceIssueID string `json:"sourceIssueId,omitempty"`
 }
 
 // CreateChallengeInput is the request body for creating a challenge.

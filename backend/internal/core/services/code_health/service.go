@@ -28,6 +28,30 @@ type HealthReport struct {
 // this to JSON-RPC -32603 (per design.md tradeoffs).
 var ErrCodeHealthPDFNotImplemented = errors.New("code-health: pdf report format is not implemented yet (S5)")
 
+// CodeHealthDailyCap is the per-user daily cap on
+// AnalyzeRepo submissions (REQ-CODE-HEALTH-011). A user
+// with >= this many analyses since UTC midnight is
+// rejected with ErrCodeHealthDailyCapReached so the MCP
+// analyze_repo tool can surface JSON-RPC -32609.
+const CodeHealthDailyCap = 5
+
+// ErrCodeHealthDailyCapReached is returned by AnalyzeRepo
+// when the user has hit the daily cap. The MCP tool maps
+// this to mcpkit.NewRateLimitedError so the dispatcher's
+// IsRateLimitedError branch fires (-32609).
+var ErrCodeHealthDailyCapReached = errors.New("code-health: daily limit reached, resets at 00:00 UTC")
+
+// SuppressionResult is the structured payload the MCP
+// mcp-code-health.suppress_issue tool returns. The
+// SuppressionID is a deterministic hash of
+// (file_path, rule_id, line_number) so a duplicate insert
+// produces the same id (the composite primary key is
+// idempotent, so the call is safe to retry).
+type SuppressionResult struct {
+	SuppressionID string    `json:"suppression_id"`
+	SuppressedAt  time.Time `json:"suppressed_at"`
+}
+
 // ReportFormat is the canonical format enum for the report
 // renderer. Mirrors the MCP wire shape (snake_case).
 const (
@@ -126,11 +150,16 @@ func NewCodeHealthService(repo ports.CodeHealthRepository, analyzer *Analyzer, o
 	}
 	// Apply MaxFiles / MaxFileSize to the analyzer's config so
 	// the per-file pipeline honors the service-level knobs.
-	if o.MaxFiles > 0 {
-		analyzer.cfg.MaxFiles = o.MaxFiles
-	}
-	if o.MaxFileSize > 0 {
-		analyzer.cfg.MaxFileSize = o.MaxFileSize
+	// The analyzer is optional (nil-safe) so the wiring test
+	// can construct a CodeHealthService without booting the
+	// full pipeline.
+	if analyzer != nil {
+		if o.MaxFiles > 0 {
+			analyzer.cfg.MaxFiles = o.MaxFiles
+		}
+		if o.MaxFileSize > 0 {
+			analyzer.cfg.MaxFileSize = o.MaxFileSize
+		}
 	}
 	return &CodeHealthService{repo: repo, analyzer: analyzer, opts: o}
 }
@@ -141,11 +170,32 @@ func NewCodeHealthService(repo ports.CodeHealthRepository, analyzer *Analyzer, o
 // per-file analyzer and transitions the row to running ->
 // completed | failed. With WithSyncStart the goroutine is
 // inlined; tests use that mode.
-func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo, branch string, force bool) (string, error) {
+//
+// `source` selects which underlying SourceClient the analyzer
+// will use (the multiSourceClient in main.go dispatches by
+// string). Valid values are "gogs" or "github" — callers (the
+// MCP tool layer) MUST validate before invoking this method.
+func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo, source, branch string, force bool) (string, error) {
+	// Default source to "gogs" when empty (back-compat for
+	// tests that pre-date the multi-source refactor).
+	if source == "" {
+		source = string(models.SourceGogs)
+	}
+	// Daily-cap defense-in-depth (REQ-CODE-HEALTH-011).
+	// The client's localStorage cap is the primary control;
+	// this server-side count is the backstop. The check
+	// happens BEFORE the pending-row insert so a rejected
+	// call does not consume an analysis_id. Errors from
+	// the count query are non-fatal: if the DB is
+	// transiently unavailable we let the analysis proceed
+	// (the client cap is the primary control).
+	if count, err := s.repo.CountSince(ctx, userID, s.opts.Now().UTC().Truncate(24*time.Hour)); err == nil && count >= CodeHealthDailyCap {
+		return "", ErrCodeHealthDailyCapReached
+	}
 	// Insert the pending row first so we have a row to update.
 	pending := &models.CodeHealthAnalysis{
 		UserID:    userID,
-		Source:    models.SourceGogs, // overwritten by the service after MCP selects source
+		Source:    models.CodeHealthSource(source),
 		Owner:     owner,
 		Name:      repo,
 		Branch:    branch,
@@ -160,14 +210,14 @@ func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo
 
 	if !s.opts.AsyncStart {
 		// Test mode: run synchronously, blocking until done.
-		s.runAnalysis(context.Background(), userID, row.ID, owner, repo, branch, force)
+		s.runAnalysis(context.Background(), userID, row.ID, source, owner, repo, branch, force)
 		return row.ID, nil
 	}
 
 	// Production: spawn a goroutine. We use context.Background
 	// (not the request ctx) because the request may be cancelled
 	// by the time the analysis completes.
-	go s.runAnalysis(context.Background(), userID, row.ID, owner, repo, branch, force)
+	go s.runAnalysis(context.Background(), userID, row.ID, source, owner, repo, branch, force)
 	return row.ID, nil
 }
 
@@ -184,11 +234,22 @@ func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo
 // error_message. The goroutine is fire-and-forget; the
 // orchestrator / MCP tool will surface the failure via
 // get_analysis.
-func (s *CodeHealthService) runAnalysis(ctx context.Context, userID, analysisID, owner, repo, branch string, force bool) {
+func (s *CodeHealthService) runAnalysis(ctx context.Context, userID, analysisID, source, owner, repo, branch string, force bool) {
 	// Best-effort status flip. A 0-rows response is logged and
 	// ignored — the row may have been deleted by the user.
 	if err := s.repo.UpdateStatus(ctx, analysisID, userID, string(models.CodeHealthStatusRunning), ""); err != nil {
 		log.Printf("code-health: pending->running %s: %v", analysisID, err)
+	}
+
+	// Route the analyzer's SourceClient to the requested
+	// source via a runtime type assertion (the analyzer's
+	// Source is the multiSourceClient in main.go, which
+	// implements the optional SourceSelector interface). This
+	// keeps the SourceClient port narrow (single-source
+	// clients like GogsClient / GitHubClient do NOT need to
+	// implement SetSource).
+	if sel, ok := s.analyzer.cfg.Source.(SourceSelector); ok {
+		sel.SetSource(source)
 	}
 
 	issues, err := s.analyzer.AnalyzeRepo(ctx, userID, owner, repo, branch, force)
@@ -341,6 +402,50 @@ func (s *CodeHealthService) GetAnalysis(ctx context.Context, userID, analysisID 
 // failed.
 func (s *CodeHealthService) IsSuppressed(ctx context.Context, userID, filePath, ruleID string, lineNumber int) (bool, error) {
 	return s.repo.IsSuppressed(ctx, userID, filePath, ruleID, lineNumber)
+}
+
+// SuppressIssue is the mcp-code-health.suppress_issue flow
+// (task 2.12). It looks up the issue by ID, validates
+// cross-tenant ownership, then writes a suppression row to
+// code_health_suppressions. The next analyzer run skips
+// (file_path, rule_id, line_number) hits in the suppression list
+// (REQ-CODE-HEALTH-008 "not an issue" scenario).
+//
+// Returns ErrCodeHealthIssueNotFound when issueID does not
+// exist or belongs to a different user. The MCP tool surfaces
+// this as a JSON-RPC "not found" error so the LLM can present
+// a useful notice to the user.
+//
+// SuppressionID is a deterministic FNV-1a hash of
+// (file_path|rule_id|line_number) so a duplicate insert is
+// idempotent and returns the same id (the composite primary
+// key prevents a duplicate row).
+func (s *CodeHealthService) SuppressIssue(ctx context.Context, userID, issueID string, reason *string) (SuppressionResult, error) {
+	iss, err := s.repo.FindIssueByID(ctx, issueID, userID)
+	if err != nil {
+		return SuppressionResult{}, err
+	}
+	now := s.opts.Now()
+	if err := s.repo.InsertSuppression(ctx, userID, iss.FilePath, iss.Rule, iss.Line, reason); err != nil {
+		return SuppressionResult{}, fmt.Errorf("insert suppression: %w", err)
+	}
+	return SuppressionResult{
+		SuppressionID: suppressionIDFor(iss.FilePath, iss.Rule, iss.Line),
+		SuppressedAt:  now.UTC(),
+	}, nil
+}
+
+// suppressionIDFor builds a deterministic 6-char base36 hash
+// of (file_path|rule_id|line_number) so duplicate suppressions
+// return the same id. The composite primary key in
+// code_health_suppressions is the canonical server-side
+// identity; the hash exists for the wire shape only.
+func suppressionIDFor(filePath, ruleID string, line int) string {
+	seed := filePath + "|" + ruleID + "|"
+	// Encode the line number into the seed as a string so
+	// the hash is reproducible.
+	seed += fmt.Sprintf("%d", line)
+	return "sup-" + shortHash(seed)
 }
 
 // GetRepoIssues returns ranked issues for the most-recent

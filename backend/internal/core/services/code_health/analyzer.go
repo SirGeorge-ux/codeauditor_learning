@@ -50,6 +50,18 @@ type SuppressionChecker interface {
 	IsSuppressed(ctx context.Context, userID, filePath, ruleID string, lineNumber int) (bool, error)
 }
 
+// SourceSelector is the optional interface the multi-source
+// SourceClient in main.go implements. When the analyzer's
+// cfg.Source satisfies this interface, the service calls
+// SetSource(source) before each AnalyzeRepo so the dispatcher
+// routes ListFiles / GetFileContent to the right underlying
+// client. Single-source clients (GogsClient, GitHubClient) and
+// test fakes do NOT need to satisfy it — the runtime type
+// assertion is a no-op for them.
+type SourceSelector interface {
+	SetSource(source string)
+}
+
 // Analyzer is the per-file analysis pipeline (filter -> cache ->
 // regex -> LLM-on-ambiguous -> cache write). It is the only
 // place in the system that turns a file's content into a slice

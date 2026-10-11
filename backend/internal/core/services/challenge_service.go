@@ -532,7 +532,19 @@ func (s *ChallengeService) GenerateChallenge(ctx context.Context, userID string,
 	}
 
 	// 6. Persist. The persisted row carries the canonical
-	// origin/generatedBy/createdBy per the spec.
+	// origin/generatedBy/createdBy per the spec. The S4
+	// code-health flow branches on hint.SourceIssueID:
+	// when set, the row carries Origin="code_health" +
+	// GeneratedBy="code-health-v1" + the source-issue id.
+	// When empty (S3 free-practice), the S3 baseline
+	// (Origin="generated" + GeneratedBy="free-practice-v1")
+	// is preserved.
+	origin := "generated"
+	generatedBy := "free-practice-v1"
+	if hint.SourceIssueID != "" {
+		origin = "code_health"
+		generatedBy = "code-health-v1"
+	}
 	difficulty := difficultyForLevel(hint.Level)
 	id, err := generateUUID()
 	if err != nil {
@@ -563,9 +575,10 @@ func (s *ChallengeService) GenerateChallenge(ctx context.Context, userID string,
 		BonusPoints:          draft.BonusPoints,
 		PenaltyPerHint:       draft.PenaltyPerHint,
 		TimeBonus:            draft.TimeBonus,
-		Origin:               "generated",
-		GeneratedBy:          "free-practice-v1",
+		Origin:               origin,
+		GeneratedBy:          generatedBy,
 		CreatedBy:            userID,
+		SourceIssueID:        hint.SourceIssueID,
 	}
 	createdAt, err := s.repo.Insert(ctx, challenge)
 	if err != nil {
