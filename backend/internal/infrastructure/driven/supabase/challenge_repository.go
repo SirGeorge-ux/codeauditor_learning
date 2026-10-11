@@ -44,7 +44,7 @@ const challengeSelectColumns = `id, title, description, difficulty, category, la
 	learning_objectives, hints, common_mistakes, estimated_time_minutes,
 	expected_findings, test_cases, linter_rules,
 	base_points, bonus_points, penalty_per_hint, time_bonus,
-	origin, source_path, generated_by, created_by`
+	origin, source_path, generated_by, created_by, source_issue_id`
 
 // challengeSelectColumnsWithSolution adds solution_code and solution_explanation.
 const challengeSelectColumnsWithSolution = challengeSelectColumns + `,
@@ -109,7 +109,7 @@ func scanChallenge(row rowScanner, includeSolution bool) (models.Challenge, erro
 	var c models.Challenge
 
 	var repoURLNull, codeSmellNull, userIDNull, sourceRepoNull sql.NullString
-	var originNull, sourcePathNull, generatedByNull, createdByNull sql.NullString
+	var originNull, sourcePathNull, generatedByNull, createdByNull, sourceIssueIDNull sql.NullString
 	var estimatedTimeMinutes, basePoints, bonusPoints, penaltyPerHint sql.NullInt64
 	var timeBonus sql.NullBool
 
@@ -124,6 +124,7 @@ func scanChallenge(row rowScanner, includeSolution bool) (models.Challenge, erro
 		&expectedFindingsJSON, &testCasesJSON, &linterRulesJSON,
 		&basePoints, &bonusPoints, &penaltyPerHint, &timeBonus,
 		&originNull, &sourcePathNull, &generatedByNull, &createdByNull,
+		&sourceIssueIDNull,
 	}
 
 	var solutionCodeNull, solutionExplanationNull sql.NullString
@@ -179,6 +180,9 @@ func scanChallenge(row rowScanner, includeSolution bool) (models.Challenge, erro
 	}
 	if createdByNull.Valid {
 		c.CreatedBy = createdByNull.String
+	}
+	if sourceIssueIDNull.Valid {
+		c.SourceIssueID = sourceIssueIDNull.String
 	}
 
 	// Parse JSONB arrays
@@ -242,10 +246,10 @@ func (r *SupabaseChallengeRepository) Insert(ctx context.Context, c *models.Chal
 			expected_findings, test_cases, linter_rules,
 			solution_code, solution_explanation,
 			base_points, bonus_points, penalty_per_hint, time_bonus,
-			origin, source_path, generated_by, created_by
+			origin, source_path, generated_by, created_by, source_issue_id
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+			$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
 		RETURNING created_at`
 
 	var createdAt time.Time
@@ -258,7 +262,7 @@ func (r *SupabaseChallengeRepository) Insert(ctx context.Context, c *models.Chal
 		marshalJSONB(c.TestCases), marshalJSONB(c.LinterRules),
 		c.SolutionCode, c.SolutionExplanation,
 		c.BasePoints, c.BonusPoints, c.PenaltyPerHint, c.TimeBonus,
-		c.Origin, c.SourcePath, c.GeneratedBy, c.CreatedBy,
+		c.Origin, c.SourcePath, c.GeneratedBy, c.CreatedBy, nullStr(c.SourceIssueID),
 	).Scan(&createdAt)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("insert challenge: %w", err)
@@ -340,4 +344,15 @@ func derefString(p *string) string {
 		return ""
 	}
 	return *p
+}
+
+// nullStr converts a Go string into a driver-friendly nullable
+// form: empty string becomes nil (so the DB stores NULL), non-empty
+// is passed through. Used for the S4 source_issue_id column on
+// public.challenges (nullable TEXT).
+func nullStr(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
 }
