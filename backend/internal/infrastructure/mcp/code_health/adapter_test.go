@@ -15,7 +15,9 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	codehealth "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
 )
 
@@ -57,97 +59,149 @@ func TestServiceInterfaceHasAllFiveMethods(t *testing.T) {
 // TestNewServiceAdapter_ReturnsNonNil pins the constructor's
 // non-nil contract. A nil adapter would NPE the first time a tool
 // calls into it, so the constructor must always succeed (the
-// *codehealth.CodeHealthService it wraps is a struct pointer that
-// is always non-nil when passed in).
+// *codehealth.CodeHealthService it wraps is a struct pointer; a
+// nil pointer is also acceptable — the per-method guards handle
+// it). The test covers the "with-real-service" branch because
+// production always passes a real service.
 func TestNewServiceAdapter_ReturnsNonNil(t *testing.T) {
-	// Use the zero-value service: the constructor must not panic
-	// and must not return nil even when the inner service has no
-	// dependencies wired (the production wiring supplies a real
-	// service with all ports populated; the test scope here is
-	// just the constructor boundary).
-	svc := NewServiceAdapter(&codehealth.CodeHealthService{})
-	if svc == nil {
-		t.Fatalf("NewServiceAdapter returned nil; tools would NPE on first call")
+	// nil is allowed at the constructor boundary; the
+	// adapter's per-method guards handle it.
+	if svc := NewServiceAdapter(nil); svc == nil {
+		t.Errorf("NewServiceAdapter(nil) returned nil; tools would NPE on first call")
+	}
+	// Production always passes a real service; the constructor
+	// must also accept that without panicking.
+	if svc := NewServiceAdapter(&codehealth.CodeHealthService{}); svc == nil {
+		t.Errorf("NewServiceAdapter(real) returned nil; tools would NPE on first call")
 	}
 }
 
 // TestServiceAdapter_ImplementsAllMethodSignatures exercises the
-// method set via a no-op smoke call. We don't assert return
-// values — the inner service is unwired so any successful return
-// path is incidental. The point: the adapter must accept the
-// expected argument types and shapes (i.e. the call must compile
-// and the adapter must not panic with a nil-pointer dereference
-// on an empty/zero value service).
+// method set via a no-op smoke call. We pass a nil inner
+// service so the adapter's `a.svc == nil` guard fires on every
+// call — this confirms the adapter never panics with a
+// nil-pointer dereference when the production wiring forgets
+// to pass a real service (defense-in-depth). The test also
+// exercises the documented argument shapes so a future method
+// signature change breaks the build at the adapter layer first.
 func TestServiceAdapter_ImplementsAllMethodSignatures(t *testing.T) {
-	svc := NewServiceAdapter(&codehealth.CodeHealthService{})
+	// Pass nil to short-circuit the adapter's nil-guard.
+	svc := NewServiceAdapter(nil)
 	ctx := context.Background()
 
-	// analyzeRepo
-	_, _, _ = svc.AnalyzeRepo(ctx, "u-1", "owner", "repo", "gogs", "main", false)
+	// analyzeRepo with nil inner-service: the adapter
+	// returns an error rather than panicking.
+	if _, _, err := svc.AnalyzeRepo(ctx, "u-1", "owner", "repo", "gogs", "main", false); err == nil {
+		t.Errorf("analyzeRepo with nil inner service should return an error, got nil")
+	}
 
-	// getAnalysis
-	_, _ = svc.GetAnalysis(ctx, "u-1", "analysis-1")
+	// getAnalysis with nil inner service.
+	if _, err := svc.GetAnalysis(ctx, "u-1", "analysis-1"); err == nil {
+		t.Errorf("getAnalysis with nil inner service should return an error, got nil")
+	}
 
-	// getRepoIssues
-	_, _ = svc.GetRepoIssues(ctx, "u-1", "owner", "repo", "gogs", "critical", 50)
+	// getRepoIssues with nil inner service.
+	if _, err := svc.GetRepoIssues(ctx, "u-1", "owner", "repo", "gogs", "critical", 50); err == nil {
+		t.Errorf("getRepoIssues with nil inner service should return an error, got nil")
+	}
 
-	// generateHealthReport
-	_, _, _, _ = svc.GenerateHealthReport(ctx, "u-1", "analysis-1", "md")
+	// generateHealthReport with nil inner service.
+	if _, _, _, err := svc.GenerateHealthReport(ctx, "u-1", "analysis-1", "md"); err == nil {
+		t.Errorf("generateHealthReport with nil inner service should return an error, got nil")
+	}
 
-	// suppressIssue
-	_, _, _ = svc.SuppressIssue(ctx, "u-1", "issue-1", nil)
-	_ = ctx // pin the import
-
-	// suppressIssue
-	_, _, _ = svc.SuppressIssue(ctx, "u-1", "issue-1", nil)
+	// suppressIssue with nil inner service.
+	if _, _, err := svc.SuppressIssue(ctx, "u-1", "issue-1", nil); err == nil {
+		t.Errorf("suppressIssue with nil inner service should return an error, got nil")
+	}
 }
 
-// Reference json.RawMessage so the import is used when we trim
-// the helper above. The MCP wire shape is JSON end-to-end; every
-// method returns either json.RawMessage or a typed envelope.
-var _ = json.RawMessage(nil)
-
-// TestGetAnalysisStubReturnsJSONObject is the triangulation case:
-// the adapter's GetAnalysis must return a JSON object (not a
-// string, not null). The LLM tool chain depends on the wire
-// shape being valid JSON, so a future "return raw text" bug
-// breaks the LLM consumer first.
-func TestGetAnalysisStubReturnsJSONObject(t *testing.T) {
-	svc := NewServiceAdapter(&codehealth.CodeHealthService{})
-	raw, err := svc.GetAnalysis(context.Background(), "u-1", "analysis-1")
-	if err != nil {
-		t.Fatalf("GetAnalysis: %v", err)
+// TestServiceAdapter_EncodeAnalysis_WireShapeMatchesSpec is the
+// triangulation case for the production GetAnalysis path. The
+// wire shape must include every documented field (analysis_id,
+// status, source, owner, name, branch, top_issues, languages,
+// created_at, expires_at) so the frontend's CodeHealthUseCase
+// can deserialize without a schema-mismatch 500.
+func TestServiceAdapter_EncodeAnalysis_WireShapeMatchesSpec(t *testing.T) {
+	score := 78
+	now := time.Now()
+	a := &models.CodeHealthAnalysis{
+		ID:          "analysis-1",
+		UserID:      "u-1",
+		Source:      models.SourceGogs,
+		Owner:       "anomalyco",
+		Name:        "codeauditor",
+		Branch:      "master",
+		Status:      models.CodeHealthStatusCompleted,
+		HealthScore: &score,
+		TopIssues:   []models.CodeHealthIssue{},
+		Languages:   map[string]float64{"go": 0.6, "ts": 0.4},
+		Summary:     "ok",
+		CreatedAt:   now,
+		CompletedAt: &now,
+		ExpiresAt:   now.Add(24 * time.Hour),
 	}
-	if len(raw) == 0 {
-		t.Fatalf("GetAnalysis returned empty JSON; LLM consumer would see a null body")
-	}
-	// Decode into a generic map so the test fails if the shape
-	// stops being a JSON object (e.g. someone returns a string).
+	raw, _ := json.Marshal(encodeAnalysis(a))
 	var got map[string]any
 	if err := json.Unmarshal(raw, &got); err != nil {
-		t.Fatalf("GetAnalysis wire shape is not a JSON object: %v (raw=%q)", err, string(raw))
+		t.Fatalf("encodeAnalysis is not valid JSON: %v", err)
 	}
-	if _, ok := got["status"]; !ok {
-		t.Errorf("GetAnalysis wire shape missing status field; got keys %v", keysOf(got))
+	for _, key := range []string{
+		"analysis_id", "status", "source", "owner", "name", "branch",
+		"top_issues", "languages", "created_at", "expires_at",
+		"health_score", "summary", "completed_at",
+	} {
+		if _, ok := got[key]; !ok {
+			t.Errorf("encodeAnalysis wire shape missing %q; got keys %v", key, keysOf(got))
+		}
+	}
+	if got["status"] != "completed" {
+		t.Errorf("status = %v, want completed", got["status"])
+	}
+	if got["health_score"].(float64) != 78 {
+		t.Errorf("health_score = %v, want 78", got["health_score"])
 	}
 }
 
-// TestGetRepoIssuesStubReturnsJSONArray is the triangulation case
-// for the get_repo_issues wire shape: the LLM must always see an
-// array (possibly empty), never null. A regression that returns
-// nil on empty would surface to the LLM as a typing error.
-func TestGetRepoIssuesStubReturnsJSONArray(t *testing.T) {
-	svc := NewServiceAdapter(&codehealth.CodeHealthService{})
-	raw, err := svc.GetRepoIssues(context.Background(), "u-1", "o", "r", "gogs", "critical", 50)
-	if err != nil {
-		t.Fatalf("GetRepoIssues: %v", err)
+// TestServiceAdapter_EncodeIssue_ListAndFieldShape exercises the
+// issue wire shape with a realistic issue. The shape mirrors
+// the ExpectedFinding fields (severity, category, file_path,
+// line, message) plus rule, confidence, sha, id, analysis_id,
+// evidence, suggested_fix.
+func TestServiceAdapter_EncodeIssue_ListAndFieldShape(t *testing.T) {
+	iss := models.CodeHealthIssue{
+		ID:           "issue-1",
+		AnalysisID:   "analysis-1",
+		Severity:     models.SeverityCritical,
+		Category:     models.CategorySecurity,
+		FilePath:     "src/api/auth.ts",
+		Line:         14,
+		Message:      "Hardcoded secret",
+		Evidence:     "const api_key = \"abc123\"",
+		SuggestedFix: "Move to env var",
+		Rule:         "RULE-SEC-SECRET-001",
+		Confidence:   1.0,
+		SHA:          "sha-abc",
 	}
-	var arr []any
-	if err := json.Unmarshal(raw, &arr); err != nil {
-		t.Fatalf("GetRepoIssues wire shape is not a JSON array: %v (raw=%q)", err, string(raw))
+	list := encodeIssueList([]models.CodeHealthIssue{iss})
+	if len(list) != 1 {
+		t.Fatalf("len = %d, want 1", len(list))
 	}
-	// Empty array is acceptable for the stub; the production impl
-	// returns the real ranked list.
+	got := list[0]
+	for _, key := range []string{
+		"id", "analysis_id", "severity", "category", "file_path", "line",
+		"message", "evidence", "suggested_fix", "rule", "confidence", "sha",
+	} {
+		if _, ok := got[key]; !ok {
+			t.Errorf("encodeIssueList wire shape missing %q; got keys %v", key, keysOf(got))
+		}
+	}
+	if got["severity"] != "critical" {
+		t.Errorf("severity = %v, want critical", got["severity"])
+	}
+	if got["rule"] != "RULE-SEC-SECRET-001" {
+		t.Errorf("rule = %v, want RULE-SEC-SECRET-001", got["rule"])
+	}
 }
 
 func keysOf(m map[string]any) []string {
@@ -157,3 +211,8 @@ func keysOf(m map[string]any) []string {
 	}
 	return out
 }
+
+// Reference json.RawMessage so the import is used when we trim
+// the helper above. The MCP wire shape is JSON end-to-end; every
+// method returns either json.RawMessage or a typed envelope.
+var _ = json.RawMessage(nil)

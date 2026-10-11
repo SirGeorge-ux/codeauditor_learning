@@ -141,11 +141,21 @@ func NewCodeHealthService(repo ports.CodeHealthRepository, analyzer *Analyzer, o
 // per-file analyzer and transitions the row to running ->
 // completed | failed. With WithSyncStart the goroutine is
 // inlined; tests use that mode.
-func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo, branch string, force bool) (string, error) {
+//
+// `source` selects which underlying SourceClient the analyzer
+// will use (the multiSourceClient in main.go dispatches by
+// string). Valid values are "gogs" or "github" — callers (the
+// MCP tool layer) MUST validate before invoking this method.
+func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo, source, branch string, force bool) (string, error) {
+	// Default source to "gogs" when empty (back-compat for
+	// tests that pre-date the multi-source refactor).
+	if source == "" {
+		source = string(models.SourceGogs)
+	}
 	// Insert the pending row first so we have a row to update.
 	pending := &models.CodeHealthAnalysis{
 		UserID:    userID,
-		Source:    models.SourceGogs, // overwritten by the service after MCP selects source
+		Source:    models.CodeHealthSource(source),
 		Owner:     owner,
 		Name:      repo,
 		Branch:    branch,
@@ -160,14 +170,14 @@ func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo
 
 	if !s.opts.AsyncStart {
 		// Test mode: run synchronously, blocking until done.
-		s.runAnalysis(context.Background(), userID, row.ID, owner, repo, branch, force)
+		s.runAnalysis(context.Background(), userID, row.ID, source, owner, repo, branch, force)
 		return row.ID, nil
 	}
 
 	// Production: spawn a goroutine. We use context.Background
 	// (not the request ctx) because the request may be cancelled
 	// by the time the analysis completes.
-	go s.runAnalysis(context.Background(), userID, row.ID, owner, repo, branch, force)
+	go s.runAnalysis(context.Background(), userID, row.ID, source, owner, repo, branch, force)
 	return row.ID, nil
 }
 
@@ -184,11 +194,22 @@ func (s *CodeHealthService) AnalyzeRepo(ctx context.Context, userID, owner, repo
 // error_message. The goroutine is fire-and-forget; the
 // orchestrator / MCP tool will surface the failure via
 // get_analysis.
-func (s *CodeHealthService) runAnalysis(ctx context.Context, userID, analysisID, owner, repo, branch string, force bool) {
+func (s *CodeHealthService) runAnalysis(ctx context.Context, userID, analysisID, source, owner, repo, branch string, force bool) {
 	// Best-effort status flip. A 0-rows response is logged and
 	// ignored — the row may have been deleted by the user.
 	if err := s.repo.UpdateStatus(ctx, analysisID, userID, string(models.CodeHealthStatusRunning), ""); err != nil {
 		log.Printf("code-health: pending->running %s: %v", analysisID, err)
+	}
+
+	// Route the analyzer's SourceClient to the requested
+	// source via a runtime type assertion (the analyzer's
+	// Source is the multiSourceClient in main.go, which
+	// implements the optional SourceSelector interface). This
+	// keeps the SourceClient port narrow (single-source
+	// clients like GogsClient / GitHubClient do NOT need to
+	// implement SetSource).
+	if sel, ok := s.analyzer.cfg.Source.(SourceSelector); ok {
+		sel.SetSource(source)
 	}
 
 	issues, err := s.analyzer.AnalyzeRepo(ctx, userID, owner, repo, branch, force)

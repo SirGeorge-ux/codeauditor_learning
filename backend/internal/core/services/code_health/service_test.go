@@ -150,7 +150,7 @@ func TestService_AnalyzeRepo_ReturnsIDImmediately(t *testing.T) {
 	svc := newServiceForTest(t, src, cache, registry, newRecordingRepo())
 
 	start := time.Now()
-	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "main", false)
+	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "gogs", "main", false)
 	elapsed := time.Since(start)
 	require.NoError(t, err)
 	assert.NotEmpty(t, id, "expected an analysis_id")
@@ -175,7 +175,7 @@ func TestService_AnalyzeRepo_TransitionsToCompleted(t *testing.T) {
 	repo := newRecordingRepo()
 	svc := newServiceForTest(t, src, cache, registry, repo)
 
-	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "main", false)
+	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "gogs", "main", false)
 	require.NoError(t, err)
 
 	// Wait for the goroutine to finish.
@@ -205,7 +205,7 @@ func TestService_AnalyzeRepo_TransitionsToFailed_OnError(t *testing.T) {
 	repo := newRecordingRepo()
 	svc := newServiceForTest(t, src, cache, registry, repo)
 
-	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "main", false)
+	id, err := svc.AnalyzeRepo(context.Background(), "u-1", "o", "r", "gogs", "main", false)
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {

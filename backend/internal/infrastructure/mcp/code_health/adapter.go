@@ -21,8 +21,10 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 
+	"github.com/anomalyco/codeauditor/backend/internal/core/domain/models"
 	codehealth "github.com/anomalyco/codeauditor/backend/internal/core/services/code_health"
 	"github.com/anomalyco/codeauditor/backend/internal/mcpkit/mcpctx"
+	"github.com/anomalyco/codeauditor/backend/internal/ports"
 )
 
 // ErrInvalidParams is the shared sentinel the MCP dispatcher maps to
@@ -162,33 +164,44 @@ func NewServiceAdapter(svc *codehealth.CodeHealthService) Service {
 	return &serviceAdapter{svc: svc}
 }
 
-// --- Stubs (filled in by per-tool commits; safe to call with a
-// zero-value inner service so the package compiles + the package
-// boundary tests pass before the per-tool implementations land).
+// --- serviceAdapter method implementations ---
 
-// AnalyzeRepo stub. Real implementation lands in analyze_repo.go
-// (PR 2, task 2.2). The stub returns the input owner as the
-// analysis_id so the test "TestServiceAdapter_ImplementsAllMethodSignatures"
-// stays green before the per-tool commits. A real tool call from
-// production NEVER hits this path (the tool-side Execute calls
-// the per-tool wrapper, not the adapter directly).
-func (a *serviceAdapter) AnalyzeRepo(_ context.Context, _, owner, _, _, _ string, _ bool) (string, string, error) {
+// AnalyzeRepo delegates to the production service. The
+// production CodeHealthService.AnalyzeRepo returns the
+// analysis_id; the adapter always reports status="pending"
+// (the row's terminal status flips asynchronously in the
+// goroutine — by the time the LLM polls, get_analysis will
+// see the transition).
+func (a *serviceAdapter) AnalyzeRepo(ctx context.Context, userID, owner, name, source, branch string, force bool) (string, string, error) {
 	if a.svc == nil {
 		return "", "", fmt.Errorf("codehealth: service is nil")
 	}
-	return "stub-" + owner, "pending", nil
+	analysisID, err := a.svc.AnalyzeRepo(ctx, userID, owner, name, source, branch, force)
+	if err != nil {
+		return "", "", err
+	}
+	return analysisID, string(models.CodeHealthStatusPending), nil
 }
 
-// GetAnalysis stub. Real implementation lands in get_analysis.go
-// (PR 2, task 2.3).
-func (a *serviceAdapter) GetAnalysis(_ context.Context, _, analysisID string) (json.RawMessage, error) {
+// GetAnalysis returns the analysis row's wire shape. The
+// production service.GetAnalysis does the DB lookup + 24h
+// expiry check; the adapter projects the typed result into
+// the JSON envelope the LLM consumes.
+func (a *serviceAdapter) GetAnalysis(ctx context.Context, userID, analysisID string) (json.RawMessage, error) {
 	if a.svc == nil {
 		return nil, fmt.Errorf("codehealth: service is nil")
 	}
 	if analysisID == "" {
 		return nil, ErrCodeHealthNotFound
 	}
-	return json.RawMessage(`{"status":"stub"}`), nil
+	a2, err := a.svc.GetAnalysis(ctx, userID, analysisID)
+	if err != nil {
+		if errors.Is(err, ports.ErrCodeHealthAnalysisNotFound) {
+			return nil, ErrCodeHealthNotFound
+		}
+		return nil, err
+	}
+	return encodeAnalysis(&a2), nil
 }
 
 // GetRepoIssues stub. Real implementation lands in
@@ -230,3 +243,95 @@ var (
 	_ = openai.Tool{}
 	_ = propertyArg{}
 )
+
+// encodeAnalysis projects a models.CodeHealthAnalysis into the
+// JSON-RPC wire shape documented in design.md
+// (mcp-code-health.get_analysis). The shape matches the spec
+// verbatim so a frontend consumer sees the exact field names
+// the LLM tool description promises.
+//
+// Nullable fields (health_score, completed_at, error_message)
+// are omitted when zero so the wire shape stays minimal.
+func encodeAnalysis(a *models.CodeHealthAnalysis) json.RawMessage {
+	out := map[string]any{
+		"analysis_id": a.ID,
+		"status":      string(a.Status),
+		"source":      string(a.Source),
+		"owner":       a.Owner,
+		"name":        a.Name,
+		"branch":      a.Branch,
+		"top_issues":  encodeIssueList(a.TopIssues),
+		"languages":   a.Languages,
+		"created_at":  a.CreatedAt.UTC().Format(time.RFC3339),
+		"expires_at":  a.ExpiresAt.UTC().Format(time.RFC3339),
+	}
+	if a.HealthScore != nil {
+		out["health_score"] = *a.HealthScore
+	}
+	if a.Summary != "" {
+		out["summary"] = a.Summary
+	}
+	if a.CompletedAt != nil {
+		out["completed_at"] = a.CompletedAt.UTC().Format(time.RFC3339)
+	}
+	if a.ErrorMessage != "" {
+		out["error_message"] = a.ErrorMessage
+	}
+	raw, err := json.Marshal(out)
+	if err != nil {
+		// Marshaling a map[string]any of primitives can only
+		// fail on unsupported types — we never put any in
+		// here, so this branch is unreachable in practice.
+		// Return a minimal valid envelope so the dispatcher
+		// never sees nil.
+		return json.RawMessage(`{"error":"encode failed"}`)
+	}
+	return raw
+}
+
+// encodeIssueList serializes a slice of CodeHealthIssue into
+// the wire shape consumed by get_analysis (top_issues) and
+// get_repo_issues (issues). The shape is shared between both
+// tools so the LLM consumer can deserialize them with the
+// same type.
+func encodeIssueList(issues []models.CodeHealthIssue) []map[string]any {
+	out := make([]map[string]any, 0, len(issues))
+	for i := range issues {
+		iss := &issues[i]
+		out = append(out, encodeIssue(iss))
+	}
+	return out
+}
+
+// encodeIssue serializes a single CodeHealthIssue into the
+// wire shape documented in design.md
+// (mcp-code-health.get_repo_issues). Mirrors the
+// ExpectedFinding shape from challenge-rebuild (1:1 field
+// mapping) plus rule + confidence + sha (per spec).
+func encodeIssue(iss *models.CodeHealthIssue) map[string]any {
+	out := map[string]any{
+		"severity":   string(iss.Severity),
+		"category":   string(iss.Category),
+		"file_path":  iss.FilePath,
+		"line":       iss.Line,
+		"message":    iss.Message,
+		"rule":       iss.Rule,
+		"confidence": iss.Confidence,
+	}
+	if iss.ID != "" {
+		out["id"] = iss.ID
+	}
+	if iss.AnalysisID != "" {
+		out["analysis_id"] = iss.AnalysisID
+	}
+	if iss.Evidence != "" {
+		out["evidence"] = iss.Evidence
+	}
+	if iss.SuggestedFix != "" {
+		out["suggested_fix"] = iss.SuggestedFix
+	}
+	if iss.SHA != "" {
+		out["sha"] = iss.SHA
+	}
+	return out
+}
