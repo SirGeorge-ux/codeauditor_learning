@@ -56,12 +56,12 @@ func HealthScore(issues []CodeHealthIssue) int {
 // RankIssues sorts the input issues in descending priority using the
 // canonical comparator from spec REQ-CODE-HEALTH-005:
 //
-//	1. severity weight DESC   (critical > high > medium > low)
-//	2. line ASC                (lower line first when severity ties)
-//	3. category ASC             (alphabetical category as the
-//	                            final tie-break, mirroring the spec
-//	                            scenario "Same severity, same line,
-//	                            ordered by category")
+//  1. severity weight DESC   (critical > high > medium > low)
+//  2. line ASC                (lower line first when severity ties)
+//  3. category ASC             (alphabetical category as the
+//     final tie-break, mirroring the spec
+//     scenario "Same severity, same line,
+//     ordered by category")
 //
 // The function uses sort.SliceStable so input order is preserved
 // when every comparator key is equal. This is a deliberate choice:
