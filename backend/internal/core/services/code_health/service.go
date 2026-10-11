@@ -28,6 +28,17 @@ type HealthReport struct {
 // this to JSON-RPC -32603 (per design.md tradeoffs).
 var ErrCodeHealthPDFNotImplemented = errors.New("code-health: pdf report format is not implemented yet (S5)")
 
+// SuppressionResult is the structured payload the MCP
+// mcp-code-health.suppress_issue tool returns. The
+// SuppressionID is a deterministic hash of
+// (file_path, rule_id, line_number) so a duplicate insert
+// produces the same id (the composite primary key is
+// idempotent, so the call is safe to retry).
+type SuppressionResult struct {
+	SuppressionID string    `json:"suppression_id"`
+	SuppressedAt  time.Time `json:"suppressed_at"`
+}
+
 // ReportFormat is the canonical format enum for the report
 // renderer. Mirrors the MCP wire shape (snake_case).
 const (
@@ -362,6 +373,50 @@ func (s *CodeHealthService) GetAnalysis(ctx context.Context, userID, analysisID 
 // failed.
 func (s *CodeHealthService) IsSuppressed(ctx context.Context, userID, filePath, ruleID string, lineNumber int) (bool, error) {
 	return s.repo.IsSuppressed(ctx, userID, filePath, ruleID, lineNumber)
+}
+
+// SuppressIssue is the mcp-code-health.suppress_issue flow
+// (task 2.12). It looks up the issue by ID, validates
+// cross-tenant ownership, then writes a suppression row to
+// code_health_suppressions. The next analyzer run skips
+// (file_path, rule_id, line_number) hits in the suppression list
+// (REQ-CODE-HEALTH-008 "not an issue" scenario).
+//
+// Returns ErrCodeHealthIssueNotFound when issueID does not
+// exist or belongs to a different user. The MCP tool surfaces
+// this as a JSON-RPC "not found" error so the LLM can present
+// a useful notice to the user.
+//
+// SuppressionID is a deterministic FNV-1a hash of
+// (file_path|rule_id|line_number) so a duplicate insert is
+// idempotent and returns the same id (the composite primary
+// key prevents a duplicate row).
+func (s *CodeHealthService) SuppressIssue(ctx context.Context, userID, issueID string, reason *string) (SuppressionResult, error) {
+	iss, err := s.repo.FindIssueByID(ctx, issueID, userID)
+	if err != nil {
+		return SuppressionResult{}, err
+	}
+	now := s.opts.Now()
+	if err := s.repo.InsertSuppression(ctx, userID, iss.FilePath, iss.Rule, iss.Line, reason); err != nil {
+		return SuppressionResult{}, fmt.Errorf("insert suppression: %w", err)
+	}
+	return SuppressionResult{
+		SuppressionID: suppressionIDFor(iss.FilePath, iss.Rule, iss.Line),
+		SuppressedAt:  now.UTC(),
+	}, nil
+}
+
+// suppressionIDFor builds a deterministic 6-char base36 hash
+// of (file_path|rule_id|line_number) so duplicate suppressions
+// return the same id. The composite primary key in
+// code_health_suppressions is the canonical server-side
+// identity; the hash exists for the wire shape only.
+func suppressionIDFor(filePath, ruleID string, line int) string {
+	seed := filePath + "|" + ruleID + "|"
+	// Encode the line number into the seed as a string so
+	// the hash is reproducible.
+	seed += fmt.Sprintf("%d", line)
+	return "sup-" + shortHash(seed)
 }
 
 // GetRepoIssues returns ranked issues for the most-recent

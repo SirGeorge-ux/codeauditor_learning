@@ -22,7 +22,9 @@ type recordingRepo struct {
 	statusCalls  []statusCall
 	completed    []completedCall
 	lookup       map[string]*models.CodeHealthAnalysis
+	issueLookup  map[string]*models.CodeHealthIssue
 	issueInserts []models.CodeHealthIssue
+	suppressions []suppressionCall
 }
 
 type statusCall struct {
@@ -117,8 +119,43 @@ func (r *recordingRepo) ListIssues(_ context.Context, _, _ string, _ int) ([]mod
 	return nil, nil
 }
 
-func (r *recordingRepo) InsertSuppression(_ context.Context, _, _, _ string, _ int, _ *string) error {
+func (r *recordingRepo) FindIssueByID(_ context.Context, issueID, _ string) (models.CodeHealthIssue, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.issueLookup == nil {
+		return models.CodeHealthIssue{}, ports.ErrCodeHealthIssueNotFound
+	}
+	iss, ok := r.issueLookup[issueID]
+	if !ok {
+		return models.CodeHealthIssue{}, ports.ErrCodeHealthIssueNotFound
+	}
+	return *iss, nil
+}
+
+// issueFixture is a tiny helper to insert a known issue row
+// into the recordingRepo before a test calls the service.
+func (r *recordingRepo) issueFixture(i models.CodeHealthIssue) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.issueLookup == nil {
+		r.issueLookup = map[string]*models.CodeHealthIssue{}
+	}
+	r.issueLookup[i.ID] = &i
+}
+
+func (r *recordingRepo) InsertSuppression(_ context.Context, userID, filePath, ruleID string, lineNumber int, reason *string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.suppressions = append(r.suppressions, suppressionCall{
+		UserID: userID, FilePath: filePath, RuleID: ruleID, LineNumber: lineNumber, Reason: reason,
+	})
 	return nil
+}
+
+type suppressionCall struct {
+	UserID, FilePath, RuleID string
+	LineNumber               int
+	Reason                   *string
 }
 
 func (r *recordingRepo) IsSuppressed(_ context.Context, _, _, _ string, _ int) (bool, error) {
@@ -330,6 +367,70 @@ func TestService_GenerateHealthReport_PdfNotImplementedYet(t *testing.T) {
 	_, err := svc.GenerateHealthReport(context.Background(), "u-1", "a-1", "pdf")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pdf")
+}
+
+// TestService_SuppressIssue_HappyPath is the spec scenario
+// "User marks 'not an issue' invalidates the finding"
+// (REQ-CODE-HEALTH-008). The service must look up the issue,
+// write a suppression row, and return a deterministic
+// suppression_id + timestamp.
+func TestService_SuppressIssue_HappyPath(t *testing.T) {
+	repo := newRecordingRepo()
+	repo.issueFixture(models.CodeHealthIssue{
+		ID: "issue-3", AnalysisID: "a-1",
+		Severity: models.SeverityCritical, Category: models.CategorySecurity,
+		FilePath: "src/api/auth.ts", Line: 14,
+		Rule: "RULE-SEC-SECRET-001", Confidence: 1.0,
+	})
+	svc := newServiceForTest(t, &fakeSource{}, newFakeCache(), defaultRegistry(t), repo)
+
+	reason := "false positive"
+	got, err := svc.SuppressIssue(context.Background(), "u-1", "issue-3", &reason)
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.SuppressionID, "suppression_id must be populated")
+	assert.False(t, got.SuppressedAt.IsZero(), "suppressed_at must be populated")
+	require.Len(t, repo.suppressions, 1, "suppression row must be written")
+	sup := repo.suppressions[0]
+	assert.Equal(t, "u-1", sup.UserID)
+	assert.Equal(t, "src/api/auth.ts", sup.FilePath)
+	assert.Equal(t, "RULE-SEC-SECRET-001", sup.RuleID)
+	assert.Equal(t, 14, sup.LineNumber)
+	require.NotNil(t, sup.Reason)
+	assert.Equal(t, "false positive", *sup.Reason)
+}
+
+// TestService_SuppressIssue_UnknownIssue covers the "issue
+// doesn't exist" case. The service returns
+// ErrCodeHealthIssueNotFound so the MCP tool surfaces a JSON-RPC
+// "not found" error.
+func TestService_SuppressIssue_UnknownIssue(t *testing.T) {
+	repo := newRecordingRepo()
+	svc := newServiceForTest(t, &fakeSource{}, newFakeCache(), defaultRegistry(t), repo)
+	_, err := svc.SuppressIssue(context.Background(), "u-1", "missing", nil)
+	assert.ErrorIs(t, err, ports.ErrCodeHealthIssueNotFound)
+	assert.Empty(t, repo.suppressions, "no suppression row must be written on not-found")
+}
+
+// TestService_SuppressIssue_DeterministicID covers the
+// idempotency contract: two calls with the same
+// (file_path, rule_id, line_number) tuple return the same
+// suppression_id. The composite primary key in
+// code_health_suppressions is the canonical server-side
+// identity; the hash exists for the wire shape only.
+func TestService_SuppressIssue_DeterministicID(t *testing.T) {
+	repo := newRecordingRepo()
+	repo.issueFixture(models.CodeHealthIssue{
+		ID: "issue-3", FilePath: "src/a.ts", Line: 7,
+		Rule: "RULE-X", Confidence: 1.0,
+	})
+	svc := newServiceForTest(t, &fakeSource{}, newFakeCache(), defaultRegistry(t), repo)
+	got1, err := svc.SuppressIssue(context.Background(), "u-1", "issue-3", nil)
+	require.NoError(t, err)
+	// Re-insert the issue fixture (the previous call doesn't
+	// delete it, but the test must be deterministic).
+	got2, err := svc.SuppressIssue(context.Background(), "u-1", "issue-3", nil)
+	require.NoError(t, err)
+	assert.Equal(t, got1.SuppressionID, got2.SuppressionID, "suppression_id must be deterministic")
 }
 
 // --- helpers ---

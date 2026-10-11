@@ -47,14 +47,14 @@ type fakeCodeHealthService struct {
 	lastAnalyzeBranch    string
 	lastAnalyzeForce     bool
 	lastGetAnalysisID    string
-	lastGetIssuesArgs    getRepoIssuesArgs
+	lastGetIssuesArgs    recordedGetRepoIssues
 	lastReportAnalysisID string
 	lastReportFormat     string
 	lastSuppressIssueID  string
 	lastSuppressReason   *string
 }
 
-type getRepoIssuesArgs struct {
+type recordedGetRepoIssues struct {
 	UserID, Owner, Name, Source, Severity string
 	Limit                                 int
 }
@@ -62,6 +62,8 @@ type getRepoIssuesArgs struct {
 func newFakeCodeHealthService() *fakeCodeHealthService {
 	return &fakeCodeHealthService{}
 }
+
+var _ = recordedGetRepoIssues{} // ensure the type stays referenced when the fakes are trimmed
 
 func (f *fakeCodeHealthService) AnalyzeRepo(_ context.Context, userID, owner, name, source, branch string, force bool) (string, string, error) {
 	f.mu.Lock()
@@ -94,13 +96,15 @@ func (f *fakeCodeHealthService) GetAnalysis(_ context.Context, userID, analysisI
 func (f *fakeCodeHealthService) GetRepoIssues(_ context.Context, userID, owner, name, source, severity string, limit int) (json.RawMessage, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.lastGetIssuesArgs = getRepoIssuesArgs{
+	f.lastGetIssuesArgs = recordedGetRepoIssues{
 		UserID: userID, Owner: owner, Name: name, Source: source, Severity: severity, Limit: limit,
 	}
 	if f.issuesErr != nil {
 		return nil, f.issuesErr
 	}
-	return json.RawMessage(`[]`), nil
+	// Return the canonical {issues: [...]} wire shape so the
+	// tool's decoder round-trips correctly.
+	return json.RawMessage(`{"issues":[]}`), nil
 }
 
 func (f *fakeCodeHealthService) GenerateHealthReport(_ context.Context, userID, analysisID, format string) (string, string, string, error) {

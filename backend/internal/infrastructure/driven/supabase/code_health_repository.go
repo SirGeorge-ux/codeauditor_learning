@@ -367,7 +367,32 @@ func (r *SupabaseCodeHealthRepository) ListIssues(ctx context.Context, analysisI
 		}
 		out = append(out, iss)
 	}
-	return out, rows.Err()
+ 	return out, rows.Err()
+}
+
+// FindIssueByID returns the issue row scoped to userID via the
+// parent analysis's user_id. Used by the SuppressIssue flow to
+// look up the (file_path, rule_id, line_number) tuple the
+// suppression row needs. Cross-tenant access is indistinguishable
+// from a missing row (defense-in-depth).
+func (r *SupabaseCodeHealthRepository) FindIssueByID(ctx context.Context, issueID, userID string) (models.CodeHealthIssue, error) {
+	const query = `SELECT ` + issueSelectColumns + `
+		FROM public.code_health_issues i
+		WHERE i.id = $1
+		  AND EXISTS (
+		    SELECT 1 FROM public.code_health_analyses a
+		    WHERE a.id = i.analysis_id AND a.user_id = $2
+		  )
+		LIMIT 1`
+	row := r.db.QueryRowContext(ctx, query, issueID, userID)
+	iss, err := scanIssue(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.CodeHealthIssue{}, ports.ErrCodeHealthIssueNotFound
+		}
+		return models.CodeHealthIssue{}, fmt.Errorf("find code health issue: %w", err)
+	}
+	return iss, nil
 }
 
 // InsertSuppression records a user-marked "not an issue" feedback

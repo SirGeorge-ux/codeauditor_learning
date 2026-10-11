@@ -204,13 +204,32 @@ func (a *serviceAdapter) GetAnalysis(ctx context.Context, userID, analysisID str
 	return encodeAnalysis(&a2), nil
 }
 
-// GetRepoIssues stub. Real implementation lands in
-// get_repo_issues.go (PR 2, task 2.4).
-func (a *serviceAdapter) GetRepoIssues(_ context.Context, _, _, _, _, _ string, _ int) (json.RawMessage, error) {
+// GetRepoIssues returns the ranked issues for the most-recent
+// analysis of (owner, name, source), filtered by severity
+// (optional) and capped at limit. The wire shape is
+// {issues: [...]} per design.md.
+func (a *serviceAdapter) GetRepoIssues(ctx context.Context, userID, owner, name, source, severity string, limit int) (json.RawMessage, error) {
 	if a.svc == nil {
 		return nil, fmt.Errorf("codehealth: service is nil")
 	}
-	return json.RawMessage(`[]`), nil
+	issues, err := a.svc.GetRepoIssues(ctx, userID, owner, name, source, severity, limit)
+	if err != nil {
+		return nil, err
+	}
+	// Project the typed slice into the wire shape.
+	// The service's GetRepoIssues returns []CodeHealthIssue;
+	// the wire shape is {issues: [...]} per design.md.
+	// Empty slice MUST serialize as [] (never null) so the
+	// LLM consumer never sees a type-mismatch on an empty
+	// result.
+	if issues == nil {
+		issues = []models.CodeHealthIssue{}
+	}
+	payload, err := json.Marshal(map[string]any{"issues": encodeIssueList(issues)})
+	if err != nil {
+		return nil, fmt.Errorf("encode issues payload: %w", err)
+	}
+	return payload, nil
 }
 
 // GenerateHealthReport stub. Real implementation lands in
@@ -222,17 +241,26 @@ func (a *serviceAdapter) GenerateHealthReport(_ context.Context, _, analysisID, 
 	return "stub-rpt-" + analysisID, "# stub report\n", format, nil
 }
 
-// SuppressIssue stub. Real implementation lands in
-// suppress_issue.go (PR 2, task 2.12). Returns the deterministic
-// stub so the boundary test stays green.
-func (a *serviceAdapter) SuppressIssue(_ context.Context, _, issueID string, _ *string) (string, string, error) {
+// SuppressIssue records a user-marked "not an issue" feedback.
+// The production service looks up the issue, writes the
+// suppression row, and returns the deterministic id + timestamp.
+// Returns ErrCodeHealthNotFound when issueID does not exist
+// (or belongs to a different user).
+func (a *serviceAdapter) SuppressIssue(ctx context.Context, userID, issueID string, reason *string) (string, string, error) {
 	if a.svc == nil {
 		return "", "", fmt.Errorf("codehealth: service is nil")
 	}
 	if issueID == "" {
 		return "", "", ErrCodeHealthNotFound
 	}
-	return "stub-sup-" + issueID, "1970-01-01T00:00:00Z", nil
+	res, err := a.svc.SuppressIssue(ctx, userID, issueID, reason)
+	if err != nil {
+		if errors.Is(err, ports.ErrCodeHealthIssueNotFound) {
+			return "", "", ErrCodeHealthNotFound
+		}
+		return "", "", err
+	}
+	return res.SuppressionID, res.SuppressedAt.UTC().Format(time.RFC3339), nil
 }
 
 // Reference unused import guards so go vet stays clean when the
