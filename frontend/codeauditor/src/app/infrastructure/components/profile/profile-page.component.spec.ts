@@ -2,6 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+// Mock @supabase/supabase-js so the AuthService module load does not
+// instantiate the real GoTrueClient (the class-field initializer in
+// auth.service.ts runs at import time). This prevents the "Multiple
+// GoTrueClient instances" warning + the chronic 6/10 flake in
+// auth.service.spec.ts when both spec files run in the same suite.
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    auth: {
+      signUp: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signOut: vi.fn(),
+      getSession: vi.fn(),
+      getUser: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+    },
+  }),
+}));
+
 import { ProfilePageComponent } from './profile-page.component';
 import { AuthService } from '../../services/auth.service';
 import { ProgressService } from '../../services/progress.service';

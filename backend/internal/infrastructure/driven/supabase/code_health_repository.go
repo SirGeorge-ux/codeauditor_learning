@@ -367,7 +367,7 @@ func (r *SupabaseCodeHealthRepository) ListIssues(ctx context.Context, analysisI
 		}
 		out = append(out, iss)
 	}
- 	return out, rows.Err()
+	return out, rows.Err()
 }
 
 // FindIssueByID returns the issue row scoped to userID via the

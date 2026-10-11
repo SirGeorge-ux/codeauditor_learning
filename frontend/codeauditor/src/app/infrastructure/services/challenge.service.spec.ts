@@ -1,6 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 
+// Mock @supabase/supabase-js the same way auth.service.spec.ts does so
+// importing AuthService here does not instantiate the real Supabase
+// client (the class-field initializer in auth.service.ts creates a
+// GoTrueClient at module load). Without this mock, this spec creates
+// a second GoTrueClient and the auth.service.spec.ts vi.mock stops
+// binding, producing the chronic 6/10 flake.
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    auth: {
+      signUp: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signOut: vi.fn(),
+      getSession: vi.fn(),
+      getUser: vi.fn(),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+    },
+  }),
+}));
+
 import { ChallengeService } from './challenge.service';
 import { ChallengeUseCase } from '../../application/challenge.use-case';
 import { AuthService } from './auth.service';

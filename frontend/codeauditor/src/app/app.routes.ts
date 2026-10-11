@@ -12,6 +12,7 @@ import { ProfilePageComponent } from './infrastructure/components/profile/profil
 import { DictionaryPageComponent } from './infrastructure/components/dictionary/dictionary-page.component';
 import { DictionaryDetailComponent } from './infrastructure/components/dictionary/dictionary-detail.component';
 import { PracticePageComponent } from './infrastructure/components/practice/practice-page.component';
+import { CodeHealthPageComponent } from './infrastructure/components/code-health/code-health-page.component';
 
 export const routes: Routes = [
   {
@@ -47,6 +48,14 @@ export const routes: Routes = [
       { path: 'profile', component: ProfilePageComponent },
       { path: 'dictionary', component: DictionaryPageComponent },
       { path: 'dictionary/:id', component: DictionaryDetailComponent },
+      // Code Health dashboard (S4 — code-health-dashboard PR 3).
+      // The :owner/:name path params populate the analyzeRepo wire
+      // args; the page also lets the user paste a URL into the
+      // repo-url-bar before the first analysis.
+      {
+        path: 'repo/:owner/:name/code-health',
+        component: CodeHealthPageComponent,
+      },
     ],
   },
   {

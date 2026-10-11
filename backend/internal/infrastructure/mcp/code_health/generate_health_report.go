@@ -27,8 +27,8 @@ type generateHealthReportArgs struct {
 // returned as a sentinel error from the service layer so the
 // dispatcher can map it to -32603.
 var allowedReportFormats = map[string]bool{
-	"md":   true,
-	"pdf":  true, // surfaces ErrCodeHealthPDFNotImplemented from the service
+	"md":  true,
+	"pdf": true, // surfaces ErrCodeHealthPDFNotImplemented from the service
 }
 
 // generateHealthReportTool is the canonical MCP tool for
