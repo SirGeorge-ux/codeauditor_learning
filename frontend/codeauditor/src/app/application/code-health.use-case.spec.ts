@@ -30,10 +30,7 @@ import {
   GetRepoIssuesResult,
   SuppressIssueResult,
 } from '../domain/ports/code-health.port';
-import {
-  CodeHealthAnalysis,
-  CodeHealthIssue,
-} from '../domain/models/code-health';
+import { CodeHealthAnalysis, CodeHealthIssue } from '../domain/models/code-health';
 
 // -- Test doubles ------------------------------------------------------------
 
@@ -145,10 +142,7 @@ class FakePort implements CodeHealthPort {
     return { content: '# report' };
   }
 
-  async suppressIssue(_args: {
-    issue_id: string;
-    reason?: string;
-  }): Promise<SuppressIssueResult> {
+  async suppressIssue(_args: { issue_id: string; reason?: string }): Promise<SuppressIssueResult> {
     this.suppressIssueCalls += 1;
     return {
       suppression_id: `s-${_args.issue_id}`,
@@ -385,10 +379,7 @@ describe('CodeHealthUseCase', () => {
 
   describe('daily cap', () => {
     it('rejects the 6th submission without calling the port', async () => {
-      storage.setItem(
-        `codeHealth.dailyCount.${utcDate(new Date('2026-10-10T12:00:00Z'))}`,
-        '5',
-      );
+      storage.setItem(`codeHealth.dailyCount.${utcDate(new Date('2026-10-10T12:00:00Z'))}`, '5');
       const capped = new CodeHealthUseCase({
         port,
         storage,

@@ -24,12 +24,7 @@ export type CodeHealthSeverity = 'critical' | 'high' | 'medium' | 'low';
  * CodeHealthCategory partitions findings into the 5 buckets required
  * by REQ-CODE-HEALTH-006 (one per seeded rule per the design table).
  */
-export type CodeHealthCategory =
-  | 'security'
-  | 'performance'
-  | 'refactor'
-  | 'style'
-  | 'architecture';
+export type CodeHealthCategory = 'security' | 'performance' | 'refactor' | 'style' | 'architecture';
 
 /**
  * CodeHealthStatus is the async-lifecycle state machine for an
@@ -73,10 +68,7 @@ export const CODE_HEALTH_STATUSES: readonly CodeHealthStatus[] = [
   'failed',
 ] as const;
 
-export const CODE_HEALTH_SOURCES: readonly CodeHealthSource[] = [
-  'gogs',
-  'github',
-] as const;
+export const CODE_HEALTH_SOURCES: readonly CodeHealthSource[] = ['gogs', 'github'] as const;
 
 /**
  * CodeHealthIssue is the finding shape returned by

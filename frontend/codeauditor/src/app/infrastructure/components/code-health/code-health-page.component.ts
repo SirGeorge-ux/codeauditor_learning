@@ -11,22 +11,11 @@
 // Hexagonal contract: stateful page component that owns the
 // presentation glue. Holds no MCP / use-case references directly —
 // the CodeHealthService @Injectable is the seam.
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  OnDestroy,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  LucideRefreshCw,
-  LucideArrowLeft,
-  LucideActivity,
-} from '@lucide/angular';
+import { LucideRefreshCw, LucideArrowLeft, LucideActivity } from '@lucide/angular';
 
 import { CodeHealthService } from '../../services/code-health.service';
 import { RepoUrlBarComponent } from './repo-url-bar.component';
@@ -35,18 +24,8 @@ import { HealthGaugeComponent } from './health-gauge.component';
 import { IssuesTableComponent } from './issues-table.component';
 import { CategoryBreakdownComponent } from './category-breakdown.component';
 import { GenerateChallengesCtaComponent } from './generate-challenges-cta.component';
-import {
-  AnalyzeRepoArgs,
-  CodeHealthPort,
-  GenerateHealthReportArgs,
-  GetRepoIssuesArgs,
-  SuppressIssueArgs,
-} from '../../../domain/ports/code-health.port';
-import {
-  CodeHealthAnalysis,
-  CodeHealthCategory,
-  CodeHealthIssue,
-} from '../../../domain/models/code-health';
+import { AnalyzeRepoArgs } from '../../../domain/ports/code-health.port';
+import { CodeHealthCategory } from '../../../domain/models/code-health';
 
 @Component({
   selector: 'app-code-health-page',
@@ -70,10 +49,7 @@ import {
         <svg lucideActivity class="w-7 h-7 text-[#39D353]"></svg>
         <div class="flex-1">
           <h1 class="text-2xl font-bold text-[#C9D1D9]">Code Health</h1>
-          <p
-            class="text-sm text-[#8B949E]"
-            data-testid="owner-name"
-          >
+          <p class="text-sm text-[#8B949E]" data-testid="owner-name">
             {{ ownerName() }}
           </p>
         </div>
@@ -177,9 +153,7 @@ import {
             class="bg-[#161B22] border border-[#30363D] rounded-sm p-4"
             data-testid="code-health-report"
           >
-            <h3 class="text-xs text-[#8B949E] uppercase tracking-wider mb-3">
-              Markdown report
-            </h3>
+            <h3 class="text-xs text-[#8B949E] uppercase tracking-wider mb-3">Markdown report</h3>
             <pre class="text-xs text-[#C9D1D9] whitespace-pre-wrap">{{ report }}</pre>
           </div>
         }
@@ -195,9 +169,7 @@ import {
           data-testid="empty-state"
         >
           <svg lucideActivity class="w-12 h-12 text-[#30363D] mb-3"></svg>
-          <p class="text-sm text-[#8B949E] mb-2">
-            Pick a Gogs or GitHub repo to analyze.
-          </p>
+          <p class="text-sm text-[#8B949E] mb-2">Pick a Gogs or GitHub repo to analyze.</p>
           <p class="text-xs text-[#8B949E]">
             You have {{ service.remainingToday() }} analyses left today.
           </p>
@@ -224,17 +196,13 @@ export class CodeHealthPageComponent implements OnDestroy {
 
   readonly owner = computed(() => this.params().get('owner') ?? '');
   readonly name = computed(() => this.params().get('name') ?? '');
-  readonly ownerName = computed(
-    () => `${this.owner()}/${this.name()}`,
-  );
+  readonly ownerName = computed(() => `${this.owner()}/${this.name()}`);
 
   readonly analysis = this.service.analysis;
 
   // categoryCounts rolls up the top_issues by category. Drives the
   // <app-category-breakdown> bar chart.
-  readonly categoryCounts = computed<
-    Readonly<Record<CodeHealthCategory, number>>
-  >(() => {
+  readonly categoryCounts = computed<Readonly<Record<CodeHealthCategory, number>>>(() => {
     const a = this.analysis();
     const counts: Record<CodeHealthCategory, number> = {
       security: 0,
@@ -276,9 +244,13 @@ export class CodeHealthPageComponent implements OnDestroy {
   ngOnDestroy(): void {
     // CodeHealthUseCase exposes a stop helper; if it doesn't, the
     // in-flight promise simply resolves on its own.
-    const maybe = (this.service as unknown as { useCase?: {
-      stopPolling?: () => void;
-    } }).useCase;
+    const maybe = (
+      this.service as unknown as {
+        useCase?: {
+          stopPolling?: () => void;
+        };
+      }
+    ).useCase;
     if (maybe && typeof maybe.stopPolling === 'function') {
       maybe.stopPolling();
     }
@@ -336,10 +308,7 @@ export class CodeHealthPageComponent implements OnDestroy {
   private parseUrl(url: string): AnalyzeRepoArgs {
     const trimmed = url.trim();
     if (this.source() === 'github') {
-      const stripped = trimmed.replace(/^https?:\/\//, '').replace(
-        /^github\.com\//,
-        '',
-      );
+      const stripped = trimmed.replace(/^https?:\/\//, '').replace(/^github\.com\//, '');
       const [owner, name] = stripped.split('/');
       return {
         owner: owner ?? '',

@@ -8,9 +8,7 @@ import { CommonModule } from '@angular/common';
 import { IssuesTableComponent } from './issues-table.component';
 import { CodeHealthIssue, CodeHealthSeverity } from '../../../domain/models/code-health';
 
-function makeIssue(
-  partial: Partial<CodeHealthIssue>,
-): CodeHealthIssue {
+function makeIssue(partial: Partial<CodeHealthIssue>): CodeHealthIssue {
   return {
     id: partial.id ?? 'i-1',
     rule_id: partial.rule_id ?? 'RULE-X-001',

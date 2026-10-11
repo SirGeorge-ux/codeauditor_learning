@@ -112,7 +112,7 @@ describe('CodeHealthAnalysis', () => {
     };
     expect(analysis.health_score).toBe(78);
     expect(analysis.top_issues).toHaveLength(1);
-    expect(analysis.languages.go).toBe(0.6);
+    expect(analysis.languages['go']).toBe(0.6);
   });
 
   it('keeps completed_at + error_message optional for pending/running states', () => {

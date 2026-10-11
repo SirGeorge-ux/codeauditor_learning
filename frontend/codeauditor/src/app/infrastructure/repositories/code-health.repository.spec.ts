@@ -14,7 +14,7 @@ import { of, throwError } from 'rxjs';
 
 import { CodeHealthRepository } from './code-health.repository';
 import { MCPClientPort, MCPTool } from '../../domain/ports/mcp-client.port';
-import { CodeHealthAnalysis, CodeHealthIssue } from '../../domain/models/code-health';
+import { CodeHealthIssue } from '../../domain/models/code-health';
 
 // -- Test doubles ------------------------------------------------------------
 
@@ -264,9 +264,9 @@ describe('CodeHealthRepository', () => {
   describe('error propagation', () => {
     it('surfaces MCP errors to the caller', async () => {
       mcp.errorFor['mcp-code-health.analyze_repo'] = new Error('backend 500');
-      await expect(
-        repo.analyzeRepo({ owner: 'o', name: 'n', source: 'gogs' }),
-      ).rejects.toThrow(/backend 500/);
+      await expect(repo.analyzeRepo({ owner: 'o', name: 'n', source: 'gogs' })).rejects.toThrow(
+        /backend 500/,
+      );
     });
   });
 });

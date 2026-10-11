@@ -31,13 +31,9 @@ describe('CategoryBreakdownComponent', () => {
     };
     fixture.componentRef.setInput('counts', counts);
     fixture.detectChanges();
-    const bars = fixture.nativeElement.querySelectorAll(
-      '[data-testid^="category-bar-"]',
-    );
+    const bars = fixture.nativeElement.querySelectorAll('[data-testid^="category-bar-"]');
     expect(bars.length).toBe(5);
-    const sec = fixture.nativeElement.querySelector(
-      '[data-testid="category-bar-security"]',
-    );
+    const sec = fixture.nativeElement.querySelector('[data-testid="category-bar-security"]');
     expect(sec?.textContent).toContain('3');
   });
 
@@ -52,9 +48,7 @@ describe('CategoryBreakdownComponent', () => {
     fixture.componentRef.setInput('counts', counts);
     fixture.detectChanges();
     expect(component.maxCount()).toBe(10);
-    expect(component.barWidthPx('performance')).toBeLessThan(
-      component.barWidthPx('security'),
-    );
+    expect(component.barWidthPx('performance')).toBeLessThan(component.barWidthPx('security'));
   });
 
   it('returns 0 width when the counts are all zero', () => {

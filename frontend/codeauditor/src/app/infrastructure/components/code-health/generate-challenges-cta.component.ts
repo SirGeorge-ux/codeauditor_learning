@@ -13,22 +13,12 @@
 // CTA level — it's not a service; it's wiring that the page could
 // pass through if preferred, but Angular providers make the direct
 // inject less verbose for a single-click CTA).
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideSparkles, LucideLoader } from '@lucide/angular';
 import { firstValueFrom } from 'rxjs';
 
-import {
-  CodeHealthIssue,
-} from '../../../domain/models/code-health';
-import { MCPClientPort } from '../../../domain/ports/mcp-client.port';
+import { CodeHealthIssue } from '../../../domain/models/code-health';
 import { MCPClientAdapter } from '../../../infrastructure/adapters/mcp-client.adapter';
 
 @Component({
@@ -75,9 +65,7 @@ export class GenerateChallengesCtaComponent {
     this.loading.set(false);
   });
 
-  readonly label = computed(() =>
-    this.loading() ? 'Generating…' : 'Generate challenge',
-  );
+  readonly label = computed(() => (this.loading() ? 'Generating…' : 'Generate challenge'));
 
   async invoke(): Promise<void> {
     if (this.loading()) {
@@ -87,13 +75,10 @@ export class GenerateChallengesCtaComponent {
     this.error.set(null);
     try {
       const out = (await firstValueFrom(
-        this.mcp.callTool(
-          'mcp-challenges.generate_challenge',
-          {
-            sourceIssueId: this.issue().id,
-            language: this.language(),
-          },
-        ),
+        this.mcp.callTool('mcp-challenges.generate_challenge', {
+          sourceIssueId: this.issue().id,
+          language: this.language(),
+        }),
       )) as { id?: string };
       const id = out?.id;
       if (typeof id === 'string' && id.length > 0) {

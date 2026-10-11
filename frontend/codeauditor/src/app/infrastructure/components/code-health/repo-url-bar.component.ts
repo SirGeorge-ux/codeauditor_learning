@@ -8,13 +8,7 @@
 // Hexagonal contract: standalone component, no `inject()` of any use
 // case / port. Inputs via the new `input()` signal API (Angular 21);
 // outputs via `output()`.
-import {
-  Component,
-  computed,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideLink, LucideArrowRight } from '@lucide/angular';
 
@@ -79,16 +73,16 @@ export class RepoUrlBarComponent {
   }
 
   placeholder = computed(() =>
-    this.source() === 'gogs'
-      ? 'gogs://ggogsmic/repo'
-      : 'github.com/owner/repo',
+    this.source() === 'gogs' ? 'gogs://ggogsmic/repo' : 'github.com/owner/repo',
   );
 
   // Cheap "owner/name" parse — used by the test to confirm the page
   // can derive these. Lives in the component as a convenience; the
   // page may override parsing for slugged GitHub URLs.
   owner = computed(() => {
-    const segments = this._value().split('/').filter((s) => s.length > 0);
+    const segments = this._value()
+      .split('/')
+      .filter((s) => s.length > 0);
     if (this.source() === 'github') {
       // strip "github.com" prefix if present
       if (segments[0] === 'github.com') {
@@ -99,7 +93,9 @@ export class RepoUrlBarComponent {
   });
 
   name = computed(() => {
-    const segments = this._value().split('/').filter((s) => s.length > 0);
+    const segments = this._value()
+      .split('/')
+      .filter((s) => s.length > 0);
     if (this.source() === 'github') {
       if (segments[0] === 'github.com') {
         return segments[2] ?? '';

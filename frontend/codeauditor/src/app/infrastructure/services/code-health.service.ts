@@ -14,10 +14,7 @@ import { Injectable, inject, computed } from '@angular/core';
 import { CodeHealthUseCase } from '../../application/code-health.use-case';
 import { CodeHealthRepository } from '../repositories/code-health.repository';
 import { MCPClientAdapter } from '../adapters/mcp-client.adapter';
-import {
-  CodeHealthAnalysis,
-  CodeHealthIssue,
-} from '../../domain/models/code-health';
+import { CodeHealthAnalysis, CodeHealthIssue } from '../../domain/models/code-health';
 import {
   AnalyzeRepoArgs,
   GenerateHealthReportArgs,
@@ -58,9 +55,7 @@ export class CodeHealthService {
     return this.useCase.loadRepoIssues(args);
   }
 
-  generateHealthReport(
-    args: GenerateHealthReportArgs,
-  ): Promise<string | null> {
+  generateHealthReport(args: GenerateHealthReportArgs): Promise<string | null> {
     return this.useCase.generateHealthReport(args);
   }
 

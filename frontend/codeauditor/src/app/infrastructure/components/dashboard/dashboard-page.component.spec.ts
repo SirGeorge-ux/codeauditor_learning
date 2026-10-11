@@ -2,10 +2,7 @@
 // code-health entry in the dashboard grid. Verifies the tile renders
 // the heart-pulse icon + label.
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  ComponentFixture,
-  TestBed,
-} from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommonModule } from '@angular/common';
 import { provideRouter } from '@angular/router';
 
@@ -14,7 +11,6 @@ import { CodeHealthService } from '../../services/code-health.service';
 
 describe('DashboardPageComponent (code-health tile)', () => {
   let fixture: ComponentFixture<DashboardPageComponent>;
-  let component: DashboardPageComponent;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -41,14 +37,11 @@ describe('DashboardPageComponent (code-health tile)', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(DashboardPageComponent);
-    component = fixture.componentInstance;
     fixture.detectChanges();
   });
 
   it('renders the code-health tile', () => {
-    const tile = fixture.nativeElement.querySelector(
-      '[data-testid="code-health-tile"]',
-    );
+    const tile = fixture.nativeElement.querySelector('[data-testid="code-health-tile"]');
     expect(tile).not.toBeNull();
     expect((tile as HTMLElement).textContent ?? '').toContain('Code Health');
   });
@@ -57,8 +50,6 @@ describe('DashboardPageComponent (code-health tile)', () => {
     const tile = fixture.nativeElement.querySelector(
       '[data-testid="code-health-tile"]',
     ) as HTMLAnchorElement;
-    expect(tile.getAttribute('href')).toContain(
-      '/repo/example/academy-mic/code-health',
-    );
+    expect(tile.getAttribute('href')).toContain('/repo/example/academy-mic/code-health');
   });
 });

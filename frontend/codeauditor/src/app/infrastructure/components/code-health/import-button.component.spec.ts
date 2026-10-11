@@ -83,9 +83,7 @@ describe('ImportButtonComponent', () => {
     fixture.componentRef.setInput('loading', false);
     fixture.componentRef.setInput('remainingToday', 0);
     fixture.detectChanges();
-    btn = fixture.nativeElement.querySelector(
-      '[data-testid="import-button"]',
-    ) as HTMLButtonElement;
+    btn = fixture.nativeElement.querySelector('[data-testid="import-button"]') as HTMLButtonElement;
     btn.click();
     expect(emits).toBe(0);
   });

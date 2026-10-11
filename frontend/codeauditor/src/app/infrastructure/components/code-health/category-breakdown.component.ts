@@ -5,16 +5,9 @@
 // The component is dumb: it renders 5 bars, one per CodeHealthCategory,
 // with bar widths normalized to the highest count in the set. The
 // color tier follows the same convention as the issues table.
-import {
-  Component,
-  computed,
-  input,
-} from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
-import {
-  CodeHealthCategory,
-  CODE_HEALTH_CATEGORIES,
-} from '../../../domain/models/code-health';
+import { CodeHealthCategory, CODE_HEALTH_CATEGORIES } from '../../../domain/models/code-health';
 
 @Component({
   selector: 'app-category-breakdown',
@@ -24,15 +17,10 @@ import {
       class="bg-[#161B22] border border-[#30363D] rounded-sm p-4"
       data-testid="category-breakdown"
     >
-      <h3 class="text-xs text-[#8B949E] uppercase tracking-wider mb-3">
-        By category
-      </h3>
+      <h3 class="text-xs text-[#8B949E] uppercase tracking-wider mb-3">By category</h3>
       <div class="space-y-2">
         @for (cat of categories(); track cat) {
-          <div
-            class="flex items-center gap-2"
-            [attr.data-testid]="'category-bar-' + cat"
-          >
+          <div class="flex items-center gap-2" [attr.data-testid]="'category-bar-' + cat">
             <span
               class="w-24 text-xs text-[#C9D1D9] capitalize"
               [attr.data-testid]="'category-label-' + cat"

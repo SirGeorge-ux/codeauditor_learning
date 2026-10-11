@@ -14,13 +14,7 @@
 //
 // The component is dumb: no service reference. The page maps
 // `suppress` events to CodeHealthService.suppressIssue.
-import {
-  Component,
-  computed,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideTrash, LucideChevronUp } from '@lucide/angular';
 
@@ -37,10 +31,7 @@ type SortColumn = 'severity' | 'file' | 'rule';
   standalone: true,
   imports: [FormsModule, LucideTrash, LucideChevronUp],
   template: `
-    <div
-      class="bg-[#161B22] border border-[#30363D] rounded-sm"
-      data-testid="issues-table"
-    >
+    <div class="bg-[#161B22] border border-[#30363D] rounded-sm" data-testid="issues-table">
       <div class="flex items-center gap-3 p-3 border-b border-[#21262D]">
         <label class="text-xs text-[#8B949E]">Filter:</label>
         <select

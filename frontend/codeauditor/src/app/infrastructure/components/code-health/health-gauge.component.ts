@@ -18,11 +18,7 @@ type Tier = 'red' | 'yellow' | 'green';
       class="flex flex-col items-center bg-[#161B22] border border-[#30363D] rounded-sm p-4"
       data-testid="health-gauge"
     >
-      <svg
-        viewBox="0 0 120 120"
-        class="w-32 h-32"
-        [attr.aria-label]="'Health score ' + score()"
-      >
+      <svg viewBox="0 0 120 120" class="w-32 h-32" [attr.aria-label]="'Health score ' + score()">
         <!-- Track -->
         <circle
           cx="60"
@@ -59,9 +55,7 @@ type Tier = 'red' | 'yellow' | 'green';
           {{ clampedScore() }}
         </text>
       </svg>
-      <div class="mt-2 text-xs text-[#8B949E] uppercase tracking-wider">
-        Health score
-      </div>
+      <div class="mt-2 text-xs text-[#8B949E] uppercase tracking-wider">Health score</div>
     </div>
   `,
 })
@@ -99,7 +93,5 @@ export class HealthGaugeComponent {
 
   // circumference + offset drive the SVG arc length.
   readonly circumference = 2 * Math.PI * 50; // 314.16…
-  readonly offset = computed(
-    () => this.circumference * (1 - this.clampedScore() / 100),
-  );
+  readonly offset = computed(() => this.circumference * (1 - this.clampedScore() / 100));
 }

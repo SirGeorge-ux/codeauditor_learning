@@ -4,12 +4,9 @@
 // navigates to `/dojo/<id>` on success. Mirrors the PR 2 spec
 // (SourceIssueID + origin="code_health" persistence).
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ComponentFixture,
-  TestBed,
-} from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommonModule } from '@angular/common';
-import { provideRouter, Router, ActivatedRoute } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { GenerateChallengesCtaComponent } from './generate-challenges-cta.component';
@@ -97,9 +94,7 @@ describe('GenerateChallengesCtaComponent', () => {
     fixture.componentRef.setInput('language', 'typescript');
     fixture.detectChanges();
     await component.invoke();
-    const call = mcp.captured.find(
-      (c) => c.name === 'mcp-challenges.generate_challenge',
-    );
+    const call = mcp.captured.find((c) => c.name === 'mcp-challenges.generate_challenge');
     expect(call?.args).toEqual({
       sourceIssueId: 'i-1',
       language: 'typescript',

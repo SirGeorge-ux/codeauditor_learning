@@ -3,22 +3,16 @@
 // CodeHealthService. Tests cover URL params → submitAnalysis trigger
 // + the loading/error/empty branches.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ComponentFixture,
-  TestBed,
-} from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 
 import { CodeHealthPageComponent } from './code-health-page.component';
 import { CodeHealthService } from '../../../infrastructure/services/code-health.service';
-import {
-  CodeHealthAnalysis,
-  CodeHealthIssue,
-} from '../../../domain/models/code-health';
+import { CodeHealthAnalysis, CodeHealthIssue } from '../../../domain/models/code-health';
 import {
   AnalyzeRepoArgs,
   CodeHealthPort,
@@ -62,10 +56,7 @@ class FakePort implements CodeHealthPort {
   }): Promise<GenerateHealthReportResult> {
     return { content: '' };
   }
-  async suppressIssue(_args: {
-    issue_id: string;
-    reason?: string;
-  }): Promise<SuppressIssueResult> {
+  async suppressIssue(_args: { issue_id: string; reason?: string }): Promise<SuppressIssueResult> {
     return this.suppressResult;
   }
 }
@@ -135,7 +126,6 @@ describe('CodeHealthPageComponent', () => {
           topIssues: () => [],
           languages: () => ({}),
           submitAnalysis: async (args: AnalyzeRepoArgs) => {
-            const id = port.analyzeRepoResult.analysis_id;
             try {
               const submit = await port.analyzeRepo(args);
               analysis.set(await port.getAnalysis(submit.analysis_id));

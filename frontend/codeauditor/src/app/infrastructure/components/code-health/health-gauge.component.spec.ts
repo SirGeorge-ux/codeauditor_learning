@@ -61,9 +61,7 @@ describe('HealthGaugeComponent', () => {
   it('renders the stroke-dasharray reflecting the percentage', () => {
     fixture.componentRef.setInput('score', 50);
     fixture.detectChanges();
-    const arc = fixture.nativeElement.querySelector(
-      '[data-testid="gauge-arc"]',
-    ) as SVGPathElement;
+    const arc = fixture.nativeElement.querySelector('[data-testid="gauge-arc"]') as SVGPathElement;
     expect(arc).not.toBeNull();
     expect(arc.getAttribute('stroke-dasharray')).toBeTruthy();
   });

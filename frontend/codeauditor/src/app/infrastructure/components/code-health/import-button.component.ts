@@ -34,14 +34,11 @@ export class ImportButtonComponent {
   readonly clicked = output<void>();
 
   // disabled reflects either the loading or the cap-hit state.
-  readonly disabled = computed(() =>
-    this.loading() || this.remainingToday() <= 0,
-  );
+  readonly disabled = computed(() => this.loading() || this.remainingToday() <= 0);
 
   readonly label = computed(() => {
     if (this.loading()) return 'Analyzing…';
-    if (this.remainingToday() <= 0)
-      return 'Daily limit reached (resets 00:00 UTC)';
+    if (this.remainingToday() <= 0) return 'Daily limit reached (resets 00:00 UTC)';
     return `Analyze (${this.remainingToday()} left today)`;
   });
 

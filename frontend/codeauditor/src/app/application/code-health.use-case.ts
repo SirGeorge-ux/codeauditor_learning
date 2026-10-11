@@ -30,10 +30,7 @@ import {
   GetRepoIssuesArgs,
   SuppressIssueArgs,
 } from '../domain/ports/code-health.port';
-import {
-  CodeHealthAnalysis,
-  CodeHealthIssue,
-} from '../domain/models/code-health';
+import { CodeHealthAnalysis, CodeHealthIssue } from '../domain/models/code-health';
 import { MCPClientPort } from '../domain/ports/mcp-client.port';
 
 // Tool-name constants — single source of truth in the application
@@ -97,9 +94,7 @@ export class CodeHealthUseCase {
   readonly analysis = this._analysis.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
-  readonly remainingToday = computed<number>(
-    () => Math.max(0, this.dailyCap - this._dailyCount()),
-  );
+  readonly remainingToday = computed<number>(() => Math.max(0, this.dailyCap - this._dailyCount()));
   readonly topIssues = computed<CodeHealthIssue[]>(() => {
     const a = this._analysis();
     return a ? [...a.top_issues] : [];
@@ -127,13 +122,9 @@ export class CodeHealthUseCase {
    * ceiling. Returns the final analysis (or null if the cap was
    * exceeded at the boundary).
    */
-  async submitAnalysis(
-    args: AnalyzeRepoArgs,
-  ): Promise<CodeHealthAnalysis | null> {
+  async submitAnalysis(args: AnalyzeRepoArgs): Promise<CodeHealthAnalysis | null> {
     if (this.remainingToday() <= 0) {
-      this._error.set(
-        'Daily limit reached, resets at 00:00 UTC. Try again after midnight.',
-      );
+      this._error.set('Daily limit reached, resets at 00:00 UTC. Try again after midnight.');
       return null;
     }
 
@@ -165,13 +156,9 @@ export class CodeHealthUseCase {
     }
     if (finalAnalysis === null) {
       // poll cap reached — surface a friendly message.
-      this._error.set(
-        'Analysis did not complete in time; try again or check the server.',
-      );
+      this._error.set('Analysis did not complete in time; try again or check the server.');
     } else if (finalAnalysis.status === 'failed') {
-      this._error.set(
-        finalAnalysis.error_message ?? 'Analysis failed; review and retry.',
-      );
+      this._error.set(finalAnalysis.error_message ?? 'Analysis failed; review and retry.');
     }
     return finalAnalysis;
   }
@@ -180,9 +167,7 @@ export class CodeHealthUseCase {
    * pollAnalysis lets the page re-issue a poll for a known analysis_id
    * (e.g. on a manual retry). It does NOT bump the daily count.
    */
-  async pollAnalysis(
-    analysisId: string,
-  ): Promise<CodeHealthAnalysis | null> {
+  async pollAnalysis(analysisId: string): Promise<CodeHealthAnalysis | null> {
     this._loading.set(true);
     this._error.set(null);
     this.currentAnalysisId = analysisId;
@@ -194,9 +179,7 @@ export class CodeHealthUseCase {
 
   // -- Polling core ----------------------------------------------------------
 
-  private async pollUntilTerminal(
-    analysisId: string,
-  ): Promise<CodeHealthAnalysis | null> {
+  private async pollUntilTerminal(analysisId: string): Promise<CodeHealthAnalysis | null> {
     let backoffMs = POLL_INITIAL_MS;
     let last: CodeHealthAnalysis | null = null;
     let exhausted = false;
@@ -238,9 +221,7 @@ export class CodeHealthUseCase {
     return [...out.issues];
   }
 
-  async generateHealthReport(
-    args: GenerateHealthReportArgs,
-  ): Promise<string | null> {
+  async generateHealthReport(args: GenerateHealthReportArgs): Promise<string | null> {
     try {
       const out = await this.port.generateHealthReport(args);
       return out.content ?? null;
@@ -346,8 +327,7 @@ function defaultStorage(): Storage {
 // defaultSleep returns a real setTimeout-based sleep. Tests inject a
 // no-wait stub so the polling tests don't block.
 function defaultSleep(): (ms: number) => Promise<void> {
-  return (ms: number): Promise<void> =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+  return (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // DailyCapExceededException is reserved for the future S5 server-side

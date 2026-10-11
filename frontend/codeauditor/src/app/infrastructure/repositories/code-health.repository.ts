@@ -68,20 +68,14 @@ export class CodeHealthRepository implements CodeHealthPort {
 
   async getAnalysis(analysis_id: string): Promise<GetAnalysisResult> {
     const wire = await firstValueFrom(
-      this.mcp.callTool<Record<string, unknown>>(
-        TOOL_GET_ANALYSIS,
-        { analysis_id },
-      ),
+      this.mcp.callTool<Record<string, unknown>>(TOOL_GET_ANALYSIS, { analysis_id }),
     );
     return mapAnalysis(wire);
   }
 
   async getRepoIssues(args: GetRepoIssuesArgs): Promise<GetRepoIssuesResult> {
     const wire = await firstValueFrom(
-      this.mcp.callTool<{ issues: readonly Record<string, unknown>[] }>(
-        TOOL_GET_REPO_ISSUES,
-        args,
-      ),
+      this.mcp.callTool<{ issues: readonly Record<string, unknown>[] }>(TOOL_GET_REPO_ISSUES, args),
     );
     const issues: CodeHealthIssue[] = Array.isArray(wire?.issues)
       ? wire.issues.map((raw) => mapIssue(raw))
@@ -89,24 +83,16 @@ export class CodeHealthRepository implements CodeHealthPort {
     return { issues };
   }
 
-  async generateHealthReport(
-    args: GenerateHealthReportArgs,
-  ): Promise<GenerateHealthReportResult> {
+  async generateHealthReport(args: GenerateHealthReportArgs): Promise<GenerateHealthReportResult> {
     const wire = await firstValueFrom(
-      this.mcp.callTool<GenerateHealthReportResult>(
-        TOOL_GENERATE_HEALTH_REPORT,
-        args,
-      ),
+      this.mcp.callTool<GenerateHealthReportResult>(TOOL_GENERATE_HEALTH_REPORT, args),
     );
     return { content: String(wire?.content ?? '') };
   }
 
   async suppressIssue(args: SuppressIssueArgs): Promise<SuppressIssueResult> {
     const wire = await firstValueFrom(
-      this.mcp.callTool<Record<string, unknown>>(
-        TOOL_SUPPRESS_ISSUE,
-        args,
-      ),
+      this.mcp.callTool<Record<string, unknown>>(TOOL_SUPPRESS_ISSUE, args),
     );
     return {
       suppression_id: String(wire['suppression_id'] ?? ''),

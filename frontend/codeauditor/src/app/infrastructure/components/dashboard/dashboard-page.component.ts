@@ -40,9 +40,7 @@ import { CodeHealthService } from '../../services/code-health.service';
 
       <!-- Practice mode tiles -->
       <div class="mb-6">
-        <h2 class="text-sm uppercase tracking-wider text-[#8B949E] mb-3">
-          Practice modes
-        </h2>
+        <h2 class="text-sm uppercase tracking-wider text-[#8B949E] mb-3">Practice modes</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <!-- Code Health tile (S4) -->
           <a
