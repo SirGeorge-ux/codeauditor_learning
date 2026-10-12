@@ -2,7 +2,7 @@
 
 > **System prompt & contexto para agentes IA que trabajen en este repo.**
 >
-> **Última actualización:** 2026-10-10 (cierre de S2: tutor-chat archivado)
+> **Última actualización:** 2026-10-11 (cierre de S4: code-health-dashboard archivado)
 > **Repo:** `github.com/SirGeorge-ux/codeauditor_learning` = `gogs.madeincode.online/GgogsMIC/academy-mic`
 
 ---
@@ -55,7 +55,7 @@
 
 - **Go 1.23**, **Chi v5** (router HTTP), `database/sql` + `lib/pq`.
 - **Hexagonal estricto** en `backend/internal/{core,ports,infrastructure}`.
-- **MCP monolítico** (1 binario, 8 grupos de tools, 33 tools) — `mcp-sandbox`, `mcp-challenges`, `mcp-user`, `mcp-curriculum`, `mcp-dictionary`, `mcp-pedagogical` (la pieza central), `mcp-external-docs` (Context7 + Brave wrappers), `mcp-tutor` (registrado por el change archivado `2026-10-08-dictionary`). Deferred: `mcp-code-health` (S4), `mcp-inspiration` (Exercism + GitHub, S3+).
+- **MCP monolítico** (1 binario, 9 grupos de tools, 38 tools) — `mcp-sandbox`, `mcp-challenges`, `mcp-user`, `mcp-curriculum`, `mcp-dictionary`, `mcp-pedagogical` (la pieza central), `mcp-external-docs` (Context7 + Brave wrappers), `mcp-tutor` (registrado por el change archivado `2026-10-08-dictionary`), `mcp-code-health` (S4, 5 tools). Deferred: `mcp-inspiration` (Exercism + GitHub, S3+).
 - **Supabase** (PostgreSQL 15 + Auth) como persistencia y auth.
 - **Sandbox** con dos modos: `LocalSandbox` (binarios en PATH) y `DockerSandbox` (contenedor Alpine efímero) + 50+ LanguageProvider.
 - **SSE** para streaming de audit + tokens LLM.
@@ -104,7 +104,7 @@ academy-mic/
 │       └── infrastructure/
 │           ├── driven/               # Adapters: gogs, ollama, sandbox(+providers), supabase, github
 │           ├── driving/              # HTTP handlers + auth middleware
-│           └── mcp/                  # MCP monolítico (8 grupos de tools, 33 tools) + mcpkit/ runtime compartido
+│           └── mcp/                  # MCP monolítico (9 grupos de tools, 38 tools) + mcpkit/ runtime compartido
 │               ├── sandbox/
 │               ├── challenges/
 │               ├── user/
@@ -138,16 +138,15 @@ academy-mic/
 │           │   └── shared/          # context-panel, code-panel, terminal-panel, resize
 │           │   + login + register (top-level standalone components)
 │           │   + tutor-chat/      # ⭐ NUEVO: panel + message + input (S2, archivado 2026-10-10)
-│           │   # pendiente (spec stage, no componentes aún): code-health/ (S4)
+│           │   + code-health/      # ⭐ NUEVO: dashboard de repo real (S4, archivado 2026-10-11)
 │           ├── guards/
 │           ├── repositories/
 │           ├── services/
 │           └── adapters/             # ⭐ NUEVO: MCP client adapter
 ├── openspec/                         # Spec-Driven Development
-│   ├── changes/                      # Cambios en curso (2 activos al 2026-10-10)
-│   │   ├── code-health-dashboard/    # ⭐ S4 (scaffold vacío)
+│   ├── changes/                      # Cambios en curso (1 activo al 2026-10-11)
 │   │   └── llm-cascade/              # ⭐ S5 (scaffold vacío)
-│   ├── archive/                      # Cambios ya aplicados (22)
+│   ├── archive/                      # Cambios ya aplicados (23)
 │   ├── specs/                        # Specs activas
 │   └── config.yaml
 ├── .atl/                             # Harnesado del proyecto
@@ -235,7 +234,7 @@ infrastructure/mcp/       ← herramientas del MCP monolítico (S2)
 
 ### 3.4 MCP monolítico (S2)
 
-Ver `docs/mcp-tools.md` para el catálogo completo de los 8 grupos de tools (33 tools totales).
+Ver `docs/mcp-tools.md` para el catálogo completo de los 9 grupos de tools (38 tools totales).
 
 **Regla:** el MCP monolítico vive en `backend/internal/infrastructure/mcp/`. Implementa los puertos `MCPChallengePort`, `MCPUserPort`, `MCPCurriculumPort`, etc. Los use cases del frontend consumen el `MCPClientPort` que se conecta al monolito.
 
@@ -288,7 +287,7 @@ Detalles ampliados: `docs/ui-and-stack.md`.
 |---|---|---|
 | Unit Go | `make test-backend` | Servicios, adapters (sandbox, auth, ollama, gogs, github, mcp), handlers |
 | Unit Angular | `make test-frontend` | Servicios (auth, gogs, vault), repos, guards, componentes |
-| E2E | `make e2e` | Flujos completos: home, login, register, dashboard, dojo, profile, dictionary, vault, mcp (el flujo `practice` (S3) ya no está en spec stage — cubierto por unit tests; `code-health` (S4) sigue en spec stage) |
+| E2E | `make e2e` | Flujos completos: home, login, register, dashboard, dojo, profile, dictionary, vault, mcp (los flujos `practice` (S3) y `code-health` (S4) ya no están en spec stage — cubiertos por unit tests) |
 | Quality gate | `make validate` | gofumpt + golangci-lint + Prettier + ESLint (pre-deploy) |
 
 **Reglas:**
@@ -311,7 +310,7 @@ Detalles ampliados: `docs/ui-and-stack.md`.
 
 Detalle: `docs/openspec-workflow.md`.
 
-**Specs planificadas (roadmap S0-S6, snapshot 2026-10-10):**
+**Specs planificadas (roadmap S0-S6, snapshot 2026-10-11):**
 
 | Spec | Sprint | Status |
 |---|---|---|
@@ -322,7 +321,7 @@ Detalle: `docs/openspec-workflow.md`.
 | `mcp-monolith` | S2 | ✅ archivado 2026-10-10 (33 tools / 8 grupos registrados) |
 | `tutor-chat` | S2 | ✅ archivado 2026-10-10 (3 PRs stacked-to-main; backend cascade Groq→DeepSeek→MiniMax; frontend con 5 signals + 7 slash commands + SSE; cierra el S2 entero) |
 | `free-practice-mode` | S3 | ✅ archivado 2026-10-10 (4 PRs stacked-to-main; cascade JSON-mode `Complete` + `GenerateChallenge` un-stub + sandbox gate con `ExecuteWithTests` + auth isolation; cierra el S3 entero) |
-| `code-health-dashboard` | S4 | 🔄 activo, scaffold vacío |
+| `code-health-dashboard` | S4 | ✅ archivado 2026-10-11 (3 PRs stacked-to-main; backend foundation + `mcp-code-health` 5 tools + frontend dashboard; cierra el S4 entero) |
 | `llm-cascade` | S5 | 🔄 activo, scaffold vacío |
 
 ---
@@ -412,7 +411,7 @@ Detalle: `docs/openspec-workflow.md`.
 
 ---
 
-## 12. Roadmap de producto (snapshot 2026-10-10)
+## 12. Roadmap de producto (snapshot 2026-10-11)
 
 | Sprint | Foco | Entregables | Estado |
 |---|---|---|---|
@@ -420,24 +419,26 @@ Detalle: `docs/openspec-workflow.md`.
 | **S1** | Challenge rebuild + Language Progress | 8 challenges nuevos + LanguageProgress + rango mixto | ✅ done (challenge-rebuild + language-progress archivados 2026-07-22) |
 | **S2** | Dictionary + Tutor Chat v1 + MCP base | Diccionario + chat con context awareness + MCP monolítico completo | ✅ done (Dictionary ✅ 2026-10-08; MCP base ✅ 2026-10-10; Tutor Chat ✅ 2026-10-10) |
 | **S3** | Free Practice Mode | Generador de challenges + currículas + validación + Exercism wrapper | ✅ done 2026-10-10 (4 PRs stacked-to-main; cascade `Complete` + `GenerateChallenge` un-stub + frontend `/practice/free` + sandbox gate `ExecuteWithTests` + auth isolation; smoke E2E manual y drivers multi-lenguaje como follow-ups) |
-| **S4** | Code Health Dashboard | Análisis de repo + caché + ranking de issues + DeepWiki | 🔲 scaffold listo |
+| **S4** | Code Health Dashboard | Análisis de repo + caché + ranking de issues + DeepWiki | ✅ done 2026-10-11 (3-PR stacked-to-main; backend foundation + mcp-code-health 5 tools + frontend dashboard) |
 | **S5** | LLM Cascade completo | OpenRouter cascade + Ollama local + M3 opt-in | 🔲 scaffold listo |
 | **S6+** | Iteración con datos reales | Mejoras de UX, socratismo fino, OAuth, multi-usuario (futuro) | 🔲 |
 
 ---
 
-## 13. Anexo: estado actual del proyecto (snapshot 2026-10-10)
+## 13. Anexo: estado actual del proyecto (snapshot 2026-10-11)
 
 - **50+ lenguajes** en el sandbox.
 - **8 handlers HTTP**: audit, auth, challenge, dictionary, gogs, progress, sse, vault.
 - **8 páginas Angular**: dashboard, dictionary, dojo, mcp, profile, vault + login + register (más `layout/` y `shared/` como infrastructure).
-- **~1,070 tests Go** (24 paquetes) + **207 tests Angular** (23 archivos) + Playwright E2E instalado (conteos al 2026-10-10 post-tutor-chat).
-- **2 specs activas** (`code-health-dashboard`, `llm-cascade`) + 22 archivadas.
-- **MCP monolítico**: 33 tools / 8 grupos registrados en `cmd/api/wiring.go` (verificado vía `GET /mcp/tools/list`).
+- **~1,200 tests Go** (26 paquetes) + **~240 tests Angular** (41 archivos) + Playwright E2E instalado (conteos al 2026-10-11 post-code-health).
+- **1 spec activa** (`llm-cascade`) + 23 archivadas.
+- **MCP monolítico**: 38 tools / 9 grupos registrados en `cmd/api/wiring.go` (verificado vía `GET /mcp/tools/list` + `TestBuildMCPRegistry_ListsExactly38Tools`).
 - **Frontend MCPClientAdapter**: 100% hexagonal — port puro en `domain/ports/mcp-client.port.ts`, adapter en `infrastructure/adapters/mcp-client.adapter.ts`; `MCP_TOKEN_PROVIDER` registrado en `app.config.ts` (cierra el blocker de mcp-monolith PR 5 verify).
 - **Hexagonal purity**: 0 `database/sql` imports en `backend/internal/core/` (verificado vía grep); ports + driven adapters respetan la dirección de imports.
 - **Tutor Chat (S2)**: 33a entrega — 3 PRs stacked-to-main (`feature/tutor-chat-pr1` + `-pr2` + `-pr3`); backend cascade (Groq → DeepSeek → MiniMax opt-in, 5s first-token timeout); frontend con 5 signals + 7 slash commands (`/nivel`, `/pista`, `/solucion`, `/reset`, `/perfil`, `/diccionario`, `/help`) + SSE consumer; `POST /api/v1/tutor/chat` con auto-escalation state machine.
 - **Free Practice Mode (S3)**: 4 PRs stacked-to-main (`feature/free-practice-pr1` + `-pr2` + `-pr3` + `feature/free-practice-sandbox-tests`); cascade JSON-mode `Complete` (Groq `response_format` / DeepSeek / MiniMax text+parser, 5s whole-response timeout, provider fallthrough); `ChallengeService.GenerateChallenge` un-stub (topic → objective → story → LLM → sandbox ≤3 → persist `origin="generated"`); `.atl/curricula/typescript.md` seed (15 topics F–S, formato canónico); frontend `PracticeUseCase` (signals + daily cap 20/UTC en localStorage) + 4 dumb components + `practice-page` STUB reemplazada; ruta canónica `/practice/free`; sandbox gate `ExecuteWithTests` (ejecuta `solutionCode` + `testCases` juntos, driver TypeScript, resto de lenguajes degradado) + aislamiento de auth vía TestBed stub (`MCP_TOKEN_PROVIDER`).
+- **Code Health Dashboard (S4)**: 3 PRs stacked-to-main (`feature/code-health-pr1` + `-pr2` + `-pr3`); backend foundation (source clients GitHub + Gogs `ListFiles`, 6 reglas seed, migración `010_create_code_health.sql` (3 tablas + `ALTER TABLE challenges ADD COLUMN source_issue_id TEXT`) + `010b_create_suppressions.sql`, `CodeHealthService` async `pending→running→completed|failed` + TTL 24h, `AnalysisCache` SHA-keyed 7d TTL, round-trip de suppressions); grupo 9 `mcp-code-health` (5 tools: `analyze_repo`, `get_analysis`, `get_repo_issues`, `generate_health_report`, `suppress_issue`) → **38 tools / 9 grupos**; `GenerateChallengeHint.SourceIssueID` + persistencia `origin="code_health"`; frontend `/repo/:owner/:name/code-health` (4 tipos de dominio + port + repository + use case con polling exponencial 2s→30s + daily cap 5/UTC en localStorage + 5 dumb components + page + CTA) + tile en el dashboard.
+- **Cerrado 2026-10-11:** `code-health-dashboard` archivado a `archive/2026-10-11-code-health-dashboard/` (S4 cerrado — 4-PR-equivalent stacked-to-main: PR 1 `6c6308f` backend foundation, PR 2 `934fef0` `mcp-code-health` (5 tools) + S3 wiring, PR 3 `2144d59` frontend dashboard; 35 implementation commits + 4 merge commits, 98 files, +15,369/−254 LOC; async job lifecycle + 7d TTL cache + hex purity + auth isolation + suppressions round-trip; canonical spec en `openspec/specs/code-health/spec.md` + deltas en `challenges` y `mcp`).
 - **Cerrado 2026-10-10:** `mcp-integration` archivado, `multi-lang-sandbox-oleada1/` eliminado (duplicado, ya estaba en `archive/2026-06-22-multi-lang-sandbox-oleada1/`); 15 branches stale borradas (12 locales + 10 remotas en `github` + 3 locales follow-up); `tutor-chat` archivado a `archive/2026-10-10-tutor-chat/` (S2 cerrado, 27 tasks completos, 0 spec reconciliation); `free-practice-mode` archivado a `archive/2026-10-10-free-practice-mode/` (S3 cerrado — 4 PRs stacked-to-main: `e41ae23` PR 1 cascade `LLMClientPort.Complete`, `a0cc492` PR 2 `GenerateChallenge` un-stub + curricula + wiring, `4b0b1a7` PR 3 frontend `/practice/free`, `cc5e787` PR 4 sandbox gate `ExecuteWithTests` + auth isolation; 0 spec reconciliation; canonical spec en `openspec/specs/free-practice/spec.md`).
 
 Esto es un proyecto **maduro**, no un MVP. Trátalo como tal: con respeto por lo que ya está, y cuidado al añadir.

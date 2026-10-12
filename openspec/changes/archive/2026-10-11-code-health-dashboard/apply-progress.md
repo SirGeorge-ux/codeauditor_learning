@@ -542,3 +542,9 @@ After PR 3 merges to master (per the `stacked-to-main` cadence):
 - [ ] Dashboard smoke: navigate `/repo/:owner/:name/code-health`,
       import a fixture repo, verify score + issues render; 6th
       analysis rejected by daily cap
+
+---
+
+## Archive reconciliation (2026-10-11)
+
+Drift items 1-5 reconciled at archive on 2026-10-11 per verify-report.md.

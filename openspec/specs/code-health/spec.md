@@ -305,6 +305,7 @@ The following are explicitly **not** delivered by `code-health-dashboard` (S4):
 - **GitHub OAuth flow** — MVP uses app-wide `GITHUB_TOKEN` env (PAT). Per-user OAuth is deferred to S6+.
 - **`mcp-inspiration` (Exercism + GitHub education repos)** — deferred since S2; remains S3+ follow-up.
 - **Server-side daily cap** — S4 enforces client-side only; S5 (`llm-cascade`) generalizes the cascade and owns the server-side cap.
+- **REST `/api/v1/code-health/*` endpoints** — MCP-only is the S4 transport; the frontend consumes exclusively via `MCPClientAdapter`. The REST surface (and its HTTP 429 `Retry-After` daily-cap response) lands in S5+.
 - **Multi-user sharing, leaderboards, public reports** — single-user dev (`ggogsmic`).
 - **Curriculum authoring UI for code-health topics** — S6+.
 - **Inline / snapshot rule rendering in the dojo** — independent of S4.

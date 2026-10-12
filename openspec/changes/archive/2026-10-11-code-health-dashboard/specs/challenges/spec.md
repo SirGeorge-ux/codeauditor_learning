@@ -7,7 +7,7 @@
 
 ## Purpose
 
-The `challenges` capability gains two additive fields so the S4 code-health flow can persist challenges generated from real-repo issues: `GenerateChallengeHint.SourceIssueID` and the persisted `Challenge.origin="code_health"`. Both changes are backward-compatible — existing callers that omit the new fields continue to compile and behave exactly as in S3. No DB migration is required (the `origin` column was introduced in S1's `004_add_challenge_ownership.sql` and already accepts arbitrary values; `source_path` is the existing `source_repo` column reused for file-path semantics in this context).
+The `challenges` capability gains two additive fields so the S4 code-health flow can persist challenges generated from real-repo issues: `GenerateChallengeHint.SourceIssueID` and the persisted `Challenge.origin="code_health"`. Both changes are backward-compatible — existing callers that omit the new fields continue to compile and behave exactly as in S3. No *new* `challenges` migration is required beyond the additive `source_issue_id TEXT` column shipped in `010_create_code_health.sql`; the `origin` column was introduced in S1's `004_add_challenge_ownership.sql` and already accepts arbitrary values, and `source_path` reuses the existing `source_repo` column with file-path semantics.
 
 ## ADDED Requirements
 
@@ -69,6 +69,6 @@ The system SHALL NOT introduce a new orchestrator for code-health-generated chal
 
 ## Migration Notes
 
-- **No DB migration required.** The `origin` and `source_repo` columns already exist (S1 migration `004_add_challenge_ownership.sql`); both accept arbitrary values. `sourcePath` reuses the `source_repo` column with file-path semantics. A new optional column `source_issue_id TEXT` MAY be added in a follow-up migration if the analytics layer needs to index code-health challenges by their parent issue — out of scope for S4.
+- **DB migration: `source_issue_id` IS in scope for S4 and IS shipped.** The `origin` and `source_repo` columns already exist (S1 migration `004_add_challenge_ownership.sql`); both accept arbitrary values. `sourcePath` reuses the `source_repo` column with file-path semantics. The `source_issue_id TEXT` column is added by `010_create_code_health.sql` (`ALTER TABLE public.challenges ADD COLUMN IF NOT EXISTS source_issue_id TEXT`, nullable) so code-health challenges remain traceable to their parent issue. It persists `GenerateChallengeHint.SourceIssueID` on the resulting `Challenge` row.
 - **Backward compatibility:** all callers that omit `SourceIssueID` continue to compile (zero-value default) and behave as in S3.
 - **Rollback:** removing the S4 wiring in `challenge_service.go` (drop the `SourceIssueID` mapping in the persist step) reverts this delta without affecting S3.

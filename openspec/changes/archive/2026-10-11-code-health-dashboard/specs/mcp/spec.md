@@ -7,15 +7,15 @@
 
 ## Purpose
 
-The `mcp` capability gains a 9th group — `mcp-code-health` — exposing 4 tools that drive the S4 code-health-dashboard flow. The MCP inventory grows from 33 tools / 8 groups (S2 baseline, frozen on 2026-10-10) to **37 tools / 9 groups** post-archive. The new tools follow every existing rule in `openspec/specs/mcp/spec.md`: `MCPTool` interface shape, JSON-RPC 2.0 transport, JWT auth (`ctx.Value("user_id")`), 30s timeout, 50K response cap, 10/min/user rate limit, and JSON-RPC error codes (`-32602` for invalid params, `-32609` for rate-limit). The `mcp-inspiration` group remains out of scope.
+The `mcp` capability gains a 9th group — `mcp-code-health` — exposing 5 tools that drive the S4 code-health-dashboard flow. The MCP inventory grows from 33 tools / 8 groups (S2 baseline, frozen on 2026-10-10) to **38 tools / 9 groups** post-archive. The 5th tool (`suppress_issue`) was added per the resolved suppression-feedback gate (2026-10-11); the original draft declared 4. The new tools follow every existing rule in `openspec/specs/mcp/spec.md`: `MCPTool` interface shape, JSON-RPC 2.0 transport, JWT auth (`ctx.Value("user_id")`), 30s timeout, 50K response cap, 10/min/user rate limit, and JSON-RPC error codes (`-32602` for invalid params, `-32609` for rate-limit). The `mcp-inspiration` group remains out of scope.
 
-The change is additive: no existing tool is renamed or removed. Rollback unregisters the 4 new tools in `cmd/api/wiring.go` and removes the `mcp-code-health/` package — the count returns to 33 / 8 and the S2 surface is unchanged.
+The change is additive: no existing tool is renamed or removed. Rollback unregisters the 5 new tools in `cmd/api/wiring.go` and removes the `mcp-code-health/` package — the count returns to 33 / 8 and the S2 surface is unchanged.
 
 ## ADDED Requirements
 
 ### Requirement: REQ-MCP-CODE-HEALTH-001 — mcp-code-health Group Registration
 
-The system SHALL register a 9th MCP group `mcp-code-health` in the `Registry`, exposing exactly 4 tools. Every tool SHALL implement the canonical `MCPTool` interface (`Name()`, `Description()`, `Schema()`, `Execute()`), SHALL validate `user_id` in context, SHALL enforce the 30-second execution timeout and 50K-character response cap, and SHALL respect the per-user rate limit (`-32609` on >10 calls/minute/tool/user).
+The system SHALL register a 9th MCP group `mcp-code-health` in the `Registry`, exposing exactly 5 tools. Every tool SHALL implement the canonical `MCPTool` interface (`Name()`, `Description()`, `Schema()`, `Execute()`), SHALL validate `user_id` in context, SHALL enforce the 30-second execution timeout and 50K-character response cap, and SHALL respect the per-user rate limit (`-32609` on >10 calls/minute/tool/user).
 
 | Tool | Args | Returns |
 |---|---|---|
@@ -23,6 +23,7 @@ The system SHALL register a 9th MCP group `mcp-code-health` in the `Registry`, e
 | `mcp-code-health.get_analysis` | `{analysis_id}` | `{analysis_id, status, health_score, top_issues, languages, summary, created_at, completed_at, error_message?}` |
 | `mcp-code-health.get_repo_issues` | `{owner, name, source, severity?: "critical"\|"high"\|"medium"\|"low", limit?: int}` | `{issues: [{id, severity, category, file_path, line, message, evidence, suggested_fix, rule, confidence}]}` |
 | `mcp-code-health.generate_health_report` | `{analysis_id, format: "md"\|"pdf"}` | `{report_id, content, format}` |
+| `mcp-code-health.suppress_issue` | `{issue_id, reason?}` | `{suppression_id, suppressed_at}` |
 
 #### Scenario: analyze_repo returns analysis_id synchronously
 
@@ -49,6 +50,13 @@ The system SHALL register a 9th MCP group `mcp-code-health` in the `Registry`, e
 - WHEN the user invokes `mcp-code-health.generate_health_report({analysis_id, format:"md"})`
 - THEN the response is `{report_id, content: "<markdown>", format:"md"}`
 - AND the markdown contains the health score, ranked issues table, language breakdown, and a "generate challenges" hint
+
+#### Scenario: suppress_issue records user feedback
+
+- GIVEN a completed analysis with a `RULE-SEC-INJECT-001` finding `{issue_id:"issue-3", file_path:"src/foo.ts", line:14}`
+- WHEN the user invokes `mcp-code-health.suppress_issue({issue_id:"issue-3", reason:"false positive"})`
+- THEN it writes a `code_health_suppressions` row `(user_id, file_path, rule_id, line_number)` via the `CodeHealthRepository.InsertSuppression` port and returns `{suppression_id, suppressed_at}`
+- AND the next `analyze_repo` for the same repo does NOT re-emit the suppressed `(file_path, rule_id, line_number)` issue (REQ-CODE-HEALTH-008)
 
 #### Scenario: Missing user_id rejected
 
@@ -98,7 +106,7 @@ Each `mcp-code-health` tool SHALL have at least one unit test covering the happy
 
 #### Scenario: Every new tool has a test file
 
-- GIVEN each tool file `analyze_repo.go`, `get_analysis.go`, `get_repo_issues.go`, `generate_health_report.go` in `infrastructure/mcp/code_health/`
+- GIVEN each tool file `analyze_repo.go`, `get_analysis.go`, `get_repo_issues.go`, `generate_health_report.go`, `suppress_issue.go` in `infrastructure/mcp/code_health/`
 - WHEN the corresponding `*_test.go` exists
 - THEN each contains at least one `Test<ToolName>Tool_Execute` function
 
@@ -106,16 +114,16 @@ Each `mcp-code-health` tool SHALL have at least one unit test covering the happy
 
 ### Requirement: Tool Registry
 
-> **Diff vs. canonical `openspec/specs/mcp/spec.md`:** the count is updated from 33 / 8 (S2) to 37 / 9 (post-S4).
+> **Diff vs. canonical `openspec/specs/mcp/spec.md`:** the count is updated from 33 / 8 (S2) to 38 / 9 (post-S4).
 
 The system SHALL provide a `Registry` that supports `Register(tool MCPTool)`, `Get(name string) (MCPTool, error)`, and `List() []MCPTool`.
 (Previously: 33 tools registered across 8 groups)
 
 #### Scenario: Registry returns all registered tools
 
-- GIVEN 37 tools registered across 9 groups (S2 33 tools + S4's 4 `mcp-code-health` tools)
+- GIVEN 38 tools registered across 9 groups (S2 33 tools + S4's 5 `mcp-code-health` tools)
 - WHEN `List()` is called
-- THEN it returns all 37 tools with valid schemas
+- THEN it returns all 38 tools with valid schemas
 
 #### Scenario: Registry rejects unknown tool name
 
@@ -131,9 +139,9 @@ The system SHALL provide a `Registry` that supports `Register(tool MCPTool)`, `G
 
 ### Requirement: S2 Tool Inventory
 
-> **Diff vs. canonical `openspec/specs/mcp/spec.md`:** the inventory grows from 33 tools / 8 groups (S2) to 37 tools / 9 groups. The 9th group `mcp-code-health` is added; `mcp-inspiration` remains deferred. The 33-tool S2 baseline is preserved verbatim for the original 8 groups.
+> **Diff vs. canonical `openspec/specs/mcp/spec.md`:** the inventory grows from 33 tools / 8 groups (S2) to 38 tools / 9 groups. The 9th group `mcp-code-health` is added; `mcp-inspiration` remains deferred. The 33-tool S2 baseline is preserved verbatim for the original 8 groups.
 
-The system SHALL register exactly 37 tools across 9 groups (S2 baseline + S4's `mcp-code-health`):
+The system SHALL register exactly 38 tools across 9 groups (S2 baseline + S4's `mcp-code-health`):
 (Previously: exactly 33 tools across 8 groups for S2)
 
 | Group | Tools | Count |
@@ -146,13 +154,13 @@ The system SHALL register exactly 37 tools across 9 groups (S2 baseline + S4's `
 | `mcp-pedagogical` | `get_learning_objective`, `generate_story_context`, `create_scaffolded_steps`, `validate_solution`, `get_socratic_prompt`, `peer_review_topic` | 6 |
 | `mcp-external_docs` | `get_library_docs`, `search_documentation`, `get_real_example` | 3 |
 | `mcp-tutor` | `tutor_lookup` | 1 |
-| `mcp-code-health` ⭐ S4 | `analyze_repo`, `get_analysis`, `get_repo_issues`, `generate_health_report` | 4 |
+| `mcp-code-health` ⭐ S4 | `analyze_repo`, `get_analysis`, `get_repo_issues`, `generate_health_report`, `suppress_issue` | 5 |
 
 #### Scenario: Tool list count matches inventory
 
 - GIVEN the MCP server starts with all S2 + S4 tools registered
 - WHEN `GET /mcp/tools/list` is called
-- THEN the response contains exactly 37 tools
+- THEN the response contains exactly 38 tools
 
 #### Scenario: Deferred groups are excluded
 
@@ -164,14 +172,14 @@ The system SHALL register exactly 37 tools across 9 groups (S2 baseline + S4's `
 
 - GIVEN the `mcp-code-health` group is registered
 - WHEN a client calls `GET /mcp/tools/list` and filters by group prefix
-- THEN 4 tools match the `mcp-code-health.*` prefix
+- THEN 5 tools match the `mcp-code-health.*` prefix
 - AND each tool's `Schema()` returns a valid OpenAI function definition (mirrors the existing Schema constraint)
 
-> **Note (tool ownership):** `mcp-code-health` is the 9th group and ships with the archived `code-health-dashboard` change (S4). It is registered by the same change that adds `CodeHealthService`, the GitHub client, and the `AnalysisCache`. Removing it would regress the S4 dashboard; the canonical post-S4 surface is therefore 37 tools across 9 groups.
+> **Note (tool ownership):** `mcp-code-health` is the 9th group and ships with the archived `code-health-dashboard` change (S4). It is registered by the same change that adds `CodeHealthService`, the GitHub client, and the `AnalysisCache`. Removing it would regress the S4 dashboard; the canonical post-S4 surface is therefore 38 tools across 9 groups.
 
 ## Migration Notes
 
-- **No protocol change.** The 4 new tools use the same `MCPTool` interface, transport, auth, error codes, and rate-limit rules as the existing 33 tools.
+- **No protocol change.** The 5 new tools use the same `MCPTool` interface, transport, auth, error codes, and rate-limit rules as the existing 33 tools.
 - **No DB migration required for MCP itself.** The code-health tables (`code_health_analyses`, `code_health_issues`, `analysis_cache`) are added by the same S4 change in migration `010_create_code_health.sql` (see the `code-health` spec).
 - **Backward compatibility:** every existing tool name, request shape, and response shape is unchanged. Clients that do not know about `mcp-code-health` ignore the new prefix.
-- **Rollback:** unregister the 4 tools in `cmd/api/wiring.go` and delete the `infrastructure/mcp/code_health/` package. The registry returns to 33 tools / 8 groups.
+- **Rollback:** unregister the 5 tools in `cmd/api/wiring.go` and delete the `infrastructure/mcp/code_health/` package. The registry returns to 33 tools / 8 groups.
